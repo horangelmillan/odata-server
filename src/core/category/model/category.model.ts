@@ -1,34 +1,22 @@
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
 import { db, DataTypes } from "../../../common/service/ORM/sequelize.service.js";
-import { IProduct } from "../interface/product.interface.js";
+import { ICategory } from "../interface/category.interface.js";
 
-interface ProductModel extends Model<InferAttributes<ProductModel>, InferCreationAttributes<ProductModel>>, IProduct {
+interface CategoryModel extends Model<InferAttributes<CategoryModel>, InferCreationAttributes<CategoryModel>>, ICategory {
     id: CreationOptional<number>;
     createdAt: CreationOptional<Date>;
     updatedAt: CreationOptional<Date>;
 }
 
-const ProductModel = db.define<ProductModel>("Product", {
+const CategoryModel = db.define<CategoryModel>("Category", {
     id: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
     },
     nombre: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-    },
-    precio: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-    },
-    categoria: {
         type: DataTypes.STRING(100),
         allowNull: false,
-    },
-    categoriaId: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
     },
     createdAt: {
         type: DataTypes.DATE,
@@ -39,8 +27,8 @@ const ProductModel = db.define<ProductModel>("Product", {
         allowNull: true,
     },
 }, {
-    tableName: "products",
+    tableName: "categories",
     timestamps: true,
 });
 
-export { ProductModel };
+export { CategoryModel };

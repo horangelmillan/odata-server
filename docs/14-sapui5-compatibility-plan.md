@@ -19,7 +19,7 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 | C.1 | Bypass SAPUI5 `$batch` | Documentar `groupId: "$direct"` como solución temporal | ✅ |
 | C.2 | Endpoint `/$batch` | Middleware propio para `POST /$batch` multipart (solo lectura/GET) | ✅ |
 | C.3 | Robustez `/$count` codificado | Middleware de normalización `%24`→`$` en `odata.service.ts` (mitiga bug de path encoding) | ✅ |
-| D | Navigation properties | Decoradores `@BelongsTo`/`@HasMany` en modelos OData | ⬜ |
+| D | Navigation properties | Decoradores `@BelongsTo`/`@HasMany` en modelos OData | ✅ |
 | E | Tests | Tests unitarios + integración de todas las fases | ⬜ |
 | F | Documentación + merge | `docs/14-*.md`, README, merge a master, tag `v1.1.0` | ⬜ |
 
@@ -121,6 +121,52 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 **Decisión de alcance:** la mitigación es **defensiva** (SAPUI5 envía `$count` sin codificar y ya funcionaba); protege contra clientes estrictos RFC que codifican el `$`.
 
 **Próxima sesión:** Fase D — Navigation properties (decoradores `@BelongsTo`/`@HasMany`).
+
+### Sesión 7 — Fase D: Navigation properties (2026-07-14)
+
+**Contexto:** se implementa la Fase D completa (Opción 1 del análisis: dominio `category` REST
+completo + navegación OData). Verificado contra Postgres real (Docker `servidor-odata-db-1`)
+con un script que siembra datos y ejecuta `$expand` en ambas direcciones vía `DataSource.execute`.
+
+**Qué se hizo (REST, `src/core/category/` — dominio nuevo, uniforme a `product`):**
+- `interface/category.interface.ts` → `ICategory { id?, nombre }`.
+- `model/category.model.ts` → `db.define("Category", …, { tableName: "categories", timestamps: true })`.
+- `dto/category.dto.ts` → `CategoryCreateDTO` / `CategoryUpdateDTO` (`OmitType`).
+- `service/category.service.ts` → `implements BaseService` (singleton).
+- `controller/category.controller.ts` → handlers `try/catch → next(error)` + `ApiResponse`.
+- `route/category.route.ts` → CRUD + `validateBodyWithDTO` en POST/PUT.
+- `main.ts` → `CategoryRouter`; registrado en `src/core/main.ts` como `CoreRouter.use("/categories", CategoryRouter)`.
+
+**Qué se hizo (OData, `src/common/service/odata/`):**
+- `models/category.odata.model.ts` (`@Table({ tableName: "categories" })` + `@Column`s).
+- `controllers/category.odata.controller.ts` (`allowedMethod: ["get"]`, cap `top=100`).
+- Decoradores de navegación:
+  - `ProductOData` ← `@BelongsTo(() => CategoryOData, { relation: [{ foreignKey: "id", sourceKey: "categoriaId" }] }) category`.
+  - `CategoryOData` ← `@HasMany(() => ProductOData, { relation: [{ foreignKey: "categoriaId", sourceKey: "id" }] }) products`.
+- `datasource.ts`: `CategoryOData` añadido al array `models`.
+- `odata.service.ts`: `CategoryODataController` añadido a `odataControllers`.
+
+**Prerequisito de esquema (Paso 0):** se añadió `categoriaId` (INTEGER, nullable) a
+`product.interface`, `product.model`, `product.dto` y `ProductOData`. `server.ts` (`db.sync({ alter: true })`)
+crea la columna y la tabla `categories` automáticamente; no se tocó `node_modules`.
+
+**Decisiones técnicas:**
+- **`categoria` (STRING) se mantuvo** para no romper datos/queries existentes; `categoriaId` es la FK real hacia `categories`. El `$expand` de SAPUI5 usa `categoriaId`, no el texto.
+- **Semántica de la opción de relación** (verificada invirtiendo el mapeo en `core/model.js` + `core/dataSource.js` de la librería): en `@BelongsTo`, `foreignKey` = PK del target y `sourceKey` = columna FK en el source.
+- **Test offline de metadata** (`src/__tests__/unit/odata/navigation.metadata.test.ts`, 2 tests): el `$metadata` CSDL expone `ProductOData.category` → `NavigationProperty` → `CategoryOData` con `$ReferentialConstraint: { categoriaId: "CategoryOData/id" }`, y `CategoryOData.products` → `Collection(ProductOData)`.
+
+**Verificación contra BD real:**
+- `product?$expand=category` → cada producto trae `category: { id, nombre }` anidado.
+- `category?$expand=products` → cada categoría trae `products: [...]`.
+- SQL generado correcto: `LEFT OUTER JOIN "products" ON "categories"."id" = "products"."categoriaId"`.
+- `pnpm test` → 118 passed (2 nuevos del test de metadata; sin regresión).
+
+**Notas / pendientes (para Fase E/F o sesión futura):**
+- **Quirk de naming en `$metadata`**: la librería emite `$Endpoint: "/productodata"` (sin guion) en el CSDL, mientras la ruta real registrada por el router parcheado es `/product-odata` (kebab). Es **pre-existente** para `product` y no bloquea las fases A–D, pero si SAPUI5 construye las URLs a partir del `EntitySet` del metadata (en lugar del nombre de ruta), habría discrepancia. Merece investigación aparte antes del merge a master.
+- **`$count` + `$expand` combinados** lanzan `Unsupported relation type for $count` (`adaptors/sequelizer.js:309`). SAPUI5 no suele combinarlos; documentado por si acaso.
+- El endpoint OData de category es `/category-odata` (kebab, como `product-odata`).
+
+**Próxima sesión:** Fase E — Tests (unitarios + integración de todas las fases) y Fase F — Documentación + merge a master + tag `v1.1.0`.
 
 ---
 

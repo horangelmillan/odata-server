@@ -1,4 +1,5 @@
-import { Model, Table, Column, DataTypes } from "@phrasecode/odata";
+import { Model, Table, Column, DataTypes, BelongsTo } from "@phrasecode/odata";
+import { CategoryOData } from "./category.odata.model.js";
 
 @Table({ tableName: "products" })
 export class ProductOData extends Model<ProductOData> {
@@ -13,4 +14,10 @@ export class ProductOData extends Model<ProductOData> {
 
     @Column({ dataType: DataTypes.STRING })
     categoria!: string;
+
+    @Column({ dataType: DataTypes.INTEGER })
+    categoriaId!: number;
+
+    @BelongsTo(() => CategoryOData, { relation: [{ foreignKey: "id", sourceKey: "categoriaId" }] })
+    category!: CategoryOData;
 }

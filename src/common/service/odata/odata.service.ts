@@ -3,11 +3,12 @@ import { ExpressRouter, ODataControler } from "@phrasecode/odata";
 import { env } from "../../config/env.config.js";
 import { dataSource } from "./datasource.js";
 import { ProductODataController } from "./controllers/product.odata.controller.js";
+import { CategoryODataController } from "./controllers/category.odata.controller.js";
 import { BatchMiddleware } from "../../middleware/batch.middleware.js";
 
 const oDataExpressApp: Router = Router();
 
-const odataControllers: ODataControler[] = [new ProductODataController()];
+const odataControllers: ODataControler[] = [new ProductODataController(), new CategoryODataController()];
 
 // Normaliza el path OData: Express NO decodifica `%24`->`$` antes del route
 // matching, así que `/%24count` (u `%24metadata`/`%24batch`) no matchea la ruta

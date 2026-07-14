@@ -1,6 +1,7 @@
 import { DataSource } from "@phrasecode/odata";
 import { env } from "../../config/env.config.js";
 import { ProductOData } from "./models/product.odata.model.js";
+import { CategoryOData } from "./models/category.odata.model.js";
 
 const dbConfig = env.isProd ? env.prodDb : env.devDb;
 
@@ -17,7 +18,7 @@ const dataSourceConfig: Record<string, unknown> = {
         idle: 10000,
         acquire: 30000,
     },
-    models: [ProductOData],
+    models: [ProductOData, CategoryOData],
 };
 
 if (env.isProd) {

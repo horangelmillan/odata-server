@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, Min } from "class-validator";
+import { IsString, IsNumber, IsOptional, Min, IsInt } from "class-validator";
 import { OmitType } from "../../../common/helper/nestjs/omit-type.helper.js";
 import { IProduct } from "../interface/product.interface.js";
 
@@ -12,6 +12,10 @@ export class ProductCreateDTO implements IProduct {
 
     @IsString()
     categoria!: string;
+
+    @IsOptional()
+    @IsInt()
+    categoriaId?: number;
 
     @IsOptional()
     id?: number;
