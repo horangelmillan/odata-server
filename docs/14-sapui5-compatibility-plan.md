@@ -14,8 +14,8 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 
 | # | Fase | Descripción | Estado |
 |---|---|---|---|
-| A | Ruta por key | `GET /entityset/:id` para acceso a registro individual | 🔄 |
-| B | Endpoint `/$count` | `GET /entityset/$count` que devuelve el número total | ⬜ |
+| A | Ruta por key | `GET /entityset/:id` para acceso a registro individual | ✅ |
+| B | Endpoint `/$count` | `GET /entityset/$count` que devuelve el número total | ✅ |
 | C.1 | Bypass SAPUI5 `$batch` | Documentar `groupId: "$direct"` como solución temporal | ⬜ |
 | C.2 | Endpoint `/$batch` | Middleware propio para `POST /$batch` multipart | ⬜ |
 | D | Navigation properties | Decoradores `@BelongsTo`/`@HasMany` en modelos OData | ⬜ |
@@ -42,6 +42,23 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 
 **Próxima sesión:** Fase B — Endpoint `/$count`
 
+### Sesión 2 — Fase B: Endpoint `/$count` (2026-07-14)
+
+**Qué se hizo:**
+- Se parcheó `ExpressRouter.setUpODataRouters()` para registrar `router.get('/\\$count', ...)`
+- La ruta reutiliza el soporte nativo de `$count=true` de la librería: construye una URL con `$count=true` más los query params originales (incluido `$filter`), la pasa al `QueryParser` y llama a `controller.get()`
+- Devuelve el valor de `@odata.count` como texto plano (`Content-Type: text/plain`), según el estándar OData v4
+- La librería resuelve el count con un `SELECT COUNT(*)` separado (`model.count()`) usando el mismo `where`/`include` pero sin `limit`/`offset`, así que el filtro se aplica correctamente y la paginación (`$top`/`$skip`) no afecta el total
+
+**Decisiones técnicas:**
+- **El `$` debe escaparse en la ruta:** Express/`path-to-regexp` interpreta `$` como el ancla de fin-de-cadena. `router.get('/$count')` compila a `/^\/$count\/?$/i`, que nunca hace match. La solución es `router.get('/\\$count')` (en el archivo generado quedan dos `\` → la cadena JS es `/\$count` → `path-to-regexp` trata `$` como literal). Esto requiere `\\\\$count` en el template literal de `patch-odata.mjs`
+- **Orden de rutas importa:** `/$count` se registra **antes** de `/:id`, porque `/:id` haría match de `$count` como valor del parámetro `id` (Express evalúa las rutas en orden de registro)
+- Se verificó manualmente contra el servidor real: `/$count` → total; `/$count?$filter=precio gt 100` → filtrado; `/$count?$filter=precio gt 9999` → `0`; la ruta por key `/1` (Fase A) sigue funcionando
+
+**Verificación:** `pnpm test` → 88 tests OK. Pruebas manuales de `/$count` (con y sin `$filter`) correctas.
+
+**Próxima sesión:** Fase C.1 — Bypass SAPUI5 `$batch` (documentar `groupId: "$direct"`)
+
 ---
 
 ## Decisiones técnicas globales
@@ -49,6 +66,8 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 | Decisión | Opción elegida | Alternativa descartada |
 |---|---|---|
 | Formato ruta key | `/:id` (Express friendly) | `(/:id)` — Express no lo interpreta bien |
+| Ruta `/$count` | `/\\$count` (escapar `$`) + registrar antes de `/:id` | `/$count` sin escapar — `path-to-regexp` lo trata como ancla de regex |
+| Respuesta `/$count` | Texto plano con `@odata.count` | JSON — SAPUI5 espera el número plano |
 | Librería para `$batch` | `busboy` (streaming, madura, score 98) | Escribir parser propio (riesgoso) |
 | Estrategia `$batch` | Middleware Express propio en `batch.middleware.ts` | Parchar la librería (muy acoplado) |
 | Parches a librería | Via `scripts/patch-odata.mjs` (postinstall) | Modificar node_modules a mano (frágil) |

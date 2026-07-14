@@ -48,7 +48,7 @@ patchFile(
     ].join("\n"),
 );
 
-// Parche 2: Ruta por key en ExpressRouter (GET /:id para entidad individual)
+// Parche 2: Ruta /$count + ruta por key en ExpressRouter (GET /:id para entidad individual)
 patchFile(
     path.join("@phrasecode", "odata", "dist", "routers", "expressRouter.js"),
     "Key-access ExpressRouter",
@@ -59,6 +59,37 @@ patchFile(
     }
     setUpCustomRoutes`,
     `                });
+                // NOTE: \\\\$ so JS yields \\$ which path-to-regexp treats as literal $
+                router.get('/\\\\$count', async (req, res) => {
+                    try {
+                        const perfLogger = new perfLogger_1.PerfLogger();
+                        perfLogger.start();
+                        const queryIdx = req.url.indexOf('?');
+                        const qs = queryIdx >= 0 ? req.url.substring(queryIdx + 1) : '';
+                        const countUrl = req.baseUrl + '/?' + '$count=true' + (qs ? '&' + qs : '');
+                        const queryParser = new query_1.QueryParser(countUrl, model, this.config.queryOptions);
+                        const responce = await controller.get(queryParser);
+                        const executionTime = perfLogger.end();
+                        const count = responce['@odata.count'] ?? 0;
+                        res.set('Content-Type', 'text/plain');
+                        res.send(String(count));
+                    }
+                    catch (error) {
+                        logger_1.Logger.getLogger().error('Error processing request', error);
+                        if (error instanceof error_management_1.AppError) {
+                            res.status(error.statusCode).json({
+                                error: error.message,
+                                code: error.code,
+                                details: error.details,
+                            });
+                        }
+                        else {
+                            res
+                                .status(constant_1.STATUS_CODES.INTERNAL_SERVER_ERROR)
+                                .json({ error: 'Internal Server Error' });
+                        }
+                    }
+                });
                 router.get('/:id', async (req, res) => {
                     try {
                         const perfLogger = new perfLogger_1.PerfLogger();
