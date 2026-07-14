@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+.env
+*.log
+.tsbuildinfo
+.gitignore
+.gitattributes
+docs
+src/__tests__

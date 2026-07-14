@@ -16,7 +16,8 @@
         "clean": "tsc --build --clean",
         "test": "vitest run",
         "test:watch": "vitest",
-        "test:coverage": "vitest run --coverage"
+        "test:coverage": "vitest run --coverage",
+        "postinstall": "node scripts/patch-odata.mjs"
     },
     "dependencies": {
         "@phrasecode/odata": "^0.3.1",
