@@ -4,6 +4,7 @@ import { compare } from "bcrypt";
 
 import pkg, { JwtPayload } from "jsonwebtoken";
 const { verify } = pkg;
+import { env } from "../config/env.config.js";
 
 type UserFinder = (id: string) => Promise<any | null>;
 
@@ -38,7 +39,7 @@ class Security {
 
         try {
             const decrypt = await new Promise<JwtPayload>((resolve, reject) => {
-                verify(token, process.env.SECRET_KEY!, (err, decoded) => {
+                verify(token, env.jwtSecret, (err, decoded) => {
                     if (err) reject(err);
                     else resolve(decoded as JwtPayload);
                 });

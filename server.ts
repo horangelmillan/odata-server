@@ -2,8 +2,8 @@ import http from "node:http";
 import { Express } from "express";
 import expressApp from "./src/main.js";
 import { db } from "./src/common/service/ORM/sequelize.service.js";
+import { env } from "./src/common/config/env.config.js";
 
-const PORT: number = Number(process.env.PORT) || 3000;
 const server: http.Server = http.createServer();
 const app: Express = expressApp();
 
@@ -19,8 +19,8 @@ const initServer = async () => {
     }
 
     server.on("request", app);
-    server.listen(PORT, function () {
-        console.log("Server listening on port %d", PORT);
+    server.listen(env.port, function () {
+        console.log("Server listening on port %d", env.port);
     });
 };
 

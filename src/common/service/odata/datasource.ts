@@ -1,13 +1,16 @@
 import { DataSource } from "@phrasecode/odata";
+import { env } from "../../config/env.config.js";
 import { ProductOData } from "./models/product.odata.model.js";
 
-export const dataSource = new DataSource({
-    dialect: "postgres",
-    database: process.env.NODE_ENV === "production" ? process.env.DB : process.env.DEV_DB,
-    username: process.env.NODE_ENV === "production" ? process.env.DB_USERNAME : process.env.DEV_USERNAME,
-    password: process.env.NODE_ENV === "production" ? process.env.DB_PASSWORD : process.env.DEV_PASSWORD,
-    host: process.env.NODE_ENV === "production" ? process.env.DB_HOST : process.env.DEV_HOST,
-    port: Number(process.env.NODE_ENV === "production" ? process.env.DB_PORT : process.env.DEV_PORT),
+const dbConfig = env.isProd ? env.prodDb : env.devDb;
+
+const dataSourceConfig: Record<string, unknown> = {
+    dialect: dbConfig.dialect,
+    database: dbConfig.database,
+    username: dbConfig.username,
+    password: dbConfig.password,
+    host: dbConfig.host,
+    port: dbConfig.port,
     pool: {
         max: 10,
         min: 2,
@@ -15,5 +18,10 @@ export const dataSource = new DataSource({
         acquire: 30000,
     },
     models: [ProductOData],
-    ssl: process.env.NODE_ENV === "production",
-});
+};
+
+if (env.isProd) {
+    dataSourceConfig.ssl = { require: true, rejectUnauthorized: false };
+}
+
+export const dataSource = new DataSource(dataSourceConfig);

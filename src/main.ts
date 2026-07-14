@@ -3,11 +3,10 @@ import express, { Express } from "express";
 import compression from "compression";
 import helmet from "helmet";
 import cors from "cors";
-import { config } from "dotenv";
 
-config();
 import "reflect-metadata";
 
+import { env } from "./common/config/env.config.js";
 import { GlobalRouter } from "./common/router/global.router.js";
 import { GlobalErrorMiddleware } from "./common/middleware/global-error.middleware.js";
 import { oDataExpressApp } from "./common/service/odata/odata.service.js";
@@ -35,7 +34,7 @@ export default function () {
     app.use(express.json());
     app.use(compression());
 
-    if (process.env.NODE_ENV === "development") {
+    if (env.isDev) {
         app.use(morgan("dev"));
     } else {
         app.use(morgan("combined"));

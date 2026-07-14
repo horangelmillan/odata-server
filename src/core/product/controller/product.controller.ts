@@ -49,7 +49,7 @@ class ProductController implements BaseController {
                 message: "Producto creado exitosamente",
                 result,
             };
-            res.json(response);
+            res.status(StatusCodes.CREATED).json(response);
         } catch (error) {
             next(error);
         }

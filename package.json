@@ -13,13 +13,16 @@
         "dev": "node --watch --watch-path ./src --loader ts-node --loader ts-node/esm --no-warnings ./server.ts",
         "build": "tsc --build",
         "start": "node ./dist/server.js",
-        "clean": "tsc --build --clean"
+        "clean": "tsc --build --clean",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage"
     },
     "dependencies": {
         "@phrasecode/odata": "^0.3.1",
         "express": "^4.21.1",
         "sequelize": "^6.37.5",
-        "pg": "^16.4.3",
+        "pg": "^8.22.0",
         "pg-hstore": "^2.3.4",
         "helmet": "^8.0.0",
         "morgan": "^1.10.0",
@@ -42,6 +45,10 @@
         "@types/morgan": "^1.9.9",
         "@types/node": "^22.7.6",
         "ts-node": "^10.9.2",
-        "typescript": "^5.6.3"
+        "typescript": "^5.6.3",
+        "@vitest/coverage-v8": "^3.1.1",
+        "supertest": "^7.1.0",
+        "@types/supertest": "^6.0.3",
+        "vitest": "^3.1.1"
     }
 }

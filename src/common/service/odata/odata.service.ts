@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { ExpressRouter } from "@phrasecode/odata";
+import { env } from "../../config/env.config.js";
 import { dataSource } from "./datasource.js";
 import { ProductODataController } from "./controllers/product.odata.controller.js";
 
@@ -10,10 +11,10 @@ new ExpressRouter(oDataExpressApp, {
     dataSource,
     logger: {
         enabled: true,
-        logLevel: process.env.NODE_ENV === "development" ? "INFO" : "ERROR",
+        logLevel: env.isDev ? "INFO" : "ERROR",
         format: "JSON",
         advancedOptions: {
-            logSqlQuery: process.env.NODE_ENV === "development",
+            logSqlQuery: env.isDev,
             logDbExecutionTime: true,
             logDbQueryParameters: false,
         },
