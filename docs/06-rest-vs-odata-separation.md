@@ -1,51 +1,93 @@
-# 06 — Separación REST vs OData (CQRS Ligero)
+# 06 — REST vs OData Separation (Lightweight CQRS)
 
-## 6.1 Filosofía de Separación
+## 6.1 Separation Philosophy
 
-Este patrón implementa una variante ligera de CQRS (Command Query Responsibility Segregation) donde los comandos (escritura) y las consultas (lectura) transitan por canales HTTP distintos:
+This project implements a lightweight variant of CQRS (Command Query Responsibility Segregation) where commands (writes) and queries (reads) travel through distinct HTTP channels:
 
-- **REST** (`/api/core/*`): Operaciones de escritura (Create, Update, Delete) + lecturas que requieren lógica de negocio, validación con DTOs, o comportamiento transaccional.
-- **OData** (`/odata/*`): Consultas de solo lectura con capacidades avanzadas de filtrado, proyección, ordenación y expansión de relaciones. Sin lógica de negocio, optimizado para rendimiento.
+- **REST** (`/api/core/*`): Write operations (Create, Update, Delete) plus reads that require business logic, DTO validation, or transactional behavior.
+- **OData** (`/odata/*`): Read-only queries with advanced filtering, projection, sorting, and relationship expansion. No business logic — optimized for performance.
 
-Principios fundamentales:
+Key principles:
 
-- Las escrituras **siempre** pasan por validación de DTOs y lógica de servicio. Nunca se expone un modelo OData para escritura si requiere validación de reglas de negocio.
-- Las lecturas OData **pueden saltarse** la lógica de servicio y acceder directamente a la base de datos o a vistas SQL, obteniendo mayor rendimiento.
-- El modelo de dominio (entidades Sequelize) es la fuente de verdad única. Los modelos OData son proyecciones de ese modelo, no definiciones independientes.
-- Las operaciones transaccionales que involucran múltiples entidades o efectos secundarios pertenecen exclusivamente a REST.
+- Writes **always** pass through DTO validation and service-layer logic. OData models are never exposed for writes if business rule validation is required.
+- OData reads **may bypass** service-layer logic and query the database or SQL views directly, yielding higher performance.
+- The Sequelize domain models are the single source of truth. OData models are projections, not independent definitions.
+- Transactional operations involving multiple entities or side effects belong exclusively to REST.
 
-Esta separación evita que la flexibilidad de OData introduzca efectos secundarios no deseados o validaciones incompletas en operaciones de escritura.
+This separation prevents OData's flexibility from introducing unintended side effects or incomplete validation on write operations.
 
 ---
 
-## 6.2 Cuándo usar cada vía
+## 6.2 When to Use Each Channel
 
-| Escenario | REST | OData |
+| Scenario | REST | OData |
 |-----------|------|-------|
-| Crear un recurso | ✅ POST | ❌ |
-| Actualizar un recurso | ✅ PUT/PATCH | ❌ |
-| Eliminar un recurso | ✅ DELETE | ❌ |
-| Listar con filtros simples | ✅ | ✅ |
-| Listar con filtros complejos | ❌ (requiere endpoint custom) | ✅ ($filter) |
-| Listar con relaciones profundas | ❌ (N+1 problem) | ✅ ($expand) |
-| Dashboard / Reportes | ❌ | ✅ (custom @Query) |
-| Autenticación | ✅ | ✅ (vía middleware) |
-| Operaciones transaccionales | ✅ (db.transaction) | ❌ |
+| Create a resource | ✅ POST | ❌ |
+| Update a resource | ✅ PUT/PATCH | ❌ |
+| Delete a resource | ✅ DELETE | ❌ |
+| List with simple filters | ✅ | ✅ |
+| List with complex filters | ❌ (requires custom endpoint) | ✅ ($filter) |
+| List with deep relationships | ❌ (N+1 problem) | ✅ ($expand) |
+| Dashboards / Reports | ❌ | ✅ (custom @Query) |
+| Authentication | ✅ | ✅ (via middleware) |
+| Transactional operations | ✅ (db.transaction) | ❌ |
 
-**Regla general**: Si la operación modifica estado, usa REST. Si solo lee datos, evalúa si los filtros son lo suficientemente complejos como para justificar OData. Para lecturas simples (listar todos, obtener por ID), REST sigue siendo una opción válida y más simple.
+**Rule of thumb**: If the operation modifies state, use REST. If it only reads data, evaluate whether filters are complex enough to justify OData. For simple reads (list all, get by ID), REST remains a valid and simpler option.
 
 ---
 
-## 6.3 Sincronización de Esquemas
+## 6.3 Actual Route Structure
 
-Para mantener coherencia entre ambos canales:
+### REST Routes (`/api/core`)
 
-1. **Fuente de verdad**: Los modelos Sequelize del módulo REST definen la estructura de la base de datos. Las migraciones se generan a partir de estos modelos.
-2. **Modelos OData**: Apuntan a las mismas tablas o a vistas SQL optimizadas. No ejecutan migraciones; son solo de lectura.
-3. **Vistas SQL**: Se recomienda crear vistas específicas para OData que pre-procesen joins, calculen columnas derivadas, y renombren campos al formato esperado por el cliente.
+The route chain in `src/main.ts` mounts `GlobalRouter` at `/api`:
+
+```
+src/main.ts                    → app.use("/api", GlobalRouter)
+src/common/router/global.router.ts  → GlobalRouter.use("/core", CoreRouter)
+src/core/main.ts                    → CoreRouter.use("/products", ProductRouter)
+src/core/product/main.ts            → ProductRouter.use("/", productRouter)
+```
+
+This produces these endpoints:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/core/products` | List all products |
+| GET | `/api/core/products/:id` | Get product by ID |
+| POST | `/api/core/products` | Create product (validated with `ProductCreateDTO`) |
+| PUT | `/api/core/products/:id` | Update product (validated with `ProductUpdateDTO`) |
+| DELETE | `/api/core/products/:id` | Delete product |
+
+### OData Routes (`/odata`)
+
+```
+src/main.ts                                   → app.use("/odata", ..., oDataExpressApp)
+src/common/service/odata/odata.service.ts     → ExpressRouter with controllers
+```
+
+This produces:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/odata/Products` | Query products with OData parameters |
+| GET | `/odata/Products/$count` | Count products matching filter |
+| GET | `/odata/$metadata` | OData schema document |
+
+The OData router exposes the `Product` entity set with support for `$filter`, `$select`, `$orderby`, `$top`, `$skip`, `$expand`, and `$count`.
+
+---
+
+## 6.4 Schema Synchronization
+
+To maintain consistency between both channels:
+
+1. **Source of truth**: Sequelize models in each core module define the database structure. Migrations are generated from these models.
+2. **OData models**: Point to the same tables or optimized SQL views. They do not run migrations — they are read-only projections.
+3. **SQL views**: Create dedicated views for OData that pre-process joins, compute derived columns, and rename fields to the format expected by clients.
 
 ```sql
--- Ejemplo de vista SQL para OData
+-- Example SQL view for OData
 CREATE VIEW VIEW_PRODUCT_LIST AS
 SELECT
     p.id,
@@ -57,39 +99,47 @@ FROM products p
 LEFT JOIN categories c ON c.id = p.category_id;
 ```
 
-Las vistas optimizan el rendimiento porque los joins ya están pre-definidos y el plan de ejecución se cachea. Además, alivian la carga del motor OData al reducir la complejidad del mapeo.
+Views optimize performance because joins are pre-defined and execution plans are cached. They also reduce OData query complexity.
 
 ---
 
-## 6.4 Convención de Nombrado
+## 6.5 Naming Conventions
 
-| Elemento | Estilo | Ejemplo |
+| Element | Style | Example |
 |----------|-------|---------|
 | REST endpoint | kebab-case, plural | `/api/core/products` |
 | OData EntitySet | PascalCase, singular | `/odata/Products` |
-| Vistas SQL | SCREAMING_SNAKE_CASE | `VIEW_PRODUCT_LIST` |
-| Tablas | snake_case, plural | `products`, `categories` |
-| Modelos Sequelize | PascalCase | `Product`, `Category` |
-| Modelos OData | PascalCase + `OData` suffix | `ProductOData` |
+| SQL views | SCREAMING_SNAKE_CASE | `VIEW_PRODUCT_LIST` |
+| Tables | snake_case, plural | `products`, `categories` |
+| Sequelize models | PascalCase | `Product`, `ProductModel` |
+| OData models | PascalCase + `OData` suffix | `ProductOData` |
 
 ---
 
-## 6.5 Seguridad en Ambos Canales
+## 6.6 Security Across Both Channels
 
-La seguridad se aplica en ambos canales, pero con estrategias diferentes:
+Security applies to both channels but with different strategies:
 
-- **REST**: Middleware `security.protectSession` en rutas sensibles, verificación de roles y permisos por endpoint.
-- **OData**: Middleware Express global montado antes de `ExpressRouter`. Se valida el JWT o token de sesión, pero el control de acceso a nivel de fila se delega al QueryParser si es necesario.
+- **REST**: Middleware at the route level in `src/core/*/route/` — DTO validation via `ValidatorMiddleware`, error handling via `GlobalErrorMiddleware`.
+- **OData**: Express global middleware mounted before `ExpressRouter` in `src/main.ts`. JWT or session tokens are validated, and row-level access control is delegated to the `QueryParser` if needed.
 
 ```typescript
-// src/main.ts - OData con autenticación opcional
-app.use("/odata", authenticateMiddleware, oDataExpressApp);
+// src/main.ts — OData with contextual middleware
+app.use(
+    "/odata",
+    (req, res, next) => {
+        if (req.path.includes("$metadata")) req.url = "/$metadata";
+        res.set("OData-Version", "4.0");
+        next();
+    },
+    oDataExpressApp,
+);
 ```
 
-Ambos canales comparten la misma configuración de CORS, helmet, y rate limiting, definida a nivel de aplicación.
+Both channels share the same CORS, helmet, and compression configuration defined at the application level in `src/main.ts`.
 
-Para escenarios donde ciertos datos no deben exponerse vía OData, se usa una de estas estrategias:
+For scenarios where certain data must not be exposed via OData:
 
-- **Vista SQL restringida**: La vista excluye columnas sensibles (ej: `salario`, `email`).
-- **Controlador custom**: Se sobrescribe `get` en el controlador OData para filtrar filas según el usuario autenticado.
-- **Redundancia**: Se mantienen ambos caminos (REST list + OData) para el mismo recurso cuando se necesita ofrecer la máxima flexibilidad al cliente sin comprometer la seguridad.
+- **Restricted SQL view**: The view excludes sensitive columns (e.g., `salario`, `email`).
+- **Custom controller**: Override `get` in the OData controller to filter rows based on the authenticated user.
+- **Redundancy**: Maintain both REST list + OData for the same resource when maximum client flexibility is needed without compromising security.

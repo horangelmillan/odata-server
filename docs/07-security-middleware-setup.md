@@ -1,43 +1,47 @@
-# 07 — Configuración de Middleware de Seguridad (Helmet, Morgan, Compression, CORS)
+# 07 — Security Middleware Setup (Helmet, Morgan, Compression, CORS)
 
 ## 7.1 Helmet v8
 
-**Propósito**: Establece 13 headers HTTP de seguridad por defecto para proteger la aplicación contra vulnerabilidades web comunes.
+**Purpose**: Sets 13 security HTTP headers by default to protect the application against common web vulnerabilities.
 
-| Header | Protege contra |
+| Header | Protects against |
 |--------|---------------|
-| Content-Security-Policy | XSS, inyección de scripts |
+| Content-Security-Policy | XSS, script injection |
 | Strict-Transport-Security | HTTPS downgrade attacks |
 | X-Content-Type-Options | MIME sniffing |
 | X-Frame-Options | Clickjacking |
 | X-XSS-Protection | XSS (legacy browsers) |
 
-**Configuración recomendada:**
+**Configuration in `src/main.ts`:**
 
 ```typescript
 import helmet from "helmet";
 
+app.use(helmet());
+```
+
+For environments where frontend resources are served from a different domain (e.g., SAPUI5 from a CDN), adjust the CSP directives:
+
+```typescript
 app.use(helmet({
     contentSecurityPolicy: {
         useDefaults: true,
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'", "https://sapui5.hana.ondemand.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://sapui5.hana.ondemand.com"],
             imgSrc: ["'self'", "data:"],
         },
     },
-    crossOriginEmbedderPolicy: false, // necesario si SAPUI5 carga recursos cross-origin
+    crossOriginEmbedderPolicy: false,
 }));
 ```
-
-**Consideración SAPUI5**: Si la aplicación SAPUI5 se sirve desde un dominio diferente al del backend, puede ser necesario ajustar la política CSP. En particular, `scriptSrc` y `styleSrc` podrían requerir los dominios específicos de SAPUI5 en lugar de `'self'`. La opción `crossOriginEmbedderPolicy: false` deshabilita la política cross-origin embedder que puede bloquear recursos SAPUI5 legítimos.
 
 ---
 
 ## 7.2 Morgan v1.10
 
-**Propósito**: Logging de requests HTTP entrantes. Morgan es un middleware de logging para Express que formatea y escribe información de cada request.
+**Purpose**: HTTP request logging for Express.
 
 ```typescript
 import morgan from "morgan";
@@ -45,55 +49,46 @@ import morgan from "morgan";
 if (process.env.NODE_ENV === "development") {
     app.use(morgan("dev"));
 } else {
-    app.use(morgan("combined", {
-        skip: (req, res) => res.statusCode < 400, // solo errores en prod
-    }));
+    app.use(morgan("combined"));
 }
 ```
 
-**Formatos disponibles:**
+**Available formats:**
 
-| Formato | Descripción | Uso |
-|---------|-------------|-----|
-| `dev` | Colores, método, url, status, tiempo de respuesta | Desarrollo |
-| `combined` | Apache-style estándar (IP, fecha, método, url, status, tamaño, referrer, user-agent) | Producción |
-| `common` | Formato Apache common log (IP, fecha, método, url, status, tamaño) | Producción simple |
-| `short` | Formato compacto con tiempo de respuesta | Depuración rápida |
+| Format | Description | Use case |
+|--------|-------------|---------|
+| `dev` | Colored, method, url, status, response time | Development |
+| `combined` | Apache-style (IP, date, method, url, status, size, referrer, user-agent) | Production |
+| `common` | Apache common log format | Simple production |
+| `short` | Compact with response time | Quick debugging |
 
-En producción se recomienda `combined` porque es el formato que esperan la mayoría de herramientas de análisis de logs (ELK, Splunk, etc.). La opción `skip` evita loguear requests exitosos en producción, reduciendo ruido.
+In production, `combined` is recommended as it matches the format expected by most log analysis tools (ELK, Splunk, etc.).
 
 ---
 
 ## 7.3 Compression v1.7
 
-**Propósito**: Compresión gzip/brotli de respuestas HTTP para reducir el ancho de banda y mejorar tiempos de carga.
+**Purpose**: gzip/brotli compression of HTTP responses to reduce bandwidth and improve load times.
 
 ```typescript
 import compression from "compression";
 
-app.use(compression({
-    filter: (req, res) => {
-        if (req.headers["x-no-compression"]) return false;
-        return compression.filter(req, res); // default filter
-    },
-    threshold: 1024, // solo comprimir respuestas > 1KB
-    level: 6,        // nivel de compresión (1-9, 6=balance)
-}));
+app.use(compression());
 ```
 
-**Parámetros:**
+**Key parameters:**
 
-- **filter**: Permite deshabilitar compresión para ciertos requests (ej: cuando el cliente envía `x-no-compression`).
-- **threshold**: Respuestas más pequeñas que este valor no se comprimen. 1024 bytes (1 KB) es un buen balance.
-- **level**: Nivel de compresión de 1 (mínimo, rápido) a 9 (máximo, lento). 6 es el valor por defecto de zlib y ofrece el mejor balance entre ratio de compresión y velocidad.
+- **filter**: Disable compression for certain requests (e.g., when the client sends `x-no-compression`).
+- **threshold**: Responses smaller than this value are not compressed. Defaults to 1024 bytes.
+- **level**: Compression level from 1 (fast, minimal) to 9 (slow, maximum). 6 is the zlib default and offers the best balance.
 
-**Orden importante**: Compression debe ir después de OData (que maneja su propio streaming) y antes de rutas que sirvan contenido estático.
+The default configuration in `src/main.ts` uses compression with default settings, placed after `express.json()` to ensure compressed responses from REST endpoints.
 
 ---
 
 ## 7.4 CORS v2.8
 
-**Propósito**: Cross-Origin Resource Sharing — controla qué dominios pueden acceder a los recursos del servidor.
+**Purpose**: Cross-Origin Resource Sharing — controls which domains can access server resources.
 
 ```typescript
 import cors from "cors";
@@ -102,57 +97,68 @@ const corsOptions = {
     origin: process.env.CORS_ORIGIN || "*",
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    exposedHeaders: ["OData-Version"], // ← CRÍTICO para SAPUI5
+    exposedHeaders: ["OData-Version"],
     credentials: true,
-    maxAge: 86400, // cache preflight por 24h
+    maxAge: 86400,
 };
 
 app.use(cors(corsOptions));
 ```
 
-**Configuración destacada:**
+**Notable configuration:**
 
-- **exposedHeaders**: `OData-Version` es crítico para clientes SAPUI5 que consumen servicios OData. Sin este header expuesto, el cliente no puede leer la versión del protocolo y puede fallar al interpretar la respuesta.
-- **credentials**: `true` permite el envío de cookies y headers de autenticación cross-origin. Requiere que `origin` no sea `"*"` (debe ser un dominio específico).
-- **maxAge**: 86400 segundos (24 horas) cachea la respuesta preflight OPTIONS, reduciendo requests adicionales.
+- **exposedHeaders**: `OData-Version` is critical for clients consuming OData services. Without this header exposed, the client cannot read the protocol version and may fail to interpret the response.
+- **credentials**: `true` allows cookies and auth headers cross-origin. Requires `origin` to be a specific domain (not `"*"`).
+- **maxAge**: 86400 seconds (24 hours) caches the preflight OPTIONS response, reducing additional requests.
 
-Para producción, `origin` debe configurarse con el dominio exacto de la aplicación frontend (ej: `https://sapui5.miempresa.com`) en lugar de `"*"`.
+For production, set `origin` to the exact frontend domain (e.g., `https://app.miempresa.com`) instead of `"*"`.
 
 ---
 
-## 7.5 Orden de Middlewares (crítico)
+## 7.5 Middleware Order (Critical) — as configured in `src/main.ts`
 
-El orden en que se montan los middlewares determina el flujo de procesamiento de cada request. Un orden incorrecto puede causar comportamientos inesperados o vulnerabilidades de seguridad.
+The order in which middleware is mounted determines the request processing pipeline. Incorrect ordering can cause unexpected behavior or security vulnerabilities.
 
 ```typescript
-app.use(helmet());                          // 1. Seguridad headers
+// src/main.ts
+const app: Express = express();
+
+app.use(helmet());                          // 1. Security headers
 app.use(cors(corsOptions));                 // 2. CORS
 
-app.use("/odata", contextMiddleware, oData); // 3. OData (antes de parseo body)
+app.use(
+    "/odata",
+    contextMiddleware,                       // 3. OData context ($metadata rewrite + header)
+    oDataExpressApp,
+);
 
-app.use(express.json());                    // 4. Body parser
-app.use(compression());                     // 5. Compresión (después de parsear)
+app.use(express.json());                    // 4. Body parser (for REST endpoints)
+app.use(compression());                     // 5. Compression
 
-app.use(morgan("dev"));                     // 6. Logging
-app.use("/api", GlobalRouter);              // 7. REST API
+if (process.env.NODE_ENV === "development") {
+    app.use(morgan("dev"));                 // 6. Logging
+} else {
+    app.use(morgan("combined"));
+}
 
-app.use(GlobalErrorMiddleware);             // 8. Error handler (último)
+app.use("/api", GlobalRouter);              // 7. REST API routes
+app.use(GlobalErrorMiddleware.globalErrorHandler()); // 8. Global error handler (last)
 ```
 
-**Explicación del orden:**
+**Explanation of the order:**
 
-1. **Helmet primero**: Los headers de seguridad deben aplicarse a TODAS las respuestas sin excepción, incluso antes de cualquier procesamiento. Si se coloca después, algunas respuestas de error tempranas podrían carecer de estos headers.
+1. **Helmet first**: Security headers must apply to ALL responses without exception, including early error responses.
 
-2. **CORS**: Debe ir inmediatamente después de helmet para que las respuestas preflight (OPTIONS) incluyan los headers CORS correctos antes de que otros middlewares intenten procesar la solicitud.
+2. **CORS**: Immediately after helmet so preflight (OPTIONS) responses include correct CORS headers before other middleware processes the request.
 
-3. **OData antes de express.json()**: `@phrasecode/odata` maneja su propio parsing de body y parámetros de consulta. Si `express.json()` se coloca antes, podría interferir con el streaming de datos OData o consumir el body antes de que el controlador OData lo procese.
+3. **OData before express.json()**: `@phrasecode/odata` handles its own body and query parameter parsing. If `express.json()` runs first, it could interfere with OData streaming or consume the body before the OData controller processes it. The context middleware rewrites `$metadata` URL paths and sets the `OData-Version` header.
 
-4. **Body parser**: Se coloca justo después de OData para que los endpoints REST puedan acceder a `req.body`.
+4. **Body parser**: Placed right after OData so REST endpoints can access `req.body`.
 
-5. **Compression**: Debe ir después de los body parsers pero antes de las rutas REST. Comprimir las respuestas de los endpoints REST reduce significativamente el tamaño de las respuestas JSON.
+5. **Compression**: After body parsers, before REST routes. Compressing REST JSON responses reduces payload size significantly.
 
-6. **Morgan**: El logging se coloca antes de las rutas para capturar todos los requests procesados. Morgan registra la respuesta después de que se completa, por lo que su posición relativa a las rutas no afecta el logueo.
+6. **Morgan**: Logging before routes captures all processed requests. Morgan logs the response after completion, so its position relative to routes does not affect logging.
 
-7. **REST API**: Los endpoints de negocio se montan al final, después de toda la infraestructura de seguridad y parsing.
+7. **REST API**: Business endpoints mounted last, after all infrastructure and parsing middleware.
 
-8. **Error handler global**: Siempre debe ser el último middleware. Si se coloca antes, los errores lanzados en middlewares posteriores no serían capturados.
+8. **Global error handler**: Always the last middleware. If placed earlier, errors thrown in subsequent middleware would not be caught.

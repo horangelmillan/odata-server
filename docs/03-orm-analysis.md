@@ -32,20 +32,20 @@ La selección del ORM se basa en los siguientes criterios, ponderados según las
 
 **Sequelize v6/v7**: Es el ORM más maduro del ecosistema Node.js con más de 10 años de desarrollo activo. Soporta 6 dialectos de base de datos (PostgreSQL, MySQL, MariaDB, SQLite, MSSQL, Oracle), lo que proporciona el máximo agnosticismo. Su modelo de definición basado en decoradores (`@Table`, `@Column`) es compatible con `@phrasecode/odata`, que puede leer el esquema directamente desde las entidades Sequelize. La integración es nativa: `@phrasecode/odata` puede generar el `$metadata` a partir de los modelos Sequelize sin configuración adicional. El principal punto débil es que TypeScript no es nativo; aunque v7 introduce mejoras significativas, v6 requiere la declaración manual de interfaces y el uso de `InferAttributes` para obtener tipos parciales.
 
-**Drizzle ORM**: ORM moderno con enfoque "type-safe first". Ofrece el mejor rendimiento en benchmarks gracias a su generación de SQL directo sin overhead de caché de objetos. Su sintaxis es cercana al SQL, lo que reduce la curva de aprendizaje. Sin embargo, su compatibilidad con `@phrasecode/odata` es nula: no existe un adaptador oficial ni comunitario. Drizzle está diseñado para ser usado directamente, no como capa subyacente de otro framework. Además, solo soporta 3 dialectos (PostgreSQL, MySQL, SQLite), lo que limita la flexibilidad futura. Requeriría adaptaciones significativas para integrarse con el patrón node-modular-monolith existente.
+**Drizzle ORM**: ORM moderno con enfoque "type-safe first". Ofrece el mejor rendimiento en benchmarks gracias a su generación de SQL directo sin overhead de caché de objetos. Su sintaxis es cercana al SQL, lo que reduce la curva de aprendizaje. Sin embargo, su compatibilidad con `@phrasecode/odata` es nula: no existe un adaptador oficial ni comunitario. Drizzle está diseñado para ser usado directamente, no como capa subyacente de otro framework. Además, solo soporta 3 dialectos (PostgreSQL, MySQL, SQLite), lo que limita la flexibilidad futura.
 
 **Prisma**: ORM con enfoque declarativo basado en un archivo de esquema (`schema.prisma`). Ofrece TypeScript nativo y un cliente generado con tipos completos. Su sistema de migraciones es robusto. Sin embargo, al igual que Drizzle, no es compatible con `@phrasecode/odata`. Prisma no puede ser utilizado como capa subyacente porque no expone un modelo de datos que otro framework pueda inspeccionar en tiempo de ejecución — el esquema se procesa en tiempo de compilación. Además, Prisma añade un binary engine (~30MB) que aumenta el peso del proyecto y complica el despliegue en entornos serverless o contenedores minimalistas.
 
 ## 3.3 Decisión: Sequelize v6/v7
 
-Se selecciona **Sequelize v6** como ORM para el proyecto.
+Se selecciona **Sequelize v6** como ORM para odata-server.
 
 **Motivos principales:**
 1. **Compatibilidad nativa con `@phrasecode/odata`**: `@phrasecode/odata` puede inspeccionar los modelos Sequelize en tiempo de ejecución para generar el `$metadata` automáticamente. Esto elimina la necesidad de definir modelos OData duplicados.
-2. **Alineación con node-modular-monolith**: Los templates de referencia de la skill utilizan Sequelize como ORM por defecto. Mantener Sequelize evita reescribir la capa de persistencia de todos los dominios existentes.
-3. **Máximo agnosticismo**: Con soporte para 6 dialectos, Sequelize proporciona la máxima flexibilidad para cambiar de base de datos sin modificar el código de negocio. Esto es relevante para entornos donde el cliente final puede tener requisitos específicos de base de datos.
+2. **Alineación con node-modular-monolith**: Los templates de referencia de la skill utilizan Sequelize como ORM por defecto.
+3. **Máximo agnosticismo**: Con soporte para 6 dialectos, Sequelize proporciona la máxima flexibilidad para cambiar de base de datos sin modificar el código de negocio.
 4. **Madurez probada**: Sequelize lleva más de una década en producción. La mayoría de los bugs y edge cases están documentados y resueltos.
-5. **Modelo de datos unificado**: Un solo conjunto de modelos sirve tanto para REST como para OData, eliminando la duplicación de esquemas que existía en el proyecto referencia.
+5. **Modelo de datos unificado**: Un solo conjunto de modelos sirve tanto para REST como para OData, eliminando la duplicación de esquemas.
 
 **Concesiones:**
 - TypeScript no es nativo (requiere `InferAttributes`, declaración manual de interfaces).
@@ -61,26 +61,37 @@ Se selecciona **Sequelize v6** como ORM para el proyecto.
 
 **Decisión**: Usar Sequelize v6. Migrar a v7 cuando el ecosistema `@phrasecode/odata` lo soporte oficialmente.
 
-## 3.5 Configuración Recomendada para PostgreSQL
+## 3.5 Configuración para PostgreSQL
+
+odata-server usa dos configuraciones de Sequelize, una para desarrollo y otra para producción, definidas en `src/common/service/ORM/sequelize.service.ts`:
 
 ```typescript
-import { Sequelize } from "sequelize";
+// Desarrollo
+const paramsDev: Options = {
+    dialect: "postgres",
+    host: process.env.DEV_HOST || "localhost",
+    port: Number(process.env.DEV_PORT) || 5432,
+    username: process.env.DEV_USERNAME || "postgres",
+    password: process.env.DEV_PASSWORD || "secret",
+    database: process.env.DEV_DB || "odata_dev",
+    logging: false,
+    pool: { max: 10, min: 2, acquire: 30000, idle: 10000 },
+};
 
-const sequelize = new Sequelize({
+// Producción
+const paramsProd: Options = {
     dialect: "postgres",
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT),
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB,
-    pool: {
-        max: 10,
-        min: 2,
-        acquire: 30000,
-        idle: 10000,
-    },
     logging: false,
-});
+    pool: { max: 20, min: 5, acquire: 30000, idle: 10000 },
+    dialectOptions: {
+        ssl: { required: true, rejectUnauthorized: false },
+    },
+};
 ```
 
-Esta configuración utiliza pool de conexiones (máximo 10, mínimo 2) para manejar la carga concurrente de las consultas OData y REST. El `acquire` de 30 segundos permite esperas razonables bajo picos de carga. `logging: false` evita la saturación de la salida estándar en producción.
+La configuración de producción habilita SSL obligatorio y usa un pool más grande (20 conexiones máx, 5 mín) para soportar mayor carga concurrente.

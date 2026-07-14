@@ -1,29 +1,31 @@
-# 05 — Patrón de Módulo OData con @phrasecode/odata
+# 05 — OData Module Pattern with @phrasecode/odata
 
-## 5.1 Estructura de un Módulo OData
+## 5.1 Module Structure
 
-Cada entidad que se expone mediante OData se organiza en tres artefactos dentro de una estructura de directorios predecible:
+Each entity exposed via OData follows a three-artifact structure under `src/common/service/odata/`:
 
 ```
 src/common/service/odata/
 ├── models/
-│   └── <entidad>.odata.model.ts       # Modelo decorado @Table/@Column
+│   └── product.odata.model.ts          # Decorated model (@Table/@Column)
 ├── controllers/
-│   └── <entidad>.odata.controller.ts  # Controlador OData
-└── odata.service.ts                   # Registro de controladores + ExpressRouter
+│   └── product.odata.controller.ts     # OData controller
+├── datasource.ts                       # Shared DataSource config
+└── odata.service.ts                    # Controller registration + ExpressRouter
 ```
 
-- **models/**: Define el mapeo ORM con decoradores `@Table` y `@Column`. Equivale al modelo Sequelize del lado REST, pero está diseñado exclusivamente para consultas OData.
-- **controllers/**: Implementa la lógica de cada endpoint expuesto. Hereda de `ODataControler` y puede sobrescribir los métodos `get`, `create`, `update`, `delete`.
-- **odata.service.ts**: Punto único de registro. Recibe un arreglo de controladores y un `dataSource`, y construye el `ExpressRouter` que se monta en `/odata`.
+- **models/**: ORM mapping using `@Table` and `@Column` decorators from `@phrasecode/odata`. These are read-only projections of the database tables, optimized for OData querying.
+- **controllers/**: Endpoint logic extending `ODataControler`. Can override `get`, `create`, `update`, `delete` methods for custom behavior.
+- **datasource.ts**: Singleton `DataSource` that connects to PostgreSQL with its own connection pool.
+- **odata.service.ts**: Central registration point. Receives the controller array and `dataSource`, builds the `ExpressRouter` mounted at `/odata` in `src/main.ts`.
 
-Esta separación permite que los modelos OData sean más ligeros que los modelos Sequelize de escritura, enfocados únicamente en la proyección y filtrado que necesita el cliente.
+This separation keeps OData models lightweight compared to Sequelize write models, focusing purely on the projection and filtering the client needs.
 
 ---
 
-## 5.2 Paso a Paso: Crear un Endpoint OData
+## 5.2 Step-by-Step: Creating an OData Endpoint
 
-### Paso 1: Definir el modelo OData
+### Step 1: Define the OData Model
 
 ```typescript
 // src/common/service/odata/models/product.odata.model.ts
@@ -45,9 +47,9 @@ export class ProductOData extends Model<ProductOData> {
 }
 ```
 
-Cada columna se decora con `@Column` indicando su tipo de dato y opciones adicionales como clave primaria, auto-incremento, o valor por defecto. El decorador `@Table` especifica la tabla o vista SQL a la que apunta.
+Each column uses the `@Column` decorator with its data type and options (primary key, auto-increment, default value). The `@Table` decorator specifies the target SQL table or view.
 
-### Paso 2: Crear el controlador OData
+### Step 2: Create the OData Controller
 
 ```typescript
 // src/common/service/odata/controllers/product.odata.controller.ts
@@ -58,12 +60,12 @@ export class ProductODataController extends ODataControler {
     constructor() {
         super({
             model: ProductOData,
-            allowedMethod: ["get"], // Solo lectura
+            allowedMethod: ["get"], // Read-only
         });
     }
 
     public async get(query: QueryParser) {
-        // Custom logic: forzar límite máximo
+        // Custom logic: enforce a maximum limit
         const params = query.getParams();
         if (!params.top || params.top > 100) {
             query.setTop(100);
@@ -74,42 +76,44 @@ export class ProductODataController extends ODataControler {
 }
 ```
 
-El controlador extiende `ODataControler` y recibe en el constructor la configuración del modelo y los métodos HTTP permitidos. El método `get` recibe un `QueryParser` que permite inspeccionar y modificar los parámetros de la consulta antes de ejecutarla.
+The controller extends `ODataControler` and receives model config and allowed HTTP methods. The `get` method receives a `QueryParser` to inspect and modify query parameters before execution.
 
-### Paso 3: Registrar en odata.service.ts
+### Step 3: Register in odata.service.ts
 
 ```typescript
 // src/common/service/odata/odata.service.ts
+import { Router } from "express";
 import { ExpressRouter } from "@phrasecode/odata";
+import { dataSource } from "./datasource.js";
 import { ProductODataController } from "./controllers/product.odata.controller.js";
-import { dataSource } from "./datasource.js"; // Configuración compartida
 
-const controllers = [new ProductODataController()];
+const oDataExpressApp: Router = Router();
 
-const app = express();
-const oDataExpressApp = express.Router();
 new ExpressRouter(oDataExpressApp, {
-    controllers,
+    controllers: [new ProductODataController()],
     dataSource,
     logger: {
         enabled: true,
-        logLevel: "INFO",
+        logLevel: process.env.NODE_ENV === "development" ? "INFO" : "ERROR",
         format: "JSON",
         advancedOptions: {
-            logSqlQuery: true,
+            logSqlQuery: process.env.NODE_ENV === "development",
             logDbExecutionTime: true,
+            logDbQueryParameters: false,
         },
     },
 });
+
+export { oDataExpressApp };
 ```
 
-El `ExpressRouter` recibe el router de Express, los controladores, la fuente de datos y la configuración de logging. Una vez construido, el router se monta en la aplicación principal en la ruta `/odata`.
+The `ExpressRouter` receives the Express `Router`, controllers, `dataSource`, and logger config. The exported router is mounted in `src/main.ts` at `/odata`.
 
 ---
 
-## 5.3 Tipos de Datos Soportados
+## 5.3 Supported Data Types
 
-`@phrasecode/odata` soporta una amplia variedad de tipos de datos SQL:
+`@phrasecode/odata` supports a wide range of SQL data types:
 
 - `DataTypes.INTEGER`, `DataTypes.BIGINT`, `DataTypes.SMALLINT`
 - `DataTypes.STRING`, `DataTypes.TEXT`
@@ -120,13 +124,13 @@ El `ExpressRouter` recibe el router de Express, los controladores, la fuente de 
 - `DataTypes.JSON`, `DataTypes.JSONB`
 - `DataTypes.ENUM(...values)`
 
-Cada tipo se traduce automáticamente al tipo de columna correspondiente en el motor de base de datos subyacente.
+Each maps automatically to the corresponding column type in the underlying database engine.
 
 ---
 
-## 5.4 Relaciones entre Entidades
+## 5.4 Entity Relationships
 
-Las relaciones se definen mediante decoradores `@HasMany`, `@BelongsTo`, `@HasOne` y `@BelongsToMany`, similares a los de Sequelize:
+Relationships are defined using `@HasMany`, `@BelongsTo`, `@HasOne`, and `@BelongsToMany` decorators:
 
 ```typescript
 // models/category.odata.model.ts
@@ -145,14 +149,13 @@ export class CategoryOData extends Model<CategoryOData> {
 }
 ```
 
-Estas relaciones habilitan el uso de `$expand` en las consultas OData para obtener datos relacionados en una sola petición.
+These relationships enable `$expand` in OData queries to fetch related data in a single request.
 
 ---
 
-## 5.5 Consultas OData Soportadas
+## 5.5 Supported OData Queries
 
 ```
-# OData query examples
 GET /odata/Products?$select=nombre,precio
 GET /odata/Products?$filter=precio gt 100
 GET /odata/Products?$orderby=nombre asc
@@ -162,21 +165,21 @@ GET /odata/Products?$filter=categoria eq 'Electrónica'&$count=true
 GET /odata/$metadata
 ```
 
-| Parámetro | Descripción | Ejemplo |
+| Parameter | Description | Example |
 |-----------|-------------|---------|
-| `$select` | Proyección de columnas | `$select=nombre,precio` |
-| `$filter` | Filtrado con operadores lógicos | `$filter=precio gt 100` |
-| `$orderby` | Ordenación ascendente/descendente | `$orderby=nombre asc` |
-| `$top` / `$skip` | Paginación | `$top=10&$skip=20` |
-| `$expand` | Incluir relaciones | `$expand=category` |
-| `$count` | Incluir total de registros | `$count=true` |
-| `$metadata` | Documentación del esquema | `$metadata` |
+| `$select` | Column projection | `$select=nombre,precio` |
+| `$filter` | Filtering with logical operators | `$filter=precio gt 100` |
+| `$orderby` | Ascending/descending sort | `$orderby=nombre asc` |
+| `$top` / `$skip` | Pagination | `$top=10&$skip=20` |
+| `$expand` | Include related entities | `$expand=category` |
+| `$count` | Include total record count | `$count=true` |
+| `$metadata` | Schema documentation | `$metadata` |
 
 ---
 
-## 5.6 Patrón Custom Query con @Query
+## 5.6 Custom Query Pattern with @Query
 
-Para endpoints de lectura especializados (reportes, dashboards, consultas complejas), se utiliza el decorador `@Query`:
+For specialized read endpoints (reports, dashboards, complex queries), use the `@Query` decorator:
 
 ```typescript
 import { ODataControler, Custom, QueryControllerEvent, DataTypes } from "@phrasecode/odata";
@@ -200,4 +203,4 @@ export class ProductODataController extends ODataControler {
 }
 ```
 
-Este patrón permite exponer rutas OData personalizadas que ejecutan SQL nativo, ideal para reportes agregados o consultas que no se pueden expresar con `$filter`.
+This pattern exposes custom OData routes running native SQL — ideal for aggregated reports or queries that cannot be expressed with `$filter`.

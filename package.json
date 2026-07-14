@@ -1,7 +1,7 @@
 {
-    "name": "servidor-odata",
+    "name": "odata-server",
     "version": "1.0.0",
-    "description": "Servidor OData v4 con Node/TypeScript/Express + Modular Monolith",
+    "description": "OData v4 server — Node/TypeScript/Express + Modular Monolith + PostgreSQL",
     "main": "./dist/server.js",
     "type": "module",
     "engines": {

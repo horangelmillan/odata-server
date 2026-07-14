@@ -1,110 +1,200 @@
-# 01 — Análisis de Arquitectura OData (Proyecto Referencia)
+# 01 — Arquitectura OData de odata-server
 
-## 1.1 Resumen del Proyecto Referencia
+## 1.1 Resumen del Proyecto
 
-El proyecto **SmartInventory-backend-main** sirve como referencia principal para implementar un endpoint OData v4 dentro de una arquitectura Modular Monolith con Node.js. Este proyecto fue desarrollado como backend de inventario de activos con integración SAP.
+**odata-server** es un servidor backend Node.js/TypeScript que expone una API REST para un dominio de productos y un endpoint OData v4 de solo lectura para consultas externas. Sigue el patrón **Modular Monolith con Shared Kernel**, donde el endpoint OData se integra como parte de la infraestructura transversal.
 
-**Stack tecnológico del proyecto referencia:**
+**Stack tecnológico:**
 
 | Componente | Versión |
 |------------|---------|
-| Node.js | 20 LTS |
-| Express | 4.18.x |
-| TypeScript | 5.x |
-| Sequelize | 6.37+ |
-| MySQL2 | 3.x |
-| `odata-v4-server` | 0.2.13 |
-| `odata-v4-mysql` | 0.2.x |
+| Node.js | 20.18 LTS |
+| Express | 4.21.x |
+| TypeScript | 5.6.x |
+| Sequelize | 6.37.x |
+| PostgreSQL | 16 |
+| `@phrasecode/odata` | 0.3.1 |
 
-La arquitectura general sigue el patrón **Modular Monolith con REST API + OData v4 endpoint**, donde el endpoint OData se utiliza exclusivamente como vía de consulta de solo lectura para integraciones externas (SAPUI5).
-
-## 1.2 Estructura del Proyecto Referencia
-
-La estructura del proyecto referencia organiza claramente la separación entre el Shared Kernel (`common/`) y los dominios de negocio (`core/`), con la capa OData ubicada dentro del Shared Kernel:
+## 1.2 Estructura del Proyecto
 
 ```
-SmartInventory-backend-main/
-├── server.ts                        # Bootstrap: DB auth + sync → monta Express
+odata-server/
+├── server.ts                        # Bootstrap: carga dotenv, importa reflect-metadata, arranca Express
 ├── src/
-│   ├── main.ts                      # Fábrica Express: middlewares + routers + OData
+│   ├── main.ts                      # Fábrica Express: middlewares globales + OData + REST
 │   ├── common/                      # Shared Kernel
 │   │   ├── dto/                     # BaseDTO
-│   │   ├── exception/               # HttpException, NotFoundException, etc.
-│   │   ├── helper/nestjs/           # OmitType, PartialType, PickType
-│   │   ├── interface/               # BaseController, BaseService, ApiResponse
-│   │   ├── middleware/              # GlobalError, JSONValidator, Security
+│   │   ├── exception/               # HttpException, NotFoundException, JSONValidatorException, etc.
+│   │   ├── helper/                  # Utilidades generales, customValidators, cast
+│   │   │   └── nestjs/              # OmitType, PartialType, PickType, IntersectionType
+│   │   ├── interface/               # BaseController, BaseService, BaseQuery, ApiResponse
+│   │   ├── middleware/              # GlobalError, JSONValidator, Security, ODataContext
 │   │   ├── model/                   # BaseModel
-│   │   ├── router/                  # GlobalRouter
-│   │   ├── service/
-│   │   │   ├── ORM/                 # Sequelize singleton + models + relations
-│   │   │   ├── database/            # MySQL2 pool (para OData)
-│   │   │   └── odata/               # ★ CAPA OData
-│   │   │       ├── odata.service.ts # Servidor OData con @odata.controller()
-│   │   │       ├── controllers/     # 16 controladores OData
-│   │   │       └── helper/          # patchDuplicateOptions
-│   │   └── type/                    # Type declarations
+│   │   ├── router/                  # GlobalRouter (monta core)
+│   │   └── service/
+│   │       ├── ORM/                 # Sequelize singleton (dev/prod) + models
+│   │       │   └── models/          # databaseModels.init()
+│   │       └── odata/               # ★ Capa OData (vía @phrasecode/odata)
+│   │           ├── datasource.ts    # Configuración DataSource PostgreSQL
+│   │           ├── odata.service.ts # ExpressRouter de @phrasecode/odata
+│   │           ├── models/          # Modelos OData (@Table/@Column)
+│   │           │   └── product.odata.model.ts
+│   │           └── controllers/     # Controladores OData (extienden ODataControler)
+│   │               └── product.odata.controller.ts
 │   └── core/                        # Dominios de negocio
 │       ├── main.ts                  # CoreRouter (monta dominios)
-│       ├── authentication/
-│       ├── master-data/
-│       ├── people/
-│       ├── asset-inventory/
-│       └── logger/
+│       └── product/                 # Dominio Product
+│           ├── main.ts              # ProductRouter (monta rutas)
+│           ├── route/               # Definición de rutas REST
+│           ├── controller/          # Controlador REST (CRUD completo)
+│           ├── service/             # Servicio con lógica de negocio
+│           ├── model/               # Modelo Sequelize (Products)
+│           ├── dto/                 # DTOs con validación (class-validator)
+│           ├── interface/           # IProduct
+│           └── query/               # Queries SQL personalizadas
 ```
 
-## 1.3 Flujo OData (Análisis Detallado)
+## 1.3 Pipeline Express (`src/main.ts`)
 
-### Configuración del contexto OData (`src/main.ts`, líneas 25-35)
+La fábrica Express en `src/main.ts:15-48` construye el pipeline en este orden:
 
-El fichero `src/main.ts` inyecta un middleware de contexto que asegura que el header `OData-Version` esté presente y parchea la URL del `$metadata` para que apunte correctamente al servicio OData. Este middleware se aplica antes de montar el enrutador OData.
+1. **helmet()** — Seguridad HTTP (CSP, HSTS, X-Frame-Options, etc.)
+2. **cors()** — CORS con exposición del header `OData-Version`
+3. **Middleware OData inline** — Normaliza la URL de `$metadata` y fuerza el header `OData-Version: 4.0`
+4. **`oDataExpressApp`** — Router Express de `@phrasecode/odata` montado en `/odata`
+5. **express.json()** — Parseo de body JSON
+6. **compression()** — Compresión gzip de respuestas
+7. **morgan()** — Logging HTTP (formato `dev` en desarrollo, `combined` en producción)
+8. **GlobalRouter** — API REST montada en `/api` (deriva a `CoreRouter` en `/api/core`)
+9. **GlobalErrorMiddleware** — Manejador de errores global al final del pipeline
 
-### Servidor OData (`odata.service.ts`)
+## 1.4 Integración con @phrasecode/odata
 
-La clase principal del servidor OData utiliza decoradores de `odata-v4-server`:
+### Configuración del DataSource (`src/common/service/odata/datasource.ts`)
 
-- `@odata.controller(Entidad)` para registrar cada entidad
-- `@odata.cors` para habilitar CORS
-- Extiende la clase `ODataServer`
-- Expone el servidor como middleware Express mediante `.create()`
+```typescript
+export const dataSource = new DataSource({
+    dialect: "postgres",
+    database: process.env.NODE_ENV === "production" ? process.env.DB : process.env.DEV_DB,
+    username: process.env.NODE_ENV === "production" ? process.env.DB_USERNAME : process.env.DEV_USERNAME,
+    password: process.env.NODE_ENV === "production" ? process.env.DB_PASSWORD : process.env.DEV_PASSWORD,
+    host: process.env.NODE_ENV === "production" ? process.env.DB_HOST : process.env.DEV_HOST,
+    port: Number(process.env.NODE_ENV === "production" ? process.env.DB_PORT : process.env.DEV_PORT),
+    pool: { max: 10, min: 2, idle: 10000, acquire: 30000 },
+    models: [ProductOData],
+    ssl: process.env.NODE_ENV === "production",
+});
+```
 
-El servidor se monta en la ruta `/odata` del enrutador Express global.
+Usa variables de entorno con prefijo `DEV_` para desarrollo y sin prefijo para producción. SSL se habilita automáticamente en producción.
 
-### Controlador OData típico
+### Registro del Router (`src/common/service/odata/odata.service.ts`)
 
-Cada controlador OData sigue una estructura consistente:
+```typescript
+const oDataExpressApp: Router = Router();
 
-1. **Definición de la entidad**: Clase decorada con `@Edm.OpenType` y decoradores de tipo (`@Edm.Int32`, `@Edm.String`, `@Edm.Decimal`, etc.) para describir el esquema de datos.
-2. **Registro del EntitySet**: `@Edm.EntitySet("Nombre")` + `@odata.type(Entidad)`.
-3. **Controlador**: Clase que extiende `ODataController`.
-4. **Método `find`**: Decorado con `@odata.GET` y `@odata.query`, recibe un parámetro `query: ODataQuery`.
-5. **Ejecución de la consulta**:
-   - Obtiene una conexión del pool MySQL2 separado (no utiliza Sequelize).
-   - Usa `createQuery` de `odata-v4-mysql` para traducir el query OData (`$filter`, `$orderby`, `$top`, `$skip`, `$select`) a SQL nativo.
-   - Ejecuta dos queries en paralelo: `COUNT(*)` para el total de registros y la consulta `SELECT` paginada.
-   - Asigna `inlinecount` al resultado para que el cliente conozca el total de registros disponibles.
-   - Libera la conexión al pool en el bloque `finally`.
+new ExpressRouter(oDataExpressApp, {
+    controllers: [new ProductODataController()],
+    dataSource,
+    logger: {
+        enabled: true,
+        logLevel: process.env.NODE_ENV === "development" ? "INFO" : "ERROR",
+        format: "JSON",
+        advancedOptions: {
+            logSqlQuery: process.env.NODE_ENV === "development",
+            logDbExecutionTime: true,
+            logDbQueryParameters: false,
+        },
+    },
+});
+```
 
-### Helper `patchDuplicateOptions`
+El logging diferencia entre desarrollo (INFO, muestra SQL) y producción (ERROR, solo errores).
 
-Este helper recorre el query OData entrante y elimina opciones duplicadas que puedan causar errores de sintaxis SQL. Es un parche necesario debido a que `odata-v4-server` no normaliza correctamente ciertos parámetros cuando el cliente envía múltiples veces el mismo operador de filtro.
+### Modelo OData (`src/common/service/odata/models/product.odata.model.ts`)
 
-## 1.4 Patrones Identificados
+```typescript
+@Table({ tableName: "products" })
+export class ProductOData extends Model<ProductOData> {
+    @Column({ dataType: DataTypes.INTEGER, isPrimaryKey: true, isAutoIncrement: true })
+    id!: number;
 
-| ID | Patrón | Descripción |
-|----|--------|-------------|
-| **P13** | Controlador OData sobre vista SQL | Los controladores OData consultan vistas SQL (`VIEW_*`) predefinidas que agregan datos de múltiples tablas |
-| **CQRS ligero** | Separación de vías de datos | REST usa Sequelize (escritura/lectura); OData usa MySQL2 pool directo (solo lectura) |
-| **Solo lectura** | OData restringido a GET | Ningún controlador OData implementa POST, PUT, PATCH o DELETE |
-| **Vistas SQL** | `VIEW_*` como fuente | Las vistas SQL sirven como capa de abstracción entre el esquema relacional complejo y el cliente OData |
+    @Column({ dataType: DataTypes.STRING })
+    nombre!: string;
 
-## 1.5 Problemas / Deuda Técnica
+    @Column({ dataType: DataTypes.DECIMAL })
+    precio!: number;
 
-| Problema | Impacto | Prioridad |
-|----------|---------|-----------|
-| `odata-v4-server` abandonado desde julio 2018 | Sin actualizaciones de seguridad ni correcciones | Alta |
-| `odata-v4-mysql` solo soporta MySQL | Imposibilita migrar a PostgreSQL | Alta |
-| Pool MySQL2 duplicado (bypassea Sequelize) | Dos pools de conexión, inconsistencia transaccional | Media |
-| `helmet` comentado en middlewares | Riesgo de seguridad (headers HTTP desprotegidos) | Alta |
-| `ResponsibleController` registrado dos veces | Error en tiempo de ejecución al iniciar el servidor | Media |
-| `inlinecount` sin tipado (`(<any>results).inlinecount`) | TypeScript unsafe, propenso a errores en refactors | Baja |
-| Mezcla español/inglés en naming de clases y variables | Inconsistencia, dificulta el mantenimiento | Baja |
+    @Column({ dataType: DataTypes.STRING })
+    categoria!: string;
+}
+```
+
+El modelo se define con decoradores de `@phrasecode/odata` y la propiedad `tableName` lo mapea a la tabla `products`.
+
+### Controlador OData (`src/common/service/odata/controllers/product.odata.controller.ts`)
+
+```typescript
+export class ProductODataController extends ODataControler {
+    constructor() {
+        super({
+            model: ProductOData,
+            allowedMethod: ["get"],
+        });
+    }
+
+    public async get(query: QueryParser) {
+        const params = query.getParams();
+        if (!params.top || params.top > 100) {
+            query.setTop(100);
+        }
+        const result = await this.queryable<ProductOData>(query);
+        return result;
+    }
+}
+```
+
+Características:
+- `allowedMethod: ["get"]` restringe OData a solo lectura.
+- `setTop(100)` establece un límite máximo de 100 registros por página.
+- Usa `this.queryable()` para ejecutar la consulta traducida automáticamente a SQL.
+
+## 1.5 Arquitectura REST + OData (Dos Canales)
+
+| Aspecto | REST (`/api/core/products`) | OData (`/odata/Products`) |
+|---------|------------------------------|---------------------------|
+| **ORM** | Sequelize (modelo tipado) | `@phrasecode/odata` (query builder nativo) |
+| **Operaciones** | CRUD completo | Solo GET (solo lectura) |
+| **Validación** | DTOs con class-validator | Esquema del modelo OData |
+| **Formato respuesta** | `ApiResponse` uniforme | JSON OData v4 (`@odata.context`, `value`, `@odata.count`) |
+| **Autenticación** | JWT via `security.protectSession` | Sin autenticación (para integraciones externas) |
+| **Paginación** | Offset/limit manual | `$top`, `$skip`, `$inlinecount` nativos |
+| **Filtrado** | Query params manual | `$filter`, `$orderby`, `$select` |
+
+## 1.6 Shared Kernel
+
+El Shared Kernel (`src/common/`) contiene toda la infraestructura transversal:
+
+| Capa | Archivos | Propósito |
+|------|----------|-----------|
+| **DTO** | `base.dto.ts` | Clase base para DTOs |
+| **Exception** | `http.exception.ts`, `notfound.exception.ts`, `json-validator.exception.ts`, `conflict.exception.ts`, `database.exception.ts` | Jerarquía de excepciones tipadas |
+| **Helper** | `cast.helper.ts`, `customValidators.helper.ts`, `useful.helper.ts` | Utilidades generales |
+| **Helper NestJS** | `mapped-type.interface.ts`, `omit-type.helper.ts`, `partial-type.helper.ts`, `pick-type.helper.ts`, `intersection.helper.ts`, `types.helper.ts`, `type.interface.ts` | Reimplementación ligera de mapped types de NestJS (`OmitType`, `PartialType`, etc.) |
+| **Interface** | `base-controller.interface.ts`, `base-service.interface.ts`, `base-query.interface.ts`, `api-response.interface.ts`, `error-api-response.interface.ts` | Contratos para la arquitectura Modular Monolith |
+| **Middleware** | `global-error.middleware.ts`, `json-validator.middleware.ts`, `security.middleware.ts`, `odata-context.middleware.ts` | Pipeline Express transversal |
+| **Model** | `base.model.ts` | Clase base para modelos |
+| **ORM** | `sequelize.service.ts`, `models/main.model.ts` | Singleton Sequelize con config dev/prod |
+| **OData** | `datasource.ts`, `odata.service.ts`, `models/`, `controllers/` | Integración con `@phrasecode/odata` |
+
+## 1.7 Patrones Arquitectónicos
+
+| ID | Patrón | Implementación |
+|----|--------|----------------|
+| **P1** | Modular Monolith | Cada dominio en `src/core/<domain>/` con su propio controller, service, model, dto, route |
+| **P2** | Shared Kernel | Infraestructura transversal en `src/common/` sin dependencias hacia `core/` |
+| **P3** | CQRS ligero | REST para escritura/lectura completa; OData solo para consultas externas |
+| **P4** | Solo lectura OData | `allowedMethod: ["get"]` en el controlador OData |
+| **P5** | Fábrica Express | `src/main.ts` como función factory que monta el pipeline completo |
+| **P6** | DTO con validación | class-validator decorators en DTOs, validados por `ValidatorMiddleware` |
+| **P7** | ApiResponse uniforme | Respuestas REST envueltas en `{ statusCode, message, result/results }` |

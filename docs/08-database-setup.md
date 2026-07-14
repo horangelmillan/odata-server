@@ -1,8 +1,8 @@
-# 08 — Configuración de Base de Datos (Sequelize + PostgreSQL)
+# 08 — Database Setup (Sequelize + PostgreSQL)
 
-## 8.1 Configuración de Sequelize
+## 8.1 Sequelize Configuration
 
-El proyecto utiliza Sequelize como ORM principal para las operaciones REST y como base subyacente para la integración con OData. La configuración se encuentra centralizada en un servicio singleton que exporta la instancia `Sequelize` y el objeto `DataTypes` para ser reutilizados por todos los modelos del sistema.
+The project uses Sequelize as the primary ORM for REST operations and as the underlying layer for OData integration. Configuration is centralized in a singleton service that exports the `Sequelize` instance and `DataTypes` object, reused by all models in the system.
 
 ```typescript
 // src/common/service/ORM/sequelize.service.ts
@@ -18,12 +18,7 @@ const paramsDev: Options = {
     password: process.env.DEV_PASSWORD || "secret",
     database: process.env.DEV_DB || "odata_dev",
     logging: false,
-    pool: {
-        max: 10,
-        min: 2,
-        acquire: 30000,
-        idle: 10000,
-    },
+    pool: { max: 10, min: 2, acquire: 30000, idle: 10000 },
 };
 
 const paramsProd: Options = {
@@ -34,17 +29,9 @@ const paramsProd: Options = {
     password: process.env.DB_PASSWORD,
     database: process.env.DB,
     logging: false,
-    pool: {
-        max: 20,
-        min: 5,
-        acquire: 30000,
-        idle: 10000,
-    },
+    pool: { max: 20, min: 5, acquire: 30000, idle: 10000 },
     dialectOptions: {
-        ssl: {
-            required: true,
-            rejectUnauthorized: false,
-        },
+        ssl: { required: true, rejectUnauthorized: false },
     },
 };
 
@@ -54,13 +41,13 @@ const db: Sequelize = new Sequelize(params);
 export { db, DataTypes };
 ```
 
-La configuración diferencia dos entornos mediante `NODE_ENV`. En desarrollo se usan valores por defecto (localhost, usuario postgres, base odata_dev) mientras que producción requiere variables explícitas `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD` y `DB`. El pool de conexiones en desarrollo es de 10 conexiones máximas con 2 mínimas; en producción se escala a 20 máximas y 5 mínimas, con SSL obligatorio mediante `dialectOptions.ssl`.
+Two environments are differentiated via `NODE_ENV`. Development uses defaults (localhost, postgres user, `odata_dev` database). Production requires explicit `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, and `DB` variables. The connection pool in development is 10 max / 2 min; production scales to 20 max / 5 min with mandatory SSL.
 
-El `logging: false` evita que Sequelize imprima todas las sentencias SQL en consola. Para depuración puntual puede cambiarse a `logging: console.log`.
+---
 
-## 8.2 Configuración DataSource @phrasecode/odata
+## 8.2 @phrasecode/odata DataSource
 
-La librería `@phrasecode/odata` requiere su propia fuente de datos independiente. Aunque apunta a la misma base de datos PostgreSQL, maneja su propio pool de conexiones interno. Esto permite que OData y REST operen de forma aislada sin compartir el pool de Sequelize.
+The `@phrasecode/odata` library requires its own `DataSource` pointing to the same PostgreSQL database but with an independent connection pool. This keeps OData and REST pools isolated.
 
 ```typescript
 // src/common/service/odata/datasource.ts
@@ -68,42 +55,30 @@ import { DataSource } from "@phrasecode/odata";
 import { ProductOData } from "./models/product.odata.model.js";
 
 export const dataSource = new DataSource({
-    dialect: process.env.NODE_ENV === "production" ? "postgres" : "postgres",
+    dialect: "postgres",
     database: process.env.NODE_ENV === "production" ? process.env.DB : process.env.DEV_DB,
     username: process.env.NODE_ENV === "production" ? process.env.DB_USERNAME : process.env.DEV_USERNAME,
     password: process.env.NODE_ENV === "production" ? process.env.DB_PASSWORD : process.env.DEV_PASSWORD,
     host: process.env.NODE_ENV === "production" ? process.env.DB_HOST : process.env.DEV_HOST,
     port: Number(process.env.NODE_ENV === "production" ? process.env.DB_PORT : process.env.DEV_PORT),
-    pool: {
-        max: 10,
-        min: 2,
-        idle: 10000,
-        acquire: 30000,
-    },
+    pool: { max: 10, min: 2, idle: 10000, acquire: 30000 },
     models: [ProductOData],
     ssl: process.env.NODE_ENV === "production",
 });
 ```
 
-El DataSource recibe las credenciales directamente desde variables de entorno. La propiedad `models` registra los modelos OData que la librería usará para generar el esquema y procesar las consultas. El flag `ssl` se habilita automáticamente en producción.
+The `models` array registers OData models that the library uses to generate the schema and process queries. The `ssl` flag is enabled automatically in production.
 
-## 8.3 Modelos Sequelize (para REST)
+---
 
-Los modelos para REST se definen con el patrón moderno de Sequelize usando genéricos `InferAttributes` e `InferCreationAttributes`. Esto proporciona tipado estricto sin duplicar definiciones de columnas.
+## 8.3 Sequelize Models (for REST)
+
+REST models use the modern Sequelize pattern with `InferAttributes` and `InferCreationAttributes` generics for strict typing without duplicating column definitions.
 
 ```typescript
 // src/core/product/model/product.model.ts
 import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
 import { db, DataTypes } from "../../../common/service/ORM/sequelize.service.js";
-
-interface IProductAttributes {
-    id?: number;
-    nombre: string;
-    precio: number;
-    categoria: string;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
 
 interface ProductModel extends Model<InferAttributes<ProductModel>, InferCreationAttributes<ProductModel>> {
     id: CreationOptional<number>;
@@ -115,52 +90,37 @@ interface ProductModel extends Model<InferAttributes<ProductModel>, InferCreatio
 }
 
 const ProductModel = db.define<ProductModel>("Product", {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-    },
-    nombre: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-    },
-    precio: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-    },
-    categoria: {
-        type: DataTypes.STRING(100),
-        allowNull: false,
-    },
-    createdAt: {
-        type: DataTypes.DATE,
-        allowNull: true,
-    },
-    updatedAt: {
-        type: DataTypes.DATE,
-        allowNull: true,
-    },
+    id:           { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+    nombre:       { type: DataTypes.STRING(255), allowNull: false },
+    precio:       { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+    categoria:    { type: DataTypes.STRING(100), allowNull: false },
+    createdAt:    { type: DataTypes.DATE, allowNull: true },
+    updatedAt:    { type: DataTypes.DATE, allowNull: true },
 }, {
     tableName: "products",
     timestamps: true,
 });
 
-export { ProductModel, IProductAttributes };
+export { ProductModel };
 ```
 
-La interface `IProductAttributes` se exporta para ser usada por DTOs y servicios sin depender del modelo directamente. El modelo define `tableName: "products"` y `timestamps: true` para que Sequelize maneje automáticamente `createdAt` y `updatedAt`.
+Models are defined per core module (`src/core/*/model/`), each importing the shared `db` instance from `sequelize.service.ts`.
 
-## 8.4 Migraciones vs Sync
+---
 
-| Método | Cuándo usar |
+## 8.4 Migrations vs Sync
+
+| Method | When to use |
 |--------|------------|
-| `db.sync()` | Desarrollo, prototipado |
-| `umzug` migrations | Producción |
-| `drizzle-kit` | Si se migra a Drizzle ORM |
+| `db.sync()` | Development, prototyping |
+| `umzug` migrations | Production |
+| `drizzle-kit` | If migrating to Drizzle ORM |
 
-En desarrollo, `db.sync({ alter: true })` permite iterar rápido: cada vez que se inicia el servidor, Sequelize ajusta las tablas existentes al esquema actual. En producción esto es peligroso porque puede causar pérdida de datos o bloqueos. La recomendación es usar migraciones SQL manuales o Sequelize Migrations mediante la librería `umzug`, que permite ejecutar migraciones programáticamente al arrancar la aplicación.
+In development, `db.sync({ alter: true })` allows fast iteration — each time the server starts, Sequelize adjusts existing tables to the current schema. In production this is dangerous as it can cause data loss or locks. The recommended approach for production is manual SQL migrations or Sequelize Migrations via `umzug`, executed programmatically at application startup.
 
-## 8.5 Conexiones Pool
+---
+
+## 8.5 Connection Pools
 
 ```
 ┌─────────────┐     ┌──────────────┐     ┌──────────────┐
@@ -168,14 +128,14 @@ En desarrollo, `db.sync({ alter: true })` permite iterar rápido: cada vez que s
 │  App        │     │  (pool 10)   │     │  (max 100)    │
 └─────────────┘     └──────────────┘     └──────────────┘
        │                    │
-       │                    │ (comparten pool)
+       │                    │ (independent pools)
        ▼                    ▼
 ┌─────────────┐     ┌──────────────┐
-│ @phrasecode │────→│  Sequelize   │
+│ @phrasecode │────→│  DataSource  │
 │ /odata      │     │  (pool 10)   │
 └─────────────┘     └──────────────┘
 ```
 
-**Importante**: `@phrasecode/odata` maneja su propio pool de conexiones a través del DataSource, no reutiliza el pool de Sequelize. Esto significa que la aplicación mantiene dos pools simultáneos hacia la misma base de datos. En producción esto debe considerarse al dimensionar `max_connections` en PostgreSQL (por defecto 100). Si Sequelize usa max 20 y OData usa max 10, se consumen 30 conexiones de las 100 disponibles.
+**Important**: `@phrasecode/odata` manages its own connection pool through `DataSource` — it does not reuse the Sequelize pool. This means the application maintains two simultaneous pools toward the same database. In production, factor this into PostgreSQL's `max_connections` setting (default 100). If Sequelize uses max 20 and OData uses max 10, that consumes 30 of the 100 available connections.
 
-Para entornos con restricciones de conexiones, se puede reducir el pool mínimo a 1 y máximo a 5 en cada lado, o consolidar ambos accesos a través de un pooler externo como PgBouncer.
+For environments with connection constraints, reduce the pool minimum to 1 and maximum to 5 on each side, or consolidate both access paths through an external pooler like PgBouncer.
