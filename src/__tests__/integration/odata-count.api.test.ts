@@ -71,6 +71,14 @@ vi.mock("../../common/service/odata/datasource.js", () => ({
 
 import expressApp from "../../main.js";
 
+// NOTA IMPORTANTE (visible en los resultados de `pnpm test`): TODO este archivo
+// MOCKEA `common/service/odata/datasource.js`, así que el controlador OData no
+// toca Sequelize/Postgres. Por eso los tests de la colección pasan aunque, con la
+// BD real, la ruta de colección con `$filter` crashea (KNOWN ISSUE, ver
+// docs/pruebas-odata-product.md §5). Los tests de `/$count` SÍ ejercitan el
+// ExpressRouter parcheado real (QueryParser + decoding del parche), por lo que
+// cubren el comportamiento y los errores introducidos por el parche.
+
 describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => {
     const app = () => expressApp();
 
@@ -119,6 +127,77 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
             expect(res.status).toBe(200);
             expect(res.text).toBe("2");
         });
+
+        // --- Cobertura de operadores/filtros (espejo de docs/pruebas-odata-product.md) ---
+        // Mock de 3 productos: Laptop(1500,Electrónica), Mouse(50,Periféricos), Monitor(300,Electrónica)
+        it("applies the 'le' operator", async () => {
+            const res = await request(app()).get(
+                "/odata/product-odata/$count?$filter=precio le 200",
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.text).toBe("1");
+        });
+
+        it("applies 'gt' with a higher threshold", async () => {
+            const res = await request(app()).get(
+                "/odata/product-odata/$count?$filter=precio gt 500",
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.text).toBe("1");
+        });
+
+        it("applies a string 'eq' on categoria", async () => {
+            const res = await request(app()).get(
+                "/odata/product-odata/$count?$filter=categoria eq 'Electrónica'",
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.text).toBe("2");
+        });
+
+        it("combines conditions with 'and'", async () => {
+            const res = await request(app()).get(
+                "/odata/product-odata/$count?$filter=precio gt 100 and categoria eq 'Periféricos'",
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.text).toBe("0");
+        });
+
+        it("combines conditions with 'or'", async () => {
+            const res = await request(app()).get(
+                "/odata/product-odata/$count?$filter=precio gt 100 or categoria eq 'Periféricos'",
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.text).toBe("3");
+        });
+
+        it("applies numeric 'eq'", async () => {
+            const res = await request(app()).get(
+                "/odata/product-odata/$count?$filter=precio eq 50",
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.text).toBe("1");
+        });
+
+        // --- Errores del parche: el router debe responder con error, no colgarse/crashear ---
+        it("returns an error (not a crash) for a malformed $filter", async () => {
+            const res = await request(app()).get(
+                "/odata/product-odata/$count?$filter=precio gt",
+            );
+
+            expect(res.status).toBeGreaterThanOrEqual(400);
+        });
+
+        it("returns 404 for an unregistered entity set", async () => {
+            const res = await request(app()).get("/odata/does-not-exist/$count");
+
+            expect(res.status).toBe(404);
+        });
     });
 
     describe("GET /odata/product-odata/:id (Fase A)", () => {
@@ -144,6 +223,9 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
     });
 
     describe("GET /odata/product-odata (collection)", () => {
+        // Este test MOCKEA dataSource, así que valida el parseo/filtrado a nivel de
+        // controlador, NO contra la BD real. El crash de `$filter` con Sequelize real
+        // (docs/pruebas-odata-product.md §5) NO se detecta aquí.
         it("returns the full collection with @odata.count when $count=true", async () => {
             const res = await request(app()).get(
                 "/odata/product-odata?$filter=precio gt 100&$count=true",
@@ -153,5 +235,12 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
             expect(res.body).toHaveProperty("@odata.count", 2);
             expect(res.body.value).toHaveLength(2);
         });
+
+        // KNOWN ISSUE hecho explícito en los resultados: con la BD real la ruta de
+        // colección con `$filter` no responde; aquí no se cubre porque el datasource
+        // está mockeado. No borrar sin antes arreglar la ruta de colección.
+        it.todo(
+            "KNOWN ISSUE: colección $filter con DB real no validado (datasource mockeado) — ver docs/pruebas-odata-product.md §5",
+        );
     });
 });
