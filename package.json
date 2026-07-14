@@ -1,0 +1,45 @@
+{
+    "name": "servidor-odata",
+    "version": "1.0.0",
+    "description": "Servidor OData v4 con Node/TypeScript/Express + Modular Monolith",
+    "main": "./dist/server.js",
+    "type": "module",
+    "engines": {
+        "node": "20.18.0"
+    },
+    "scripts": {
+        "dev": "node --watch --watch-path ./src --loader ts-node --loader ts-node/esm --no-warnings ./server.ts",
+        "build": "tsc --build",
+        "start": "node ./dist/server.js",
+        "clean": "tsc --build --clean"
+    },
+    "dependencies": {
+        "@phrasecode/odata": "^0.3.1",
+        "express": "^4.21.1",
+        "sequelize": "^6.37.5",
+        "pg": "^16.4.3",
+        "pg-hstore": "^2.3.4",
+        "helmet": "^8.0.0",
+        "morgan": "^1.10.0",
+        "compression": "^1.7.4",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "reflect-metadata": "^0.2.2",
+        "http-status-codes": "^2.3.0",
+        "class-validator": "^0.14.1",
+        "class-transformer": "^0.5.1",
+        "class-transformer-validator": "^0.9.1",
+        "bcrypt": "^5.1.1",
+        "jsonwebtoken": "^9.0.2"
+    },
+    "devDependencies": {
+        "@types/compression": "^1.7.5",
+        "@types/cors": "^2.8.17",
+        "@types/express": "^5.0.0",
+        "@types/jsonwebtoken": "^9.0.7",
+        "@types/morgan": "^1.9.9",
+        "@types/node": "^22.7.6",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.6.3"
+    }
+}

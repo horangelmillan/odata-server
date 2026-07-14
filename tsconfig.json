@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuildinfo",
+    "target": "ES2017",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "module": "NodeNext",
+    "baseUrl": "./",
+    "paths": {
+      "../": ["./src/*"]
+    },
+    "typeRoots": [
+      "src/common/type",
+      "node_modules/@types"
+    ],
+    "allowJs": true,
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "removeComments": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "skipLibCheck": true
+  },
+  "include": [
+    "./src/",
+    "./server.ts"
+  ],
+  "exclude": [
+    "./node_modules",
+    "**/*.spec.ts",
+    "./dist"
+  ],
+  "ts-node": {
+    "experimentalSpecifierResolution": "node",
+    "transpileOnly": true,
+    "esm": true
+  }
+}
