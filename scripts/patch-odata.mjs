@@ -4,6 +4,14 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nodeModules = path.resolve(__dirname, "..", "node_modules");
+const expressRouterPath = path.resolve(
+    nodeModules,
+    "@phrasecode",
+    "odata",
+    "dist",
+    "routers",
+    "expressRouter.js",
+);
 
 function patchFile(relativePath, label, original, patched) {
     const targetPath = path.resolve(nodeModules, relativePath);
@@ -48,25 +56,86 @@ patchFile(
     ].join("\n"),
 );
 
-// Parche 2: Ruta /$count + ruta por key en ExpressRouter (GET /:id para entidad individual)
-patchFile(
-    path.join("@phrasecode", "odata", "dist", "routers", "expressRouter.js"),
-    "Key-access ExpressRouter",
-    `                });
+// Parche 2: Ruta /$count + ruta por key en ExpressRouter (GET /:id para entidad individual).
+// Reemplaza el método setUpODataRouters completo: el original tiene un `return` prematuro
+// que impedía registrar /:id (y por ende /$count). Se registra /, luego /$count y /:id.
+const originalMethod = `    setUpODataRouters(router, controller) {
+        const allowedMethods = controller.getAllowedMethod();
+        const model = controller.getBaseModel();
+        allowedMethods.forEach((method) => {
+            if (method === 'get') {
+                router.get('/', async (req, res) => {
+                    try {
+                        const perfLogger = new perfLogger_1.PerfLogger();
+                        perfLogger.start();
+                        const queryParser = new query_1.QueryParser(\`\${req.baseUrl}\${req.url}\`, model, this.config.queryOptions);
+                        const responce = await controller.get(queryParser);
+                        const executionTime = perfLogger.end();
+                        responce.meta.totalExecutionTime = executionTime;
+                        res.send(responce);
+                    }
+                    catch (error) {
+                        logger_1.Logger.getLogger().error('Error processing request', error);
+                        if (error instanceof error_management_1.AppError) {
+                            res.status(error.statusCode).json({
+                                error: error.message,
+                                code: error.code,
+                                details: error.details,
+                            });
+                        }
+                        else {
+                            res
+                                .status(constant_1.STATUS_CODES.INTERNAL_SERVER_ERROR)
+                                .json({ error: 'Internal Server Error' });
+                        }
+                    }
+                });
                 return;
             }
         });
-    }
-    setUpCustomRoutes`,
-    `                });
+    }`;
+
+const patchedMethod = `    setUpODataRouters(router, controller) {
+        const allowedMethods = controller.getAllowedMethod();
+        const model = controller.getBaseModel();
+        allowedMethods.forEach((method) => {
+            if (method === 'get') {
+                router.get('/', async (req, res) => {
+                    try {
+                        const perfLogger = new perfLogger_1.PerfLogger();
+                        perfLogger.start();
+                        const queryParser = new query_1.QueryParser(\`\${req.baseUrl}\${req.url}\`, model, this.config.queryOptions);
+                        const responce = await controller.get(queryParser);
+                        const executionTime = perfLogger.end();
+                        responce.meta.totalExecutionTime = executionTime;
+                        res.send(responce);
+                    }
+                    catch (error) {
+                        logger_1.Logger.getLogger().error('Error processing request', error);
+                        if (error instanceof error_management_1.AppError) {
+                            res.status(error.statusCode).json({
+                                error: error.message,
+                                code: error.code,
+                                details: error.details,
+                            });
+                        }
+                        else {
+                            res
+                                .status(constant_1.STATUS_CODES.INTERNAL_SERVER_ERROR)
+                                .json({ error: 'Internal Server Error' });
+                        }
+                    }
+                });
                 // NOTE: \\\\$ so JS yields \\$ which path-to-regexp treats as literal $
                 router.get('/\\\\$count', async (req, res) => {
                     try {
                         const perfLogger = new perfLogger_1.PerfLogger();
                         perfLogger.start();
                         const queryIdx = req.url.indexOf('?');
-                        const qs = queryIdx >= 0 ? req.url.substring(queryIdx + 1) : '';
-                        const countUrl = req.baseUrl + '/?' + '$count=true' + (qs ? '&' + qs : '');
+                        const qs = queryIdx >= 0 ? decodeURIComponent(req.url.substring(queryIdx + 1)) : '';
+                        const params = new URLSearchParams(qs);
+                        params.set('$count', 'true');
+                        const countUrl = req.baseUrl + '/?' + params.toString();
                         const queryParser = new query_1.QueryParser(countUrl, model, this.config.queryOptions);
                         const responce = await controller.get(queryParser);
                         const executionTime = perfLogger.end();
@@ -103,7 +172,9 @@ patchFile(
                             }
                         } catch (_) {}
                         const pkValue = req.params.id;
-                        const filterUrl = req.baseUrl + '/?' + '$filter=' + pkName + ' eq ' + pkValue;
+                        const keyParams = new URLSearchParams();
+                        keyParams.set('$filter', pkName + ' eq ' + pkValue);
+                        const filterUrl = req.baseUrl + '/?' + keyParams.toString();
                         const queryParser = new query_1.QueryParser(filterUrl, model, this.config.queryOptions);
                         const responce = await controller.get(queryParser);
                         const executionTime = perfLogger.end();
@@ -134,6 +205,15 @@ patchFile(
                 return;
             }
         });
-    }
-    setUpCustomRoutes`,
-);
+    }`;
+
+if (fs.existsSync(expressRouterPath)) {
+    patchFile(
+        path.join("@phrasecode", "odata", "dist", "routers", "expressRouter.js"),
+        "Key-access ExpressRouter",
+        originalMethod,
+        patchedMethod,
+    );
+} else {
+    console.log("[odata-server] Key-access ExpressRouter: archivo no encontrado, saltando");
+}

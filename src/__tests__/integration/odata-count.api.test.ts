@@ -110,6 +110,15 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
             expect(res.status).toBe(200);
             expect(res.text).toBe("2");
         });
+
+        it("decodes a percent-encoded query string (curl/CMD scenario with %26/%20)", async () => {
+            const res = await request(app()).get(
+                "/odata/product-odata/$count?%24filter=precio%20gt%20100%26%24top=1%26%24skip=1",
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.text).toBe("2");
+        });
     });
 
     describe("GET /odata/product-odata/:id (Fase A)", () => {
