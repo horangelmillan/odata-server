@@ -117,7 +117,7 @@ patchFile(
 // Se reemplaza el método setUpODataRouters completo. El marcador PATCHED-COUNT-v2
 // permite reaplicar el parche aunque el archivo ya venga parcheado (p.ej. al
 // reconstruir la imagen Docker o tras actualizar el parche).
-const COUNT_PATCH_MARKER = "// PATCHED-COUNT-v2";
+const COUNT_PATCH_MARKER = "// PATCHED-COUNT-v3";
 const countSignature = "    setUpODataRouters(router, controller) {";
 const patchedMethod = `    setUpODataRouters(router, controller) {
         ${COUNT_PATCH_MARKER}
@@ -129,7 +129,10 @@ const patchedMethod = `    setUpODataRouters(router, controller) {
                     try {
                         const perfLogger = new perfLogger_1.PerfLogger();
                         perfLogger.start();
-                        const queryParser = new query_1.QueryParser(\`\${req.baseUrl}\${req.url}\`, model, this.config.queryOptions);
+                        const _full = \`\${req.baseUrl}\${req.url}\`;
+                        const _qi = _full.indexOf('?');
+                        const _decoded = _qi >= 0 ? _full.substring(0, _qi) + '?' + decodeURIComponent(_full.substring(_qi + 1)) : _full;
+                        const queryParser = new query_1.QueryParser(_decoded, model, this.config.queryOptions);
                         const responce = await controller.get(queryParser);
                         const executionTime = perfLogger.end();
                         responce.meta.totalExecutionTime = executionTime;
