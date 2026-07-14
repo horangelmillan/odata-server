@@ -154,8 +154,15 @@ curl -X POST http://localhost:3000/api/core/products \
 
 | Ruta | Descripción |
 |---|---|
-| `GET /odata/$metadata` | Metadatos del servicio OData v4 (edm.xml) |
-| `GET /odata/product-odata` | Query OData sobre productos |
+| `GET /odata/$metadata` | Metadatos del servicio OData v4 (CSDL+JSON) |
+| `GET /odata/product-odata` | Query OData sobre productos (colección) |
+| `GET /odata/product-odata/:id` | Registro individual por clave (Fase A) |
+| `GET /odata/product-odata/$count` | Total de registros (`text/plain`), respeta `$filter` (Fase B) |
+| `GET /odata/product-odata?$expand=category` | Expansión de navegación `product → category` (Fase D) |
+| `GET /odata/category-odata?$expand=products` | Expansión de navegación `category → products` (Fase D) |
+| `POST /odata/$batch` | `$batch` de solo lectura (multipart/mixed) (Fase C.2) |
+
+> **Naming de endpoints:** el nombre en `/odata/<nombre>` se genera en kebab-case a partir del nombre de la clase (p.ej. `ProductOData` → `/odata/product-odata`). El `$Endpoint` del `$metadata` usa el mismo `getEndpoint()`, por lo que ruta y metadata coinciden y SAPUI5 resuelve las URLs correctamente.
 
 Ejemplo de consulta OData:
 
@@ -163,7 +170,12 @@ Ejemplo de consulta OData:
 # OData estándar
 curl "http://localhost:3000/odata/product-odata?\$top=10&\$orderby=precio desc"
 
-# Solo lectura permitida (GET)
+# Acceso por clave + conteo + expansión de navegación
+curl "http://localhost:3000/odata/product-odata/1"
+curl "http://localhost:3000/odata/product-odata/\$count?\$filter=precio gt 100"
+curl "http://localhost:3000/odata/product-odata?\$expand=category"
+
+# Solo lectura permitida (GET) en las entidades; escrituras por REST o \$batch con groupId "$direct"
 ```
 
 ---
@@ -332,11 +344,26 @@ Ver la sección [Docker](docs/14-docker-guide.md) para más detalles.
 
 ## Issues conocidos
 
-### `@phrasecode/odata` v0.3.1 — SSL en desarrollo
+### `@phrasecode/odata` v0.3.1 — parches aplicados
 
-El `SequelizerAdaptor` de la librería siempre crea `dialectOptions: { ssl: { require: undefined, rejectUnauthorized: undefined } }`, lo que hace que `pg` intente SSL incluso contra PostgreSQL local. El fix está parcheado en `patches/@phrasecode/odata/` y se aplica automáticamente vía `postinstall` en `package.json`.
+La librería se parchea en runtime/build vía `scripts/patch-odata.mjs` (idempotente, se aplica en `postinstall` y al iniciar `pnpm dev`). Los parches cubren:
 
-Si actualizas la librería, verifica que el parche siga siendo necesario.
+1. **SSL en desarrollo**: el `SequelizerAdaptor` siempre creaba `dialectOptions.ssl`, forzando SSL incluso contra PostgreSQL local. Se cambió a `ssl` solo si `dbConfig.ssl` está presente (producción).
+2. **Rutas OData**: `ExpressRouter.setUpODataRouters` se reemplaza para añadir `GET /:id` (Fase A) y `GET /$count` (Fase B), con decodificación correcta del query string (`decodeURIComponent`).
+
+Si actualizas la librería, verifica que los parches sigan siendo necesarios (marcador `// PATCHED-COUNT-v3`).
+
+### Compatibilidad SAPUI5/OpenUI5 (v1.1.0)
+
+Las fases A–D del plan `docs/14-sapui5-compatibility-plan.md` añaden las features que SAPUI5/OpenUI5 OData v4 espera y que la librería no trae de serie:
+
+- Acceso por clave, `/$count`, `/$batch` de lectura (Fases A–C).
+- Navigation properties (`$expand`) vía decoradores `@BelongsTo`/`@HasMany` (Fase D).
+
+**Pendientes investigados antes del merge (resueltos como no-bloqueantes):**
+
+- **Naming en `$metadata`**: se verificó empíricamente que el `$Endpoint` emitido (`/product-odata`, `/category-odata`) coincide con la ruta kebab registrada por el router. No hay discrepancia que afecte a SAPUI5.
+- **`$count` + `$expand` combinados**: la combinación que SAPUI5 emite (`?$expand=category&$count=true`) funciona correctamente (devuelve `@odata.count` + la expansión anidada). El error `Unsupported relation type for $count` de `adaptors/sequelizer.js` es inalcanzable con las relaciones definidas; solo fallan usos avanzados no emitidos por SAPUI5 (p.ej. `$filter=category/$count gt 0`), fuera de alcance para v1.1.0.
 
 ### `pg` v16 no existe
 

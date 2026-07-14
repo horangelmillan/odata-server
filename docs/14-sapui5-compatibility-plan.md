@@ -20,8 +20,8 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 | C.2 | Endpoint `/$batch` | Middleware propio para `POST /$batch` multipart (solo lectura/GET) | ✅ |
 | C.3 | Robustez `/$count` codificado | Middleware de normalización `%24`→`$` en `odata.service.ts` (mitiga bug de path encoding) | ✅ |
 | D | Navigation properties | Decoradores `@BelongsTo`/`@HasMany` en modelos OData | ✅ |
-| E | Tests | Tests unitarios + integración de todas las fases | ⬜ |
-| F | Documentación + merge | `docs/14-*.md`, README, merge a master, tag `v1.1.0` | ⬜ |
+| E | Tests | Tests unitarios + integración de todas las fases | ✅ |
+| F | Documentación + merge | `docs/14-*.md`, README, merge a master, tag `v1.1.0` | 📝 docs ✅ · merge/tag pendiente |
 
 ---
 
@@ -161,12 +161,66 @@ crea la columna y la tabla `categories` automáticamente; no se tocó `node_modu
 - SQL generado correcto: `LEFT OUTER JOIN "products" ON "categories"."id" = "products"."categoriaId"`.
 - `pnpm test` → 118 passed (2 nuevos del test de metadata; sin regresión).
 
-**Notas / pendientes (para Fase E/F o sesión futura):**
-- **Quirk de naming en `$metadata`**: la librería emite `$Endpoint: "/productodata"` (sin guion) en el CSDL, mientras la ruta real registrada por el router parcheado es `/product-odata` (kebab). Es **pre-existente** para `product` y no bloquea las fases A–D, pero si SAPUI5 construye las URLs a partir del `EntitySet` del metadata (en lugar del nombre de ruta), habría discrepancia. Merece investigación aparte antes del merge a master.
-- **`$count` + `$expand` combinados** lanzan `Unsupported relation type for $count` (`adaptors/sequelizer.js:309`). SAPUI5 no suele combinarlos; documentado por si acaso.
+**Notas / pendientes (investigados y resueltos en Sesión 8 — ver abajo):**
+- **Quirk de naming en `$metadata`** — *Resuelto (no bloqueante).* Ver Sesión 8. La afirmación de que el CSDL emitía `/productodata` (sin guion) **no se reproduce** en el código actual: tanto la ruta registrada como el `$Endpoint` del `$metadata` se derivan de `controller.getEndpoint()` (kebab-case), que convierte `ProductOData` → `product-odata`. Verificado empíricamente (`GET /odata/$metadata` → `$Endpoint: /product-odata`). Ruta y metadata coinciden; SAPUI5 resuelve las URLs correctamente.
+- **`$count` + `$expand` combinados** — *Resuelto (no bloqueante).* Ver Sesión 8. La combinación que SAPUI5 emite realmente (`?$expand=category&$count=true`) funciona (200, `@odata.count` + expansión anidada). El `Unsupported relation type for $count` de `adaptors/sequelizer.js:309` es inalcanzable con las relaciones definidas (`belongsTo`/`hasMany` quedan cubiertas por los `if` previos); solo fallan usos avanzados no emitidos por SAPUI5 (p.ej. `$filter=category/$count gt 0`), fuera de alcance para v1.1.0.
 - El endpoint OData de category es `/category-odata` (kebab, como `product-odata`).
 
 **Próxima sesión:** Fase E — Tests (unitarios + integración de todas las fases) y Fase F — Documentación + merge a master + tag `v1.1.0`.
+
+---
+
+### Sesión 8 — Fase E (tests de integración) + resolución de pendientes (2026-07-14)
+
+**Contexto:** se levantó Postgres en Docker (`docker compose up -d db`; `servidor-odata-db-1`,
+credenciales del `.env`: `postgres`/`postgres`/`odata_dev`) y se investigaron empíricamente los
+dos pendientes anotados en Sesión 7 antes del merge.
+
+**Investigación pendiente (1) — quirk de naming en `$metadata`:**
+- Se ejecutó `GET /odata/$metadata` contra el servidor real. El CSDL emite
+  `ProductOData.$Endpoint = "/product-odata"` y `CategoryOData.$Endpoint = "/category-odata"`.
+- Causa: tanto la ruta registrada (`setUpRouters` → `this.app.use(routePath, router)`) como el
+  `$Endpoint` del metadata (`buildControllerEndpointInfo` → `controller.getEndpoint()`) usan el
+  **mismo** `getEndpoint()`, que aplica `KEBAB_CASE`. `convertStringToKebabCase("ProductOData")`
+  inserta el guion en la frontera `t→O` → `product-odata`.
+- **Conclusión:** la discrepancia `/productodata` vs `/product-odata` descrita en Sesión 7 **no se
+  reproduce**; ruta y metadata coinciden. SAPUI5 construye las URLs a partir del `$Endpoint` del
+  metadata, que es correcto. No se requiere cambio de código.
+
+**Investigación pendiente (2) — `$count` + `$expand` combinados:**
+- Se probaron las combinaciones realistas contra BD:
+  - `product-odata?$expand=category&$count=true` → **200**, con `@odata.count` y `category` anidado.
+  - `category-odata?$expand=products($count)` → **200**.
+  - `product-odata?$expand=category($count)` → **200**.
+  - `category-odata?$expand=products($count)&$count=true` → **200**.
+- El `BadRequestError("Unsupported relation type for $count")` de `adaptors/sequelizer.js:309`
+  vive en la rama `else` de `buildCountExpression`, que solo se alcanza si `relationType` no es
+  `hasMany`/`belongsToMany`/`belongsTo`/`hasOne`. Con las relaciones definidas (`belongsTo` en
+  `ProductOData.category`, `hasMany` en `CategoryOData.products`) **nunca se llega a esa rama**.
+- Fallan (fuera de alcance): `$filter`/`$select` aplicados a un `$count` de propiedad de navegación
+  (p.ej. `?$filter=category/$count gt 0` → 404/500). SAPUI5 **no** emite este patrón; se documenta
+  como limitación conocida de la librería, no como bug de nuestro parche.
+- **Conclusión:** no se requiere cambio de código; la combinación que usa SAPUI5 funciona.
+
+**Fase E — Tests de integración (`src/__tests__/integration/odata-expand.integration.test.ts`):**
+- Test sin BD (regresión del pendiente 1): `GET /odata/$metadata` → `ProductOData.$Endpoint === "/product-odata"`
+  y `CategoryOData.$Endpoint === "/category-odata"`.
+- Tests de integración contra Postgres (gated con `describe.skipIf` vía `db.authenticate()` en
+  tiempo de recolección, para saltar limpiamente sin Docker):
+  - `product-odata?$expand=category` → cada producto trae `category` anidado y `categoriaId === category.id`.
+  - `category-odata?$expand=products` → cada categoría trae `products: [...]` y `product.categoriaId === category.id`.
+  - `product-odata?$expand=category&$count=true` → `@odata.count > 0` + `value[0].category` presente.
+- Patrón de sembrado: `db.sync({ alter: true })` + `CategoryModel`/`ProductModel` del dominio
+  (misma BD que el DataSource OData), `db.close()` en `afterAll`.
+- **Verificación:** `pnpm test` → 122 passed (4 nuevos en `odata-expand.integration.test.ts`;
+  sin regresión respecto a los 118 de Sesión 7). Sin Docker, el suite de integración se salta y
+  el test de metadata (sin BD) sigue corriendo.
+
+**Fase F (estado):** README y `docs/14-*.md` actualizados (Fases A–E marcadas ✅; naming/`$count+$expand`
+resueltos). El **merge a master y el tag `v1.1.0` quedan pendientes de confirmación explícita del
+usuario** (no se ejecutan en esta sesión).
+
+**Próxima sesión:** tras confirmación — merge `feat/odata-sapui5-compat` → `master`, tag `v1.1.0`.
 
 ---
 
