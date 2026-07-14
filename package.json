@@ -4,8 +4,10 @@
     "description": "OData v4 server — Node/TypeScript/Express + Modular Monolith + PostgreSQL",
     "main": "./dist/server.js",
     "type": "module",
+    "packageManager": "pnpm@9.15.4",
     "engines": {
-        "node": "20.18.0"
+        "node": "20.18.0",
+        "pnpm": ">=9.0.0"
     },
     "scripts": {
         "dev": "node --watch --watch-path ./src --loader ts-node --loader ts-node/esm --no-warnings ./server.ts",

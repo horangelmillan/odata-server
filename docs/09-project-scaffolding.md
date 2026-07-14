@@ -2,15 +2,15 @@
 
 ## 9.1 Creación del Proyecto
 
-El proyecto `odata-server` se inicializa desde cero con npm:
+El proyecto `odata-server` se inicializa desde cero con pnpm:
 
 ```bash
 mkdir servidor-odata
 cd servidor-odata
-npm init -y
+pnpm init
 # Editar package.json: name → "odata-server", type → "module"
-npm install @phrasecode/odata express sequelize pg pg-hstore helmet morgan compression cors dotenv reflect-metadata http-status-codes class-validator class-transformer class-transformer-validator bcrypt jsonwebtoken
-npm install -D typescript ts-node @types/node @types/express @types/compression @types/cors @types/morgan @types/jsonwebtoken
+pnpm add @phrasecode/odata express sequelize pg pg-hstore helmet morgan compression cors dotenv reflect-metadata http-status-codes class-validator class-transformer class-transformer-validator bcrypt jsonwebtoken
+pnpm add -D typescript ts-node @types/node @types/express @types/compression @types/cors @types/morgan @types/jsonwebtoken
 ```
 
 Dependencias clave:
@@ -23,6 +23,10 @@ Dependencias clave:
 
 ## 9.2 Scripts (package.json)
 
+> Nota: El proyecto usa **pnpm** como package manager por razones de seguridad. Los scripts se ejecutan con `pnpm dev`, `pnpm build`, etc. Nunca uses npm.
+
+
+
 ```json
 "scripts": {
     "dev":   "node --watch --watch-path ./src --loader ts-node --loader ts-node/esm --no-warnings ./server.ts",
@@ -34,10 +38,10 @@ Dependencias clave:
 
 | Script | Uso |
 |--------|-----|
-| `npm run dev` | Desarrollo con hot reload (Node 18+ `--watch` + `ts-node/esm`) |
-| `npm run build` | Compilar TypeScript a JS |
-| `npm start` | Producción sobre JS compilado |
-| `npm run clean` | Limpiar artefactos de compilación |
+| `pnpm dev` | Desarrollo con hot reload (Node 18+ `--watch` + `ts-node/esm`) |
+| `pnpm build` | Compilar TypeScript a JS |
+| `pnpm start` | Producción sobre JS compilado |
+| `pnpm clean` | Limpiar artefactos de compilación |
 
 ## 9.3 TypeScript (tsconfig.json)
 
