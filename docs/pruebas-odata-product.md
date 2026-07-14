@@ -98,15 +98,31 @@ Devuelve los 6 productos en `value` con `@odata.context`.
 
 ---
 
-## 5. ⚠️ Issue conocido (fuera de Fase B): `$filter` en la COLECCIÓN
+## 5. Estado de `$filter` (verificado 2026-07-14 contra Postgres real)
 
-Aplicar `$filter` sobre la ruta de **colección** (`/odata/product-odata?$filter=...`)
-actualmente **no responde** en este servidor (se queda vacío / timeout) cuando
-usa la base de datos real. Es un problema previo de la ruta `/` (Fase A) con
-Sequelize real, **independiente del parche de `/$count`** (cuyos tests pasan
-porque mockean el datasource). La ruta `/$count` SÍ aplica `$filter` correctamente.
+**El issue documentado previamente ("`$filter` en la colección cuelga / timeout")
+NO se reproduce.** Con BD real:
 
-No bloquea las pruebas de Fase B. Se investigará aparte.
+- **Colección + `$filter` funciona**: `GET /odata/product-odata?$filter=precio%20gt%20100`
+  responde 200 con los registros filtrados (p. ej. `Teclado`, precio 200 > 100).
+- **`/$count` + `$filter` funciona** cuando el `$` va **sin codificar** (formato que
+  envía SAPUI5): `GET /odata/product-odata/$count?$filter=precio%20gt%20100` → `1` (200).
+
+### Bug real conocido (robustez de `/$count`, no el documentado antes)
+
+La ruta `/$count` se registra con el `$` **literal** (`router.get('/\\$count')`).
+Express NO matchea el `$` **URL-encoded** (`%24count`), así que
+`GET /odata/product-odata/%24count` cae en el handler `GET /:id` (id=`$count`),
+que arma `$filter=id eq $count` y el parser trata `$count` como columna →
+`404 Column $count not found`.
+
+- Afecta solo a clientes que codifican el `$` (p. ej. `curl` con `%24count`).
+- SAPUI5 envía `$count` sin codificar → funciona.
+- **Mitigación APLICADA (vía B, 2026-07-14):** se añadió un middleware de
+  normalización en `src/common/service/odata/odata.service.ts` que decodifica
+  `%24`→`$` en los tokens de path OData (`$count`, `$metadata`, `$batch`)
+  **antes** del route matching. Verificado contra BD real: `/%24count`,
+  `/%24metadata` y `/%24count?%24filter=...` responden correctamente.
 
 ---
 

@@ -16,8 +16,9 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 |---|---|---|---|
 | A | Ruta por key | `GET /entityset/:id` para acceso a registro individual | ✅ |
 | B | Endpoint `/$count` | `GET /entityset/$count` que devuelve el número total | ✅ |
-| C.1 | Bypass SAPUI5 `$batch` | Documentar `groupId: "$direct"` como solución temporal | ⬜ |
-| C.2 | Endpoint `/$batch` | Middleware propio para `POST /$batch` multipart | ⬜ |
+| C.1 | Bypass SAPUI5 `$batch` | Documentar `groupId: "$direct"` como solución temporal | ✅ |
+| C.2 | Endpoint `/$batch` | Middleware propio para `POST /$batch` multipart (solo lectura/GET) | ✅ |
+| C.3 | Robustez `/$count` codificado | Middleware de normalización `%24`→`$` en `odata.service.ts` (mitiga bug de path encoding) | ✅ |
 | D | Navigation properties | Decoradores `@BelongsTo`/`@HasMany` en modelos OData | ⬜ |
 | E | Tests | Tests unitarios + integración de todas las fases | ⬜ |
 | F | Documentación + merge | `docs/14-*.md`, README, merge a master, tag `v1.1.0` | ⬜ |
@@ -55,9 +56,71 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 - **Orden de rutas importa:** `/$count` se registra **antes** de `/:id`, porque `/:id` haría match de `$count` como valor del parámetro `id` (Express evalúa las rutas en orden de registro)
 - Se verificó manualmente contra el servidor real: `/$count` → total; `/$count?$filter=precio gt 100` → filtrado; `/$count?$filter=precio gt 9999` → `0`; la ruta por key `/1` (Fase A) sigue funcionando
 
-**Verificación:** `pnpm test` → 88 tests OK. Pruebas manuales de `/$count` (con y sin `$filter`) correctas.
+**Verificación:** `pnpm test` → 88 tests OK (en su momento). Tras las Fases A/B/C.1/C.2 el total es 116 tests OK. Pruebas manuales de `/$count` (con y sin `$filter`) correctas.
 
 **Próxima sesión:** Fase C.1 — Bypass SAPUI5 `$batch` (documentar `groupId: "$direct"`)
+
+### Sesión 3 — Fase C.1: Bypass SAPUI5 `$batch` (2026-07-14)
+
+**Qué se hizo:**
+- Se documenta la solución temporal para que SAPUI5 **no** envíe las mutaciones (POST/PUT/DELETE) por `$batch`: configurar el `groupId` del modelo en `"$direct"`.
+- Con `"$direct"`, cada request se manda de forma independiente al endpoint REST/OData correspondiente, evitando depender de un `$batch` completo (con changesets atómicos) que aún no se implementa para escrituras.
+
+**Cuándo aplica:** mientras la Fase C.2 solo cubre `$batch` de **lectura** (GET). Las escrituras siguen yendo por `$direct`.
+
+**Próxima sesión:** Fase C.2 — Endpoint `/$batch` (lectura).
+
+### Sesión 4 — Fase C.2: Endpoint `/$batch` (2026-07-14)
+
+**Qué se hizo:**
+- Se creó `src/common/middleware/batch.middleware.ts`: middleware Express que parsea `POST /odata/$batch` (`multipart/mixed`) y responde con el mismo `multipart/mixed` que espera SAPUI5.
+- Se registró la ruta en `src/common/service/odata/odata.service.ts` montando `oDataExpressApp.post("/\\$batch", BatchMiddleware.handler(batchRegistry))`, construyendo un `batchRegistry` (`Map<entitySet, controller>`) a partir de los controladores OData.
+- El dispatch **reusa los controladores OData directamente**: para cada sub-request se construye `new QueryParser(queryString, controller.getBaseModel())` y se llama `controller.get(queryParser)` — el mismo camino que las rutas parcheadas de las Fases A/B. No se re-dispatcha por HTTP.
+- Soporta: GET de colección, GET con `$filter`/`$top`/`$skip`, acceso por key (`/entitySet(key)`) y changesets anidados (`multipart/mixed` dentro de `multipart/mixed`) con GETs.
+- Errores por sub-request: `404` (entity set desconocido), `405` (método no GET), `415` (Content-Type de parte no soportado), `400` (Content-Type del `$batch` inválido).
+
+**Decisiones técnicas:**
+- **`busboy` se descartó.** La librería solo soporta `multipart/form-data`, no `multipart/mixed` (que es lo que usa OData `$batch`); lanza `Unsupported content type: multipart/mixed`. Se implementó un parser `multipart/mixed` enfocado y **sin dependencia externa** (el body de `$batch` es texto, no binario).
+- **Codificación:** el parser de `@phrasecode/odata` espera el `$filter` **URL-encodeado** (`%20`/`+`), no con espacios literales. El middleware normaliza el query con `URLSearchParams` antes de construir el `QueryParser` (el KNOWN ISSUE §5 de `docs/pruebas-odata-product.md` se verificó contra BD real: la colección `$filter` **sí funciona**; el bug real documentado allí es el `$count` codificado, mitigado en la Sesión 6).
+- **Límites de seguridad (rules/02-security.md + 03-development.md):** `MAX_PARTS = 100` (cap de sub-requests), `MAX_DEPTH = 5` (cap de anidamiento de changesets), Content-Type del `$batch` validado (debe ser `multipart/mixed` con boundary). No se deshabilita TLS ni se loguean tokens.
+- **robustez del request line:** la URL del sub-request se reconstruye uniendo los tokens entre el método y `HTTP/x.x`, para tolerar URLs no encodeadas (un espacio cortaría el token).
+
+**Verificación:** `pnpm test` → 116 tests OK (7 nuevos en `odata-batch.api.test.ts`, con `dataSource` mockeado, igual que las pruebas de Fase A/B). Tests de: GET de colección, `$filter`, key-access, changeset anidado, 404, 405 y Content-Type inválido.
+
+**Notas / pendientes:**
+- Alcance v1.1.0: `$batch` **solo lectura (GET)**. Las escrituras las cubre el bypass `$direct` de la Fase C.1.
+- El KNOWN ISSUE §5 (verificado 2026-07-14 contra Postgres real): la colección `$filter` **funciona**, no crashea. El bug real es `/$count` con `$` codificado (`%24count`), mitigado en la Sesión 6. Las pruebas de `$batch` usan `dataSource` mockeado (aislan el parseo del middleware).
+- `pnpm build` (`tsc --build`) tiene errores de tipos **preexistentes** en otros archivos (`bcrypt`, `datasource`, `product.controller`); el proyecto corre con `ts-node` en modo `transpileOnly`, por eso los tests pasan. No es regresión de esta fase.
+
+**Próxima sesión:** Sesión 5 — Verificación contra BD real + bug de `/$count` codificado.
+
+### Sesión 5 — Verificación contra BD real (2026-07-14)
+
+**Contexto:** se levantó Postgres (Docker `servidor-odata-db-1`) y el app (`pnpm dev`) para validar el comportamiento de las Fases A/B/C.2 contra una BD real, no solo con `dataSource` mockeado.
+
+**Qué se verificó:**
+- **Colección + `$filter` FUNCIONA** contra BD real: `GET /odata/product-odata?$filter=precio gt 100` → 200 con los registros filtrados. El KNOWN ISSUE §5 ("`$filter` en colección cuelga / timeout") **NO se reproduce**; el doc lo contradice y fue corregido en `docs/pruebas-odata-product.md` §5.
+- **`/$count` + `$filter` FUNCIONA** cuando el `$` va sin codificar (formato de SAPUI5).
+- **Bug real encontrado:** `/$count` con `$` **URL-encoded** (`%24count`) cae en el handler `GET /:id` (id=`$count`) y da `404 Column $count not found`. Causa: Express no decodifica `%24`→`$` antes del route matching, así que `/%24count` no matchea la ruta `/$count`.
+- **Hallazgo de contexto:** `@phrasecode/odata` tiene un build ESM roto (`export * from './controller'` → dir-import no soportado en Node ESM), por lo que el app corre vía CJS (`.js`), que **sí está parcheado**. Por eso key-access y `/$count` funcionan pese a que el `.mjs` no lo está. Los parches viven en `scripts/patch-odata.mjs` (commiteado) y se reaplican en install/dev.
+
+**Próxima sesión:** Sesión 6 — Mitigación del `/$count` codificado.
+
+### Sesión 6 — Mitigación `/$count` codificado (vía B) (2026-07-14)
+
+**Qué se hizo:**
+- Se añadió un middleware de normalización en `src/common/service/odata/odata.service.ts`, **antes** de instanciar `ExpressRouter`, que reescribe `req.url` decodificando los tokens OData del path: `%24count`→`$count`, `%24metadata`→`$metadata`, `%24batch`→`$batch`.
+- Esto corrige la causa raíz (el path no se decodifica antes del route matching) y cubre los tres tokens de una vez, sin tocar `node_modules` ni el parche.
+
+**Por qué vía B (y no vía A: ruta extra `/%24count`):**
+- Vía A solo arregla ese encoding y solo `$count` (`$metadata`/`$batch` quedarían igual); además duplica el handler.
+- Vía B es el fix de causa raíz, localizado en código propio, y es robusta para los tres tokens OData del path.
+
+**Verificación:** `pnpm test` → 116 passed (1 todo, 1 skipped). Contra BD real: `/%24count`, `/%24metadata` y `/%24count?%24filter=...` responden correctamente (200, número plano); `/$count` literal sigue OK (sin regresión).
+
+**Decisión de alcance:** la mitigación es **defensiva** (SAPUI5 envía `$count` sin codificar y ya funcionaba); protege contra clientes estrictos RFC que codifican el `$`.
+
+**Próxima sesión:** Fase D — Navigation properties (decoradores `@BelongsTo`/`@HasMany`).
 
 ---
 
@@ -68,9 +131,11 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 | Formato ruta key | `/:id` (Express friendly) | `(/:id)` — Express no lo interpreta bien |
 | Ruta `/$count` | `/\\$count` (escapar `$`) + registrar antes de `/:id` | `/$count` sin escapar — `path-to-regexp` lo trata como ancla de regex |
 | Respuesta `/$count` | Texto plano con `@odata.count` | JSON — SAPUI5 espera el número plano |
-| Librería para `$batch` | `busboy` (streaming, madura, score 98) | Escribir parser propio (riesgoso) |
+| Parser para `$batch` | Parser `multipart/mixed` propio (sin dependencia, texto plano) | `busboy` — **solo soporta `multipart/form-data`**, no `multipart/mixed` (OData lo usa) |
 | Estrategia `$batch` | Middleware Express propio en `batch.middleware.ts` | Parchar la librería (muy acoplado) |
 | Parches a librería | Via `scripts/patch-odata.mjs` (postinstall) | Modificar node_modules a mano (frágil) |
+| Robustez `/$count` codificado | Middleware normalización `%24`→`$` en `odata.service.ts` (vía B, antes del route matching) | Ruta extra `/%24count` (vía A: solo cubre un token, duplica handler) |
+| KNOWN ISSUE §5 | Verificado contra BD real: colección `$filter` **sí funciona**; el bug real es `/$count` codificado (mitigado en Sesión 6) | — |
 
 ---
 
