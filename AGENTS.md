@@ -21,7 +21,13 @@ Usa la skill **node-modular-monolith** para crear nuevos módulos/dominios, endp
 
 ## Parche conocido
 
-`@phrasecode/odata` v0.3.1 tiene un bug en `SequelizerAdaptor` que siempre fuerza `dialectOptions.ssl` incluso en dev. El fix está en `patches/@phrasecode/odata/` y se aplica automáticamente vía postinstall. Si se actualiza la librería, verificar que el parche siga siendo necesario.
+`@phrasecode/odata` v0.3.1 tiene dos parches aplicados por `scripts/patch-odata.mjs` (vía `postinstall` y al inicio de `pnpm dev`):
+- `SequelizerAdaptor`: no fuerza `dialectOptions.ssl` en dev.
+- `ExpressRouter`: añade `GET /$count` (devuelve el total plano `text/plain` respetando `$filter`) y `GET /:id`. El query string se decodifica con `decodeURIComponent` antes de `URLSearchParams` para que `%26` (curl/CMD) se trate como separador de parámetros.
+Los parches son idempotentes y **re-aplicables**: Parche 2 reemplaza el método `setUpODataRouters` completo por firma (marcador `// PATCHED-COUNT-v2`), así que actualizar el parche no requiere reinstalar node_modules desde cero.
+
+### Docker
+`docker-compose.yml` monta un volumen anónimo en `/app/node_modules` que cachea los node_modules de la primera build y los reutiliza. Por eso, tras cambiar el parche, `docker compose up` (sin `--build`) sirve código viejo. El `dev` script corre el parche en runtime, así que basta `docker compose up --build` para dejar el container al día sin `docker compose down -v` (que borraría la BD Postgres).
 
 ## Comandos
 
