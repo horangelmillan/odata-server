@@ -22,6 +22,128 @@ salvo indicación explícita; si hay gap, repórtalo.
 
 ---
 
+## Ejecución del servidor OData (prerequisito para el demo UI5)
+
+El proyecto demo UI5 consume `http://localhost:3000/odata` (u otro puerto según `PORT`).
+**Antes de levantar el demo, el servidor OData debe estar corriendo y con Postgres
+disponible.** A continuación TODAS las formas de ejecutarlo, con implicaciones,
+advertencias y cómo manejar puertos ocupados y otros fallos frecuentes.
+
+### 0. Prerequisitos comunes
+- **Node 20** (usa `nvm`/`nvm-windows` si hay varias versiones; el repo espera 20.x).
+- **Postgres** accesible. En dev apunta a la BD de Docker (`DEV_*` en `.env`); en
+  producción a `DB_*` (ver `src/common/config/env.config.ts`).
+- **`.env` presente** en la raíz (copiar de `.env.example` si falta). Define al menos
+  `PORT`, `NODE_ENV`, y las credenciales `DEV_*` / `DB_*`.
+- El arranque ejecuta `db.sync({ alter: true })`, así que la BD debe estar lista.
+- El servidor usa `ts-node` en modo ESM (`pnpm dev`). No requiere `pnpm build` previo.
+
+### 1. Levantar SOLO la base de datos (Docker)
+El server y la BD viven en `docker-compose.yml` (perfiles: `db`, `api`, `pgadmin`).
+Para dejar la BD disponible y arrancar el server por cmd/PowerShell (recomendado para
+tener logs claros):
+
+```bash
+# PowerShell o cmd (desde la raíz del repo)
+docker compose up -d            # levanta db (+ api y pgadmin si están en el perfil)
+docker compose ps               # verifica que servidor-odata-db-1 está "healthy"
+```
+
+- **Implicación:** `docker compose up` (sin `--build`) reusa el container previo; si
+  cambiaste el parche `scripts/patch-odata.mjs`, el container sirve código viejo en
+  `node_modules` (volumen anónimo cacheado). Usa `docker compose up --build` para refrescar.
+- **Advertencia:** si el daemon de Docker no está corriendo, `docker compose` falla con
+  error de pipe. Arranca Docker Desktop primero y espera a que el engine esté listo.
+- Para ver la BD por interfaz: `servidor-odata-pgadmin-1` (puerto 80/5050 según compose).
+
+### 2. Ejecutar el server por línea de comandos (recomendado para pruebas)
+Una vez la BD está healthy, arranca el server en primer plano para ver logs:
+
+**CMD:**
+```cmd
+pnpm dev
+```
+**PowerShell:**
+```powershell
+pnpm dev
+```
+
+- **Implicación:** `pnpm dev` corre `scripts/patch-odata.mjs` (parchea `@phrasecode/odata`
+  en `node_modules`) y luego `ts-node --watch` con hot-reload. El server queda en primer
+  plano; `Ctrl+C` lo detiene.
+- **Puerto:** respeta `PORT` de `.env` (default **3000**). El server de pruebas de Fase P
+  usó 3002/3003 para aislar; para el demo UI5 usa 3000 (o el que apunte tu `ODataModel`).
+- **Cómo confirmar que está vivo (IMPORTANTE):** NO uses `curl` suelto en PowerShell —
+  allí `curl` es alias de `Invoke-WebRequest` y acepta parámetros distintos. Usa
+  `curl.exe` explícito o `Invoke-WebRequest`:
+  ```powershell
+  curl.exe -s -o $null -w "%{http_code}\n" "http://127.0.0.1:3000/odata/product-odata/`$count"
+  # o bien:
+  (Invoke-WebRequest -Uri "http://127.0.0.1:3000/odata/product-odata/`$count" -UseBasicParsing).StatusCode
+  ```
+  Espera **`200`** con un JSON de productos. Nota: `/` y `/odata/` devuelven 404 (no
+  existen); el healthcheck correcto es `/odata/product-odata/$count` o `/odata/$metadata`.
+
+### 3. Ejecutar el server con Docker (todo en contenedor)
+```bash
+docker compose up -d           # perfiles api+db
+docker compose logs -f api     # sigue los logs del container del server
+```
+- **Implicación:** el container `servidor-odata-api-1` corre el build/start de producción.
+  Útil para emular el entorno real, pero los logs de `ts-node`/errores son menos directos.
+- **Advertencia:** al cambiar código, necesitas `docker compose up --build` (el volumen
+  anónimo de `node_modules` cachea dependencias/parche).
+
+### 4. Ejecutar solo los TESTS (no levanta server HTTP)
+```bash
+pnpm test
+```
+- **Implicación:** Vitest arranca su propio server de prueba (puerto 3100) y requiere
+  Postgres (Docker) para los tests de integración. Si la BD no está, se **salta** el suite
+  de integración (`describe.skipIf(!dbAvailable)`) y solo corren los unitarios — no es
+  fallo, pero tampoco valida integración.
+- **Advertencia:** `tsc --noEmit` / `pnpm build` tienen errores TypeScript **preexistentes**
+  (bcrypt, datasource, ExpressRouter, controllers REST) que NO son de las fases OData.
+  El gate real de calidad es `pnpm test` (Vitest transpila con esbuild, ignora esos
+  errores). No uses `tsc` como criterio de éxito.
+- Resultado esperado actual: **148 passing + 1 todo**, 23 test files, contra Postgres.
+
+### 5. Manejo de PUERTOS OCUPADOS y procesos zombie (lección de sesiones previas)
+Síntoma típico: el server arranca pero se cae con `EADDRINUSE` (puerto en uso) o quedan
+procesos `node` huérfanos de intentos anteriores compitiendo por CPU/PUERTO.
+
+**Diagnóstico (PowerShell):**
+```powershell
+netstat -ano | Select-String ":3000|:3002|:3003" | Where-Object { $_ -match "LISTENING" }
+# el último número de cada línea es el PID dueño del puerto
+Get-Process -Name "node" | Select-Object Id, CPU, StartTime
+```
+**Matar un proceso por PID:**
+```powershell
+Stop-Process -Id <PID> -Force
+```
+**Matar todos los node (¡cuidado, mata también otros proyectos node!):**
+```powershell
+Get-Process -Name "node" | ForEach-Object { Stop-Process -Id $_.Id -Force }
+```
+
+- **Regla de oro para benchmark/pruebas de carga:** NO corras dos servers OData a la vez
+  en la misma máquina sin aislar (ver `scripts/bench/`). En Fase P comprobar que correr
+  feature+baseline simultáneos mostraba ~2x peor p95 por competencia de CPU: era ruido,
+  no regresión. Para pruebas UI5 normales basta un solo server en 3000.
+- Si ves respuestas anómalas (p.ej. `curl` devuelve `4` o texto raro), casi siempre es
+  el alias `curl`→`Invoke-WebRequest` en PowerShell; usa `curl.exe` o `Invoke-WebRequest`.
+
+### 6. Orden recomendado para la sesión de validación UI5
+1. `docker compose up -d` → espera `servidor-odata-db-1` healthy.
+2. En una terminal separada: `pnpm dev` (server en 3000, logs visibles).
+3. Verifica health: `curl.exe .../odata/product-odata/$count` → 200.
+4. En OTRA carpeta (no este repo): levanta el proyecto demo UI5 apuntando a
+   `http://localhost:3000/odata`.
+5. Si algo falla, revisa la sección 5 (puertos/zombies) antes de tocar código.
+
+---
+
 ## Prompt para la próxima sesión
 
 ```
@@ -80,6 +202,12 @@ El servidor expone OData v4 en `/odata` con estas capacidades YA verificadas (ve
   probar escritura directa.
 - El proyecto debe poder levantarse con `ui5 serve` y consumir el servidor OData de este repo
   (que debe estar corriendo contra Postgres).
+- **Arranque del server OData:** sigue la sección "Ejecución del servidor OData" de este mismo
+  archivo (Docker, cmd, PowerShell, tests, y sobre todo el manejo de PUERTOS OCUPADOS y
+  procesos node zombie en la sección 5). Confirma health con
+  `curl.exe .../odata/product-odata/$count` → 200 ANTES de probar el demo. No uses `curl`
+  suelto en PowerShell (es alias de Invoke-WebRequest). Nunca corras dos servers OData a la
+  vez en la misma máquina sin aislar (compiten por CPU y sesgan latencia).
 
 # Paso 3 — Prueba de integración contra TODOS los componentes OData
 
