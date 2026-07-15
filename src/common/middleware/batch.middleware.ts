@@ -136,9 +136,21 @@ async function dispatchRequest(
         return { status: 404, body: { error: `Entity set '${entitySet}' not found` } };
     }
 
+    // NOTA: el router parcheado de @phrasecode/odata decodifica el query
+    // (decodeURIComponent) antes de construir el QueryParser. Aquí
+    // URLSearchParams re-codifica (ej. `(`->`%28`, `,`->`%2C`), y el
+    // QueryParser NO entiende paréntesis codificados, por lo que un `$expand`
+    // anidado (`products($select=...)`) se ignoraría. Decodificamos para
+    // mantener el mismo comportamiento que la ruta GET directa (Fase G).
+    // NOTA: el router parcheado de @phrasecode/odata decodifica el query
+    // (decodeURIComponent) antes de construir el QueryParser. Aquí
+    // URLSearchParams re-codifica (ej. `(`->`%28`, `,`->`%2C`), y el
+    // QueryParser NO entiende paréntesis codificados, por lo que un `$expand`
+    // anidado (`products($select=...)`) se ignoraría. Decodificamos para
+    // mantener el mismo comportamiento que la ruta GET directa (Fase G).
     const normalizedQuery = new URLSearchParams(queryPart).toString();
     const queryString = `/${entitySet}?${normalizedQuery}`;
-    const queryParser = new QueryParser(queryString, controller.getBaseModel());
+    const queryParser = new QueryParser(decodeURIComponent(queryString), controller.getBaseModel());
     const result = await controller.get(queryParser);
     return { status: 200, body: result };
 }

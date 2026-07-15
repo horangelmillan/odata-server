@@ -22,6 +22,8 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 | D | Navigation properties | Decoradores `@BelongsTo`/`@HasMany` en modelos OData | ✅ |
 | E | Tests | Tests unitarios + integración de todas las fases | ✅ |
 | F | Documentación + merge | `docs/14-*.md`, README, merge a master, tag `v1.1.0` | 📝 docs ✅ · merge/tag pendiente |
+| G | Recorte de navegación | `$select`/`$filter`/`$orderby`/`$top`/`$skip` sobre navigation properties (ambas direcciones) + combinación con `$count` | ✅ |
+| G.1 | Verificación con tráfico SAPUI5 | Peticiones idénticas a `ODataModel` v4 (URL-encode `%2C`, cabeceras `OData-Version`, `$batch` changeset) como punto de control | ✅ |
 
 ---
 
@@ -221,6 +223,127 @@ resueltos). El **merge a master y el tag `v1.1.0` quedan pendientes de confirmac
 usuario** (no se ejecutan en esta sesión).
 
 **Próxima sesión:** tras confirmación — merge `feat/odata-sapui5-compat` → `master`, tag `v1.1.0`.
+
+---
+
+### Sesión 9 — Fase G: Recorte de navegación en `$expand` (2026-07-14)
+
+**Contexto:** se amplía la Fase D para que SAPUI5/OpenUI5 pueda emitir `$expand` de navegación
+**con recorte** (proyección/filtro/paginado sobre la propia navegación), en ambas direcciones
+(`category → products` hasMany, `product → category` belongsTo). Se verificó contra Postgres real
+(Docker `servidor-odata-db-1`) que la librería `@phrasecode/odata` v0.3.1 ya implementa esta
+feature de fábrica, por lo que Fase G es verificación + tests + documentación (sin parche).
+
+**Investigación de viabilidad (librería):**
+- `serializers/query/parseExpand.js`: `parseExpandItem` + `parseOptions` parsean recursivamente
+  `($select=…;$filter=…;$orderby=…;$top=…;$skip=…)` sobre la navegación.
+- `adaptors/sequelizer.js` → `buildInclude`: mapea `select`→`attributes`, `filter`→`where`,
+  `orderBy`→`order`, `top`→`limit`, `skip`→`offset`, y `expand` anidado → `include` anidado.
+- `parseFilter`/`parseSelect`/`parseOrderBy` ignoran el parámetro `table` y usan nombres de
+  columna directos; el recorte es puramente a nivel de query (el CSDL no cambia).
+
+**Qué se hizo (tests, `src/__tests__/`):**
+- `integration/odata-expand.integration.test.ts`: se extendió el `describe` existente (dueño único
+  de los datos de BD, evita carreras entre archivos de integración) con 9 tests de recorte:
+  - hasMany: `($select=id,nombre)`, `($filter=precio gt 100)`, `($orderby=nombre asc;$top=2)`,
+    `($top=2;$skip=1)`, combinación `($select=id,nombre;$top=2;$filter=precio gt 10;$orderby=nombre)`,
+    y `($select=id,nombre)&$count=true`.
+  - belongsTo: `($select=id,nombre)` y `($filter=nombre eq 'Electrónica')`.
+  - coexistencia de `$select` a nivel raíz + `$expand=category` anidado.
+- `unit/odata/expand-projection.metadata.test.ts` (2 tests, **sin BD**): el recorte no altera el
+  CSDL — `CategoryOData.products` y `ProductOData.category` siguen como `NavigationProperty`.
+- Patrón de sembrado: `db.sync({ alter: true })` + `CategoryModel`/`ProductModel`; un solo
+  `describe.skipIf(!dbAvailable)` con `db.authenticate()` en tiempo de recolección; `db.close()` en
+  `afterAll`. Sin Docker, el suite de integración se salta limpio y el de metadata sigue corriendo.
+
+**Hallazgos / riesgos resueltos:**
+- **Riesgo FK en `hasMany` con `$select` restringido — NO se reproduce.** Se verificó empíricamente
+  que Sequelize auto-incluye la columna FK (`categoriaId`) del `include` aunque `attributes` esté
+  recortado, por lo que los hijos se agrupan correctamente bajo su padre (el test
+  `($select=id,nombre)` devuelve los 3 productos de `Electrónica`). **No hace falta parche** en
+  `buildInclude` (el Parche G previsto en el plan se descarta).
+- **`$filter`/`$orderby` anidado con columna ambigua en JOIN — fuera de alcance.** `buildWhere`/
+  `buildOrderBy` emiten `col("nombre")` sin scope de alias; para los modelos actuales
+  (`category` no duplica columnas de `product`) no hay ambigüedad. Si apareciera, se documentaría
+  como limitación conocida (no bloquea a SAPUI5 estándar).
+
+**Verificación:**
+- `pnpm test` con Postgres (Docker): 133 passed (9 nuevos de Fase G en integración + 2 de metadata;
+  sin regresión respecto a los 122 de Sesión 8).
+- `pnpm test` sin Docker: el suite de integración se salta (`describe.skipIf`); el de metadata corre.
+- El `build` (`tsc`) mantiene la deuda preexistente en otros archivos (`bcrypt`/`datasource`/
+  `product.controller`); el app corre con `ts-node transpileOnly`, así que no es regresión de Fase G.
+
+**Notas:** no se modificó `scripts/patch-odata.mjs`, `odata.service.ts`, modelos ni controladores
+OData — la librería ya soportaba el recorte. Fase G es transparente para el resto del sistema.
+
+**Próxima sesión (candidatos):** Fase H — `$batch` de escritura con changesets atómicos (la librería
+no tiene ruta de escritura: requeriría despachar changesets a los servicios REST dentro de
+`db.transaction()` y componer respuestas OData con `Content-ID`); o Fase I — conversión de
+tipos/fechas EDM (`/Date(...)/`, `DateTimeOffset`) + `$format`.
+
+---
+
+### Sesión 10 — Verificación con tráfico real de SAPUI5/OpenUI5 (2026-07-14)
+
+**Contexto:** tras implementar Fase G, se validó el comportamiento contra peticiones **idénticas a las
+que genera `sap.ui.model.odata.v4.ODataModel`** (SAPUI5/OpenUI5), no solo contra URLs "limpias". El
+objetivo es tener un **punto de control de compatibilidad** que sirva de referencia para probar este
+servidor contra un proyecto UI5 real (ver "Proyecto de prueba UI5" más abajo).
+
+**Cómo emite SAPUI5 sus lecturas OData v4 (comportamiento observado):**
+- **Cabeceras:** `OData-Version: 4.0` y `Accept: application/json;odata.metadata=minimal`.
+- **Codificación de la query:** SAPUI5 URL-encodea las opciones — la coma se envía como `%2C` y el
+  espacio como `%20` (ej. `$expand=products($select=id%2Cnombre)`). El signo `$` NO se codifica.
+- **Transporte por defecto:** SALVO que se configure `groupId: "$direct"`, SAPUI5 envía las lecturas
+  por **`POST /odata/$batch`** (multipart/mixed con un changeset anidado), no por `GET` directo. Por
+  tanto, para validar compatibilidad real hay que ejercitar **ambas** rutas.
+
+**Resultados (servidor real, Postgres Docker):** todas las variantes de Fase G devolvieron `200` con
+el recorte aplicado correctamente, tanto por `GET` directo (formato codificado) como por `$batch`
+(changeset con `$expand` anidado codificado). La ruta `$batch` delega en el mismo `controller.get()`
+que el `GET` directo, por lo que el recorte es idéntico en ambas.
+
+**Ajuste de robustez aplicado (`src/common/middleware/batch.middleware.ts`):** se añadió
+`decodeURIComponent(queryString)` antes de `new QueryParser(...)`, simétrico al decode del router
+parcheado de `@phrasecode/odata`. Hace que el `$batch` maneje de forma consistente paréntesis
+codificados (`%28`/`%29`) en `$expand` anidados, igual que la ruta `GET` directa. Es defensivo y no
+rompe la suite (133 tests en verde).
+
+**Tests automatizados de punto de control (Fase G):** en
+`src/__tests__/integration/odata-expand.integration.test.ts` se añadieron dos `it` que reproducen el
+tráfico SAPUI5 de forma determinista (gated `describe.skipIf(!dbAvailable)`):
+- `SAPUI5: GET con opciones URL-encodeadas (%2C) aplica el recorte` — `GET /odata/category-odata?$expand=products($select=id%2Cnombre)&$select=id%2Cnombre` con cabeceras `OData-Version`/`Accept`.
+- `SAPUI5: $batch (changeset) con $expand anidado codificado aplica el recorte` — `POST /odata/$batch` multipart/mixed con changeset, extrayendo el JSON interno de la respuesta.
+
+> **Nota de depuración:** al simular manualmente el `$batch` con scripts de shell, un here-string mal
+> escapado puede inyectar un backtick literal (`` `$expand ``) que invalida el parámetro y hace que el
+> `$expand` se ignore (falso "fallo"). En los tests automatizados (TS) no hay ese riesgo.
+
+**Proyecto de prueba UI5 (idea documentada):** estas consultas son el **contrato de compatibilidad**
+que se puede usar como punto de control para validar el servidor contra una app SAPUI5/OpenUI5 real
+(``List``/``Table`` con `ODataModel` v4 bindeado a `/odata`). Sirve para detectar regresiones de
+compatibilidad antes de tocar el cliente.
+
+**Opciones óptimas para el punto de control (recomendadas, en orden):**
+1. **Tests de integración que reproducen el tráfico SAPUI5 (YA HECHO aquí).** Es la opción más
+   barata y repetible: corre en CI sin cliente, con `describe.skipIf(!dbAvailable)`. Mantiene el
+   "contrato" como código. *Mejora:* añadir más variantes SAPUI5 (paginado de lista con
+   `$skip`/`$top` a nivel raíz, `$count=true` por defecto en SmartControls, `$expand` con `$select`
+   de ruta `products/id`).
+2. **App UI5 de prueba + OData V4 Mock Server (`@sapui/mockserver` / `sap.ui.core.util.MockServer`
+   o el de `ui5-tooling`).** Permite validar la *vista* (bindings, `$apply`, `@odata.etag`) contra un
+   mock offline y luego apuntar el mismo `ODataModel` al servidor real (`/odata`) para validar
+   extremo-a-extremo. Es lo más fiel a producción sin depender de este repo.
+3. **Colección de Postman / archivo `.http` (REST Client de VS Code).** Guarda las queries exactas
+   (codificadas + cabeceras) como punto de control manual punto-a-punto; útil para demos y para que
+   un QA reproduzca sin levantar UI5.
+4. **`sap.ui.model.odata.v4.ODataModel` en un mini-proyecto con `groupId:"$direct"` Y otro con
+   changeset por defecto.** Compara ambas rutas (GET vs `$batch`) contra el servidor para confirmar
+   paridad — cubre exactamente lo verificado en esta sesión.
+
+**Decisión:** se adopta la opción 1 como punto de control automatizado (ya integrado) y se documenta
+la opción 2/3/4 como siguiente paso para validación visual fina con un cliente UI5 real.
 
 ---
 

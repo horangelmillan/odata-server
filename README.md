@@ -160,6 +160,10 @@ curl -X POST http://localhost:3000/api/core/products \
 | `GET /odata/product-odata/$count` | Total de registros (`text/plain`), respeta `$filter` (Fase B) |
 | `GET /odata/product-odata?$expand=category` | Expansión de navegación `product → category` (Fase D) |
 | `GET /odata/category-odata?$expand=products` | Expansión de navegación `category → products` (Fase D) |
+| `GET /odata/category-odata?$expand=products($select=id,nombre)` | Recorte de navegación: `$select` sobre hijos (Fase G) |
+| `GET /odata/category-odata?$expand=products($filter=precio gt 100)` | Recorte de navegación: `$filter` sobre hijos (Fase G) |
+| `GET /odata/category-odata?$expand=products($orderby=nombre;$top=2;$skip=1)` | Recorte de navegación: `$orderby`/`$top`/`$skip` sobre hijos (Fase G) |
+| `GET /odata/product-odata?$expand=category($select=id,nombre)` | Recorte de navegación `belongsTo` (Fase G) |
 | `POST /odata/$batch` | `$batch` de solo lectura (multipart/mixed) (Fase C.2) |
 
 > **Naming de endpoints:** el nombre en `/odata/<nombre>` se genera en kebab-case a partir del nombre de la clase (p.ej. `ProductOData` → `/odata/product-odata`). El `$Endpoint` del `$metadata` usa el mismo `getEndpoint()`, por lo que ruta y metadata coinciden y SAPUI5 resuelve las URLs correctamente.
