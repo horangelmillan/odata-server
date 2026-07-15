@@ -25,7 +25,7 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 | G | Recorte de navegación | `$select`/`$filter`/`$orderby`/`$top`/`$skip` sobre navigation properties (ambas direcciones) + combinación con `$count` | ✅ |
 | G.1 | Verificación con tráfico SAPUI5 | Peticiones idénticas a `ODataModel` v4 (URL-encode `%2C`, cabeceras `OData-Version`, `$batch` changeset) como punto de control | ✅ |
 | H | `$batch` de escritura | Changesets atómicos: escritura propia en OData (POST/PUT/PATCH/DELETE) vía Sequelize dentro de `db.transaction()`, con `Content-ID`, referencias `$<id>` y escritura directa por entidad (`$direct`) | ✅ |
-| I | Tipos/fechas EDM + `$format` | Conversión de tipos EDM (`DateTimeOffset`, `Edm.Decimal`, etc.) y soporte de `$format` | ⏳ pendiente |
+| I | Tipos/fechas EDM + `$format` | Conversión de tipos EDM (`DateTimeOffset`, `Edm.Decimal`, etc.) y soporte de `$format` | ✅ |
 | P | Rendimiento (gate merge) | Baseline `v1.1.0` vs `feat` con autocannon; gate de regresión ≤10% en p95/throughput; 0 errores | ⏳ pendiente |
 | F | Cierre: merge + tag | Desbloquear `master`, merge de `feat/odata-sapui5-compat`, tag `v1.1.0`. **Bloqueado** hasta A–I ✅ + P ✅ | 🔒 bloqueado |
 
@@ -399,6 +399,41 @@ contra Postgres (Docker). Sin regresiones en las suites A–G.
 
 **Pendiente de la sesión:** actualizar `README.md`; luego Fase I (tipos/fechas EDM + `$format`) y
 Fase P (gate de rendimiento) antes del merge a `master`.
+
+---
+
+### Sesión 12 — Fase I: tipos EDM (`DateTimeOffset`, `Edm.Decimal`) + `$format` (2026-07-15)
+
+**Contexto:** dos gaps de compatibilidad SAPUI5 en la lectura OData: (1) `$format` era rechazado con
+**400** por `validateBasicParameters` de `@phrasecode/odata` (no está en su whitelist de `$`-params);
+(2) las fechas Sequelize `DATE` (timestamp) se tipaban como `Edm.Date` en el `$metadata`, cuando SAPUI5
+espera `Edm.DateTimeOffset` para valores con hora.
+
+**Implementación:**
+- `src/common/service/odata/odata-format.ts` (NUEVO): `stripFormat(query)` elimina `$format`/`%24format`
+  del query **sin re-codificar** el resto (regex, no `URLSearchParams.toString()` que rompería
+  `$filter` al convertir espacios en `+`). Devuelve `unsupported: true` si el valor no es JSON.
+- `src/common/service/odata/odata.service.ts`: pre-middleware que aplica `stripFormat`; `$format=json`
+  (o `application/json`) → se elimina y continúa; cualquier otro formato → **415**.
+- `src/common/middleware/batch.middleware.ts` (`dispatchRead`): misma negociación dentro del `$batch`
+  (JSON se ignora, no-JSON → bloque 415).
+- `scripts/patch-odata.mjs` (**Parche 3**, marcador `PATCHED-EDMDATE-v1`, idempotente): `mapToEdmType`
+  distingue `DATEONLY` (→ `Edm.Date`) de `DATE`/`DATETIME`/`TIMESTAMP` (→ `Edm.DateTimeOffset`).
+- `src/common/service/odata/models/product.odata.model.ts`: expone `createdAt`/`updatedAt`
+  (`DataTypes.DATE`) como `Edm.DateTimeOffset`; se serializan ISO 8601 (`Date.toJSON`).
+
+**Notas EDM:** `precio` (DECIMAL) ya se tipaba `Edm.Decimal` y pg lo devuelve como **string** — correcto
+para SAPUI5 (`IEEE754Compatible`). Se decidió mantener fechas en **ISO 8601** (ya compatible con
+ODataModel v4), sin convertir al legacy `/Date(...)/` de OData v2.
+
+**Tests (5 nuevos en `odata-expand.integration.test.ts`):** sin BD — `$metadata` tipa `precio`
+`Edm.Decimal` y `createdAt`/`updatedAt` `Edm.DateTimeOffset`, `$format=json` aceptado (200),
+`$format=xml` → 415; con BD — `createdAt`/`updatedAt` en ISO 8601, `$format=json` sobre datos → 200.
+
+**Resultado:** `pnpm test` → **148 passing + 1 todo** (143 + 5 Fase I), 23 test files en verde contra
+Postgres (Docker). Sin regresiones. `tsc` conserva solo errores preexistentes (ninguno en archivos I).
+
+**Pendiente:** actualizar `README.md`; Fase P (gate de rendimiento ≤10% vs `v1.1.0`) antes del merge.
 
 ---
 

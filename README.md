@@ -168,6 +168,13 @@ curl -X POST http://localhost:3000/api/core/products \
 | `POST /odata/product-odata` | Alta directa de entidad (modo `$direct` de SAPUI5) → `201` + `Location` (Fase H) |
 | `PATCH/PUT /odata/product-odata/:id` | Modificación directa por clave → `200` (Fase H) |
 | `DELETE /odata/product-odata/:id` | Baja directa por clave → `204` (Fase H) |
+| `GET /odata/product-odata?$format=json` | Negociación de `$format`: JSON se acepta; otro formato → `415` (Fase I) |
+
+> **Tipos EDM y `$format` (Fase I):** el `$metadata` tipa `precio` como `Edm.Decimal` (pg lo devuelve como
+> string, compat `IEEE754Compatible`) y las fechas de auditoría (`createdAt`/`updatedAt`) como
+> `Edm.DateTimeOffset`, serializadas en **ISO 8601** (compat con ODataModel v4). `$format=json`
+> (o `application/json`) se acepta —se ignora, ya que la respuesta es JSON por defecto— y cualquier otro
+> formato responde `415 Unsupported Media Type`, tanto en peticiones directas como dentro de `$batch`.
 
 > **Escritura OData (Fase H):** el `$batch` procesa **changesets atómicos** (`multipart/mixed`): todo el
 > changeset se ejecuta en una transacción (`db.transaction()`) y hace rollback completo ante cualquier
@@ -369,15 +376,16 @@ Si actualizas la librería, verifica que los parches sigan siendo necesarios (ma
 
 ### Compatibilidad SAPUI5/OpenUI5 (v1.1.0)
 
-Las fases A–H del plan `docs/14-sapui5-compatibility-plan.md` añaden las features que SAPUI5/OpenUI5 OData v4 espera y que la librería no trae de serie:
+Las fases A–I del plan `docs/14-sapui5-compatibility-plan.md` añaden las features que SAPUI5/OpenUI5 OData v4 espera y que la librería no trae de serie:
 
 - Acceso por clave, `/$count`, `/$batch` de lectura (Fases A–C).
 - Navigation properties (`$expand`) vía decoradores `@BelongsTo`/`@HasMany` (Fase D).
 - Recorte de navegación (`$select`/`$filter`/`$orderby`/`$top`/`$skip` en `$expand`) (Fase G).
 - Escritura OData: `$batch` con changesets atómicos (transacción + `Content-ID`) y escritura directa por entidad (Fase H).
+- Tipos EDM (`Edm.Decimal`, `Edm.DateTimeOffset` en ISO 8601) y negociación de `$format` (Fase I).
 
-> **Nota:** Fases I (tipos/fechas EDM + `$format`) y P (gate de rendimiento) están pendientes; el
-> merge a `master` está bloqueado hasta completarlas (ver `docs/14`).
+> **Nota:** la Fase P (gate de rendimiento) está pendiente; el merge a `master` está bloqueado
+> hasta completarla (ver `docs/14`).
 
 **Pendientes investigados antes del merge (resueltos como no-bloqueantes):**
 

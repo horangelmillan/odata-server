@@ -6,6 +6,7 @@ import { ProductODataController } from "./controllers/product.odata.controller.j
 import { CategoryODataController } from "./controllers/category.odata.controller.js";
 import { BatchMiddleware } from "../../middleware/batch.middleware.js";
 import { registerWriteRoutes } from "./odata-write.routes.js";
+import { stripFormat } from "./odata-format.js";
 
 const oDataExpressApp: Router = Router();
 
@@ -21,6 +22,23 @@ oDataExpressApp.use((req, _res, next) => {
         .replace(/%24count/gi, "$count")
         .replace(/%24metadata/gi, "$metadata")
         .replace(/%24batch/gi, "$batch");
+    next();
+});
+
+// Fase I: negociación de `$format`. El validador de @phrasecode/odata rechaza
+// `$format` con 400; aquí lo interceptamos: JSON -> se elimina del query;
+// cualquier otro formato -> 415 Unsupported Media Type. Ver odata-format.ts.
+oDataExpressApp.use((req, res, next) => {
+    const queryIndex = req.url.indexOf("?");
+    if (queryIndex < 0) return next();
+
+    const path = req.url.substring(0, queryIndex);
+    const { query, unsupported } = stripFormat(req.url.substring(queryIndex + 1));
+    if (unsupported) {
+        res.status(415).json({ error: "Unsupported $format; only JSON is supported" });
+        return;
+    }
+    req.url = query ? `${path}?${query}` : path;
     next();
 });
 

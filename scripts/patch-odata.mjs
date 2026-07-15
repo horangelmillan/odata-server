@@ -113,6 +113,32 @@ patchFile(
     ].join("\n"),
 );
 
+// Parche 3: mapToEdmType (Fase I). Sequelize `DATE` es un timestamp (fecha+hora)
+// pero su .toString() devuelve "DATE", que la librería mapeaba a `Edm.Date`
+// (solo fecha) — incorrecto para SAPUI5, que espera `Edm.DateTimeOffset` con
+// valores ISO 8601. Distinguimos `DATEONLY` (-> Edm.Date) de `DATE`/`DATETIME`/
+// `TIMESTAMP` (-> Edm.DateTimeOffset). El comentario marca la idempotencia.
+patchFile(
+    path.join("@phrasecode", "odata", "dist", "serializers", "metadata.js"),
+    "EDM DateTimeOffset mapping",
+    [
+        "    if (typeStr.includes('DATE') && !typeStr.includes('TIME')) {",
+        "        return 'Edm.Date';",
+        "    }",
+        "    if (typeStr.includes('DATETIME') || typeStr.includes('TIMESTAMP')) {",
+        "        return 'Edm.DateTimeOffset';",
+        "    }",
+    ].join("\n"),
+    [
+        "    if (typeStr.includes('DATEONLY')) {",
+        "        return 'Edm.Date'; // PATCHED-EDMDATE-v1",
+        "    }",
+        "    if (typeStr.includes('DATE') || typeStr.includes('DATETIME') || typeStr.includes('TIMESTAMP')) {",
+        "        return 'Edm.DateTimeOffset';",
+        "    }",
+    ].join("\n"),
+);
+
 // Parche 2: Ruta /$count + ruta por key en ExpressRouter (GET /:id para entidad individual).
 // Se reemplaza el método setUpODataRouters completo. El marcador PATCHED-COUNT-v2
 // permite reaplicar el parche aunque el archivo ya venga parcheado (p.ej. al

@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import type { Transaction } from "sequelize";
 import { ODataControler, QueryParser } from "@phrasecode/odata";
 import { odataWriteService, type ODataBaseModel } from "../service/odata/odata-write.service.js";
+import { stripFormat } from "../service/odata/odata-format.js";
 
 const MAX_PARTS = 100;
 const MAX_DEPTH = 5;
@@ -209,8 +210,15 @@ async function dispatchRead(
     target: ResolvedTarget,
     controller: ODataControler,
 ): Promise<ResponseBlock> {
-    let queryPart = target.queryPart;
     let pathEntity = target.entitySet;
+
+    // Fase I: negociación de `$format` dentro del $batch. JSON -> se elimina;
+    // otro formato -> 415 (el QueryParser rechazaría `$format` con 400).
+    const format = stripFormat(target.queryPart);
+    if (format.unsupported) {
+        return { status: 415, body: { error: "Unsupported $format; only JSON is supported" } };
+    }
+    let queryPart = format.query;
 
     if (target.key !== null) {
         const extra = new URLSearchParams();

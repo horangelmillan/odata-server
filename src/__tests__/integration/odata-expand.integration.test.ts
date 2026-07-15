@@ -94,6 +94,34 @@ describe("OData $metadata: naming kebab coherente con la ruta (Fase E)", () => {
     });
 });
 
+// Fase I: tipos EDM en $metadata y negociación de $format. No requiere BD
+// (el $metadata se genera de los modelos y el 415 corta antes de tocar la BD).
+describe("OData tipos EDM + $format (Fase I)", () => {
+    const app = expressApp();
+
+    it("$metadata tipa precio como Edm.Decimal y las fechas como Edm.DateTimeOffset", async () => {
+        const res = await request(app).get("/odata/$metadata");
+
+        expect(res.status).toBe(200);
+        const product = (res.body as Record<string, any>).entities.ProductOData;
+        expect(product.id.$Type).toBe("Edm.Int32");
+        expect(product.precio.$Type).toBe("Edm.Decimal");
+        expect(product.createdAt.$Type).toBe("Edm.DateTimeOffset");
+        expect(product.updatedAt.$Type).toBe("Edm.DateTimeOffset");
+    });
+
+    it("$format=json es aceptado (no 400/415) sobre $metadata", async () => {
+        const res = await request(app).get("/odata/$metadata?$format=json");
+        expect(res.status).toBe(200);
+        expect((res.body as Record<string, any>).entities).toHaveProperty("ProductOData");
+    });
+
+    it("$format con valor no-JSON devuelve 415 Unsupported Media Type", async () => {
+        const res = await request(app).get("/odata/product-odata?$format=xml");
+        expect(res.status).toBe(415);
+    });
+});
+
 describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)", () => {
     const app = expressApp();
     let electronicId = 0;
@@ -347,6 +375,28 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         expect(electronic.products.length).toBe(3);
         expect(electronic.products[0]).toHaveProperty("nombre");
         expect(electronic.products[0]).not.toHaveProperty("precio");
+    });
+
+    // --- Fase I: fechas Edm.DateTimeOffset en ISO 8601 + $format sobre datos ---
+
+    it("I: product-odata devuelve createdAt/updatedAt en ISO 8601 (compat SAPUI5)", async () => {
+        const res = await request(app).get("/odata/product-odata");
+
+        expect(res.status).toBe(200);
+        const value = (res.body as any).value as Record<string, any>[];
+        expect(value.length).toBeGreaterThan(0);
+        const iso8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+        expect(value[0].createdAt).toMatch(iso8601);
+        expect(value[0].updatedAt).toMatch(iso8601);
+    });
+
+    it("I: $format=json sobre datos devuelve 200 y la colección (se ignora)", async () => {
+        const res = await request(app).get("/odata/product-odata?$format=json&$select=id,nombre");
+
+        expect(res.status).toBe(200);
+        const value = (res.body as any).value as Record<string, any>[];
+        expect(Array.isArray(value)).toBe(true);
+        expect(value[0]).toHaveProperty("nombre");
     });
 
     // --- Fase H: escritura vía $batch (changesets atómicos) + escritura directa ---
