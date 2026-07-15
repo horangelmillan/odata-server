@@ -384,8 +384,9 @@ Las fases A–I del plan `docs/14-sapui5-compatibility-plan.md` añaden las feat
 - Escritura OData: `$batch` con changesets atómicos (transacción + `Content-ID`) y escritura directa por entidad (Fase H).
 - Tipos EDM (`Edm.Decimal`, `Edm.DateTimeOffset` en ISO 8601) y negociación de `$format` (Fase I).
 
-> **Nota:** la Fase P (gate de rendimiento) está pendiente; el merge a `master` está bloqueado
-> hasta completarla (ver `docs/14`).
+> **Nota:** la Fase P (gate de rendimiento) **superada** — `feat/odata-sapui5-compat` es
+> equivalente a `v1.1.0` (0 regresión >10% en p95/throughput, 0 errores; ver `docs/14` Sesión 13).
+> El merge a `master` y el tag `v1.1.0` están desbloqueados (acción manual consciente).
 
 **Pendientes investigados antes del merge (resueltos como no-bloqueantes):**
 
@@ -395,6 +396,32 @@ Las fases A–I del plan `docs/14-sapui5-compatibility-plan.md` añaden las feat
 ### `pg` v16 no existe
 
 En `package.json` se usa `pg@^8.22.0`. La versión `16.x` no existe en el registro npm.
+
+---
+
+## Benchmark de rendimiento (gate de merge)
+
+`scripts/bench/` mide la regresión de rendimiento vs el release `v1.1.0` con `autocannon`
+(devDependency). El gate de aceptación es **≤10% de regresión en p95 y en throughput, 0 errores**
+(ver `docs/14`, Sesión 13).
+
+```bash
+# 1) Baseline: checkout del tag v1.1.0 en un worktree con su propio node_modules
+git worktree add ../worktree-v1.1.0 v1.1.0
+cd ../worktree-v1.1.0 && pnpm install && cd ../servidor-odata
+
+# 2) Arrancar CADA server por separado (NO a la vez: compiten por CPU y sesgan la métrica)
+#    feature en :3002  |  baseline en :3003   (PORT env)
+TARGET_URL=http://localhost:3002 OUT_FILE=/tmp/bench-feature.json  node scripts/bench/bench-single.mjs
+TARGET_URL=http://localhost:3003 OUT_FILE=/tmp/bench-baseline.json node scripts/bench/bench-single.mjs
+
+# 3) Comparar con el gate de 10%
+FEATURE_FILE=/tmp/bench-feature.json BASELINE_FILE=/tmp/bench-baseline.json node scripts/bench/bench-compare.mjs
+```
+
+Notas: `bench-single.mjs` hace warmup + 3 rondas por endpoint y usa la mediana; usa `p97_5`
+como proxy de p95 (autocannon 8 no expone `p95` directo). Para resultados estables, reinicia
+Postgres antes del baseline y mide el baseline **primero** (evita sesgo de cache de buffers).
 
 ---
 

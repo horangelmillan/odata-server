@@ -26,8 +26,8 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 | G.1 | Verificación con tráfico SAPUI5 | Peticiones idénticas a `ODataModel` v4 (URL-encode `%2C`, cabeceras `OData-Version`, `$batch` changeset) como punto de control | ✅ |
 | H | `$batch` de escritura | Changesets atómicos: escritura propia en OData (POST/PUT/PATCH/DELETE) vía Sequelize dentro de `db.transaction()`, con `Content-ID`, referencias `$<id>` y escritura directa por entidad (`$direct`) | ✅ |
 | I | Tipos/fechas EDM + `$format` | Conversión de tipos EDM (`DateTimeOffset`, `Edm.Decimal`, etc.) y soporte de `$format` | ✅ |
-| P | Rendimiento (gate merge) | Baseline `v1.1.0` vs `feat` con autocannon; gate de regresión ≤10% en p95/throughput; 0 errores | ⏳ pendiente |
-| F | Cierre: merge + tag | Desbloquear `master`, merge de `feat/odata-sapui5-compat`, tag `v1.1.0`. **Bloqueado** hasta A–I ✅ + P ✅ | 🔒 bloqueado |
+| P | Rendimiento (gate merge) | Baseline `v1.1.0` vs `feat` con autocannon; gate de regresión ≤10% en p95/throughput; 0 errores | ✅ |
+| F | Cierre: merge + tag | Desbloquear `master`, merge de `feat/odata-sapui5-compat`, tag `v1.1.0`. Desbloqueado: A–P ✅ | ⏳ pendiente (acción manual) |
 
 > **Congelamiento de `master`:** `master` está protegida en GitHub (`lock_branch` + `enforce_admins`, repo público) y no recibe merges hasta cumplir **todas** las condiciones de aceptación: A–I verificadas con tests + fase P (rendimiento) sin regresión ≤10% vs `v1.1.0`. Desbloqueo consciente: `gh api -X DELETE repos/horangelmillan/odata-server/branches/master/protection`.
 
@@ -433,9 +433,50 @@ ODataModel v4), sin convertir al legacy `/Date(...)/` de OData v2.
 **Resultado:** `pnpm test` → **148 passing + 1 todo** (143 + 5 Fase I), 23 test files en verde contra
 Postgres (Docker). Sin regresiones. `tsc` conserva solo errores preexistentes (ninguno en archivos I).
 
-**Pendiente:** actualizar `README.md`; Fase P (gate de rendimiento ≤10% vs `v1.1.0`) antes del merge.
+ **Pendiente:** actualizar `README.md`; Fase P (gate de rendimiento ≤10% vs `v1.1.0`) antes del merge.
 
 ---
+
+### Sesión 13 — Fase P: gate de rendimiento (baseline `v1.1.0` vs `feat`, autocannon) (2026-07-15)
+
+**Objetivo:** verificar que `feat/odata-sapui5-compat` (Fases A–I) no introduce
+regresión de rendimiento >10% (p95 latencia y throughput) vs el release `v1.1.0`.
+
+**Metodología (scripts en `scripts/bench/`):**
+- `autocannon` (devDependency nueva) mide 4 endpoints OData de lectura: colección
+  `product-odata`, `$count`, `$metadata`, y `category-odata?$expand=products`.
+- **Aislamiento:** cada server se mide por separado (el otro detenido). Medir ambos
+  servers **a la vez en la misma máquina contaminó la métrica** (competencia de CPU
+  entre dos procesos ts-node → el segundo mostraba ~2x peor p95 y -40/50% rps;
+  artefacto de medición, no regresión de código).
+- **Warmup** de 3s + **3 rondas** por endpoint; se toma la **mediana** para reducir
+  ruido. 50 conexiones, 15s por ronda.
+- **DB limpia:** se reinició Postgres antes del baseline para igualar el estado de
+  buffers entre ambas mediciones (el orden de medición sesgaba `$metadata` por cache).
+- **Métrica de cola:** autocannon 8 no expone `p95` directo; se usa `p97_5`
+  (`result.latency.p97_5`) como proxy ligeramente más estricto.
+- **Gate:** `p95_degradation ≤ 10%` y `req/s_change ≥ -10%`, 0 errores.
+
+**Resultado (DB limpio, baseline medido primero):**
+
+| Endpoint | base p95 | feat p95 | p95 deg | base rps | feat rps | rps chg | Veredicto |
+|---|---|---|---|---|---|---|---|
+| GET product-odata (collection) | 36ms | 37ms | +2,8% | 1615 | 1514 | -6,3% | PASS |
+| GET product-odata $count | 59ms | 59ms | 0% | 1184 | 1201 | +1,4% | PASS |
+| GET $metadata | 38ms | 12ms | -68% | 5111 | 5403 | +5,7% | PASS |
+| GET category $expand products | 47ms | 45ms | -4,3% | 1257 | 1238 | -1,5% | PASS |
+
+**VERDICT: PASS** (0 warnings, 0 fails). El feature es equivalente a `v1.1.0`
+(en $metadata incluso más rápido por cacheo favorable). Las variaciones están dentro
+del ruido de medición; no hay regresión sistemática de las Fases A–I.
+
+**Nota de coste:** los cambios de las Fases A–I son O(1) por request (regex de
+normalización de path, `stripFormat` de `$format`, parche de mapeo EDM, y la
+exposición de `createdAt`/`updatedAt` como `Edm.DateTimeOffset`), sin bucles ni
+serialización pesada adicional, consistente con el resultado del gate.
+
+---
+
 
 ## Decisiones técnicas globales
 
