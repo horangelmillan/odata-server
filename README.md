@@ -169,6 +169,9 @@ curl -X POST http://localhost:3000/api/core/products \
 | `PATCH/PUT /odata/product-odata/:id` | Modificación directa por clave → `200` (Fase H) |
 | `DELETE /odata/product-odata/:id` | Baja directa por clave → `204` (Fase H) |
 | `GET /odata/product-odata?$format=json` | Negociación de `$format`: JSON se acepta; otro formato → `415` (Fase I) |
+| `GET /odata/*` (lecturas) | Inyecta `@odata.etag` (ISO 8601 desde `updatedAt`) en cada entidad y navegación para concurrencia optimista de SAPUI5 (Fase X) |
+| `PATCH/PUT/DELETE /odata/*` (escritura directa y `$batch`) | Valida `If-Match`; desajuste → `412 Precondition Failed`; el etag rota en cada update (Fase X) |
+| Errores OData (escritura directa, `$batch` y lectura) | Formato OData v4 estándar `{ error: { code, message, target?, details[] } }` que SAPUI5 `MessageManager` parsea (Fase G2) |
 
 > **Tipos EDM y `$format` (Fase I):** el `$metadata` tipa `precio` como `Edm.Decimal` (pg lo devuelve como
 > string, compat `IEEE754Compatible`) y las fechas de auditoría (`createdAt`/`updatedAt`) como

@@ -1,5 +1,6 @@
 import type { Sequelize, Transaction, ModelStatic, Model as SequelizeModel } from "sequelize";
 import { dataSource } from "./datasource.js";
+import { etagValueOf } from "./odata-etag.js";
 
 // --- Contratos mínimos de la metadata que expone @phrasecode/odata ---
 // (Model.getMetadata() en la librería; ver core/model.js)
@@ -98,6 +99,11 @@ class ODataWriteService {
     ): Promise<WriteResult> {
         const { meta, sqModel, pk } = this.resolve(model);
         const payload = this.toColumns(meta, data, { includePk: false });
+        // G1: rota el etag en cada update. El modelo OData puede no tener
+        // `timestamps:true`, así que forzamos `updatedAt` para que el
+        // `@odata.etag` cambie y la concurrencia optimista de SAPUI5 funcione.
+        const updatedAtCol = meta.columnMetadata.find((column) => column.propertyKey === "updatedAt");
+        if (updatedAtCol) payload[updatedAtCol.columnIdentifier] = new Date();
         const [affected] = await sqModel.update(payload, {
             where: { [pk.columnIdentifier]: keyValue },
             transaction: tx,
@@ -116,6 +122,18 @@ class ODataWriteService {
             transaction: tx,
         });
         return { deleted: affected > 0 };
+    }
+
+    // G1: devuelve el etag actual de la entidad (`updatedAt`, fallback
+    // `createdAt`) como string ISO, o `null` si no existe. Usado para validar
+    // `If-Match` en update/delete (concurrencia optimista de SAPUI5).
+    async getCurrentEtag(model: ODataBaseModel, keyValue: unknown): Promise<string | null> {
+        const { sqModel } = this.resolve(model);
+        const row = await sqModel.findByPk(keyValue as never);
+        if (!row) return null;
+        const json = row.toJSON() as Record<string, unknown>;
+        const value = json["updatedAt"] ?? json["createdAt"];
+        return etagValueOf(value) ?? null;
     }
 }
 

@@ -3,6 +3,8 @@ import type { Transaction } from "sequelize";
 import { ODataControler, QueryParser } from "@phrasecode/odata";
 import { odataWriteService, type ODataBaseModel } from "../service/odata/odata-write.service.js";
 import { stripFormat } from "../service/odata/odata-format.js";
+import { injectEtag, etagMatches } from "../service/odata/odata-etag.js";
+import { oDataError } from "../service/odata/odata-error.js";
 
 const MAX_PARTS = 100;
 const MAX_DEPTH = 5;
@@ -14,6 +16,7 @@ const STATUS_TEXT: Record<number, string> = {
     400: "Bad Request",
     404: "Not Found",
     405: "Method Not Allowed",
+    412: "Precondition Failed",
     415: "Unsupported Media Type",
     500: "Internal Server Error",
 };
@@ -130,6 +133,7 @@ interface ParsedHttpRequest {
     method: string;
     url: string;
     body: string;
+    headers: Record<string, string>;
 }
 
 function parseHttpPart(raw: string): ParsedHttpRequest {
@@ -139,13 +143,23 @@ function parseHttpPart(raw: string): ParsedHttpRequest {
     const head = separatorIndex >= 0 ? raw.slice(0, separatorIndex) : raw;
     const body = separatorIndex >= 0 ? raw.slice(separatorIndex + separatorLength).trim() : "";
 
-    const requestLine = head.split(/\r\n|\n/)[0].trim().split(" ");
+    const headLines = head.split(/\r\n|\n/);
+    const requestLine = headLines[0].trim().split(" ");
     const method = (requestLine[0] || "GET").toUpperCase();
     const lastToken = requestLine[requestLine.length - 1] || "";
     const url = requestLine
         .slice(1, lastToken.toUpperCase().startsWith("HTTP/") ? -1 : undefined)
         .join(" ");
-    return { method, url, body };
+
+    // G1: extrae los headers del request HTTP interno (OData-Version, Accept,
+    // Content-Type y, sobre todo, `If-Match` que SAPUI5 emite aquí para la
+    // concurrencia optimista dentro del changeset).
+    const headers: Record<string, string> = {};
+    for (let i = 1; i < headLines.length; i++) {
+        const idx = headLines[i].indexOf(":");
+        if (idx > 0) headers[headLines[i].slice(0, idx).trim().toLowerCase()] = headLines[i].slice(idx + 1).trim();
+    }
+    return { method, url, body, headers };
 }
 
 interface ResolvedTarget {
@@ -216,7 +230,7 @@ async function dispatchRead(
     // otro formato -> 415 (el QueryParser rechazaría `$format` con 400).
     const format = stripFormat(target.queryPart);
     if (format.unsupported) {
-        return { status: 415, body: { error: "Unsupported $format; only JSON is supported" } };
+        return { status: 415, body: oDataError(415, "Unsupported $format; only JSON is supported") };
     }
     let queryPart = format.query;
 
@@ -234,6 +248,9 @@ async function dispatchRead(
     const queryString = `/${pathEntity}?${normalizedQuery}`;
     const queryParser = new QueryParser(decodeURIComponent(queryString), controller.getBaseModel());
     const result = await controller.get(queryParser);
+    // G1: inyecta `@odata.etag` en la respuesta de lectura del $batch para que
+    // SAPUI5 pueda aplicar concurrencia optimista sobre las entidades leídas.
+    injectEtag(result);
     return { status: 200, body: result };
 }
 
@@ -252,6 +269,7 @@ async function dispatchWrite(
     body: string,
     tx: Transaction,
     contentIdKeys: ContentIdKeys,
+    ifMatch?: string,
 ): Promise<ResponseBlock> {
     const model = target.controller.getBaseModel() as unknown as ODataBaseModel;
     const locationBase = `/odata/${target.entitySet}`;
@@ -259,6 +277,7 @@ async function dispatchWrite(
     if (method === "POST") {
         const data = parseJsonBody(body);
         const result = await odataWriteService.create(model, data, tx);
+        injectEtag(result.entity);
         return {
             status: 201,
             body: result.entity,
@@ -271,12 +290,26 @@ async function dispatchWrite(
         throw new ChangesetError(400, `${method} requires an entity key`);
     }
 
+    // G1: concurrencia optimista (opt-in). Solo se valida `If-Match` cuando el
+    // request interno lo incluye; si no, se comporta como antes (compatibilidad
+    // con clientes que no usan etag).
+    if (ifMatch !== undefined) {
+        const currentEtag = await odataWriteService.getCurrentEtag(model, key);
+        if (currentEtag === null) {
+            throw new ChangesetError(404, `Entity '${target.entitySet}(${String(key)})' not found`);
+        }
+        if (!etagMatches(ifMatch, currentEtag)) {
+            throw new ChangesetError(412, `ETag mismatch for '${target.entitySet}(${String(key)})'`);
+        }
+    }
+
     if (method === "PATCH" || method === "PUT") {
         const data = parseJsonBody(body);
         const result = await odataWriteService.update(model, key, data, tx);
         if (!result.entity) {
             throw new ChangesetError(404, `Entity '${target.entitySet}(${String(key)})' not found`);
         }
+        injectEtag(result.entity);
         return { status: 200, body: result.entity };
     }
 
@@ -313,7 +346,7 @@ async function processChangeset(
                 throw new ChangesetError(400, "Changesets only accept application/http parts");
             }
             const contentId = part.headers["content-id"];
-            const { method, url, body } = parseHttpPart(part.body);
+            const { method, url, body, headers } = parseHttpPart(part.body);
 
             const target = resolveTarget(url, registry);
             if (!target) {
@@ -333,7 +366,7 @@ async function processChangeset(
                 throw new ChangesetError(405, `Method '${method}' is not allowed inside a changeset`);
             }
 
-            const response = await dispatchWrite(method, target, body, tx as Transaction, contentIdKeys);
+            const response = await dispatchWrite(method, target, body, tx as Transaction, contentIdKeys, headers["if-match"]);
             if (contentId && response.location) {
                 const keyMatch = response.location.match(/\(([^)]+)\)$/);
                 if (keyMatch) contentIdKeys.set(contentId, keyMatch[1]);
@@ -353,14 +386,18 @@ async function processChangeset(
         // La transacción ya hizo rollback: todo el changeset falla de forma
         // atómica y se responde con un único error (spec OData).
         if (error instanceof ChangesetError) {
+            // G2: mensaje estándar según el status (p.ej. "Precondition Failed"
+            // para 412) para que SAPUI5 `MessageManager` lo muestre correctamente;
+            // el detalle conserva el diagnóstico específico (p.ej. la entidad).
+            const message = STATUS_TEXT[error.status] || "Changeset rolled back";
             return httpResponseBlock({
                 status: error.status,
-                body: { error: "Changeset rolled back", detail: error.detail },
+                body: oDataError(error.status, message, typeof error.detail === "string" ? error.detail : undefined),
             });
         }
         return httpResponseBlock({
             status: 500,
-            body: { error: "Changeset rolled back", detail: (error as Error).message },
+            body: oDataError(500, "Changeset rolled back", (error as Error).message),
         });
     }
 }
@@ -375,12 +412,12 @@ async function processTopLevelRequest(
         // ir en un multipart/mixed (spec OData $batch).
         return httpResponseBlock({
             status: 405,
-            body: { error: "Write operations must be sent inside a changeset (multipart/mixed)" },
+            body: oDataError(405, "Write operations must be sent inside a changeset (multipart/mixed)"),
         });
     }
     const target = resolveTarget(url, registry);
     if (!target) {
-        return httpResponseBlock({ status: 404, body: { error: `Entity set not found for '${url}'` } });
+        return httpResponseBlock({ status: 404, body: oDataError(404, `Entity set not found for '${url}'`) });
     }
     const response = await dispatchRead(target, target.controller);
     return httpResponseBlock(response);
@@ -405,7 +442,7 @@ async function buildBlocks(
             const innerBoundary = boundaryOf(partType) || "changeset";
             blocks.push(await processChangeset(part.body, innerBoundary, registry, depth + 1));
         } else {
-            blocks.push(httpResponseBlock({ status: 415, body: { error: "Unsupported part Content-Type" } }));
+            blocks.push(httpResponseBlock({ status: 415, body: oDataError(415, "Unsupported part Content-Type") }));
         }
     }
     return blocks;

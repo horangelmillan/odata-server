@@ -21,13 +21,17 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 | C.3 | Robustez `/$count` codificado | Middleware de normalización `%24`→`$` en `odata.service.ts` (mitiga bug de path encoding) | ✅ |
 | D | Navigation properties | Decoradores `@BelongsTo`/`@HasMany` en modelos OData | ✅ |
 | E | Tests | Tests unitarios + integración de todas las fases | ✅ |
-| F | Documentación + merge | `docs/14-*.md`, README, merge a master, tag `v1.1.0` | 📝 docs ✅ · merge/tag pendiente |
+| F | Documentación + merge | `docs/14-*.md`, README, merge a master, tag `v1.1.0` | 📝 docs ✅ · merge/tag pendiente (acción manual) |
 | G | Recorte de navegación | `$select`/`$filter`/`$orderby`/`$top`/`$skip` sobre navigation properties (ambas direcciones) + combinación con `$count` | ✅ |
 | G.1 | Verificación con tráfico SAPUI5 | Peticiones idénticas a `ODataModel` v4 (URL-encode `%2C`, cabeceras `OData-Version`, `$batch` changeset) como punto de control | ✅ |
 | H | `$batch` de escritura | Changesets atómicos: escritura propia en OData (POST/PUT/PATCH/DELETE) vía Sequelize dentro de `db.transaction()`, con `Content-ID`, referencias `$<id>` y escritura directa por entidad (`$direct`) | ✅ |
 | I | Tipos/fechas EDM + `$format` | Conversión de tipos EDM (`DateTimeOffset`, `Edm.Decimal`, etc.) y soporte de `$format` | ✅ |
 | P | Rendimiento (gate merge) | Baseline `v1.1.0` vs `feat` con autocannon; gate de regresión ≤10% en p95/throughput; 0 errores | ✅ |
-| F | Cierre: merge + tag | Desbloquear `master`, merge de `feat/odata-sapui5-compat`, tag `v1.1.0`. Desbloqueado: A–P ✅ | ⏳ pendiente (acción manual) |
+| R | `$metadata` CSDL v4.01 | Servir CSDL JSON 4.01 válido (namespace + `$EntityContainer` con `EntitySet`s + `$NavigationPropertyBinding` + tipos/navegación cualificados) para que SAPUI5/OpenUI5 `ODataModel` v4 bootstrappee sin el shim EDMX del demo | ✅ |
+| S/T | `$expand` + `$batch` write | Validados extremo‑a‑extremo contra el envelope REAL de SAPUI5 (changeset `multipart/mixed` con `OData-Version`/`Content-ID`/`Location`): **ya funcionaban**. Refutan `docs/15` (gaps #4 y #8). No requieren código nuevo. | ✅ |
+| X | ETag / concurrencia optimista | `@odata.etag` inyectado en lecturas (colección, entidad, `$expand`) y validación de `If-Match` en update/delete (escritura directa y `$batch` changeset). 412 en desajuste. Fuente: `updatedAt` (ISO 8601). | ✅ |
+| G2 | Formato de error OData v4 estándar | Errores en forma `{ error: { code, message, target?, details[] } }` (SAPUI5 `MessageManager` parsea `error.message`). Cubre escritura directa, `$batch` changeset y la red de seguridad del `res.json` para el path de lectura de la librería. | ✅ |
+| F | Cierre: merge + tag | Desbloquear `master`, merge de `feat/odata-sapui5-compat`, tag `v1.1.0`. Desbloqueado: A–R, X ✅ | ⏳ pendiente (acción manual) |
 
 > **Congelamiento de `master`:** `master` está protegida en GitHub (`lock_branch` + `enforce_admins`, repo público) y no recibe merges hasta cumplir **todas** las condiciones de aceptación: A–I verificadas con tests + fase P (rendimiento) sin regresión ≤10% vs `v1.1.0`. Desbloqueo consciente: `gh api -X DELETE repos/horangelmillan/odata-server/branches/master/protection`.
 
@@ -477,6 +481,144 @@ serialización pesada adicional, consistente con el resultado del gate.
 
 ---
 
+
+### Sesión 14 — Fase R: `$metadata` CSDL JSON 4.01 válido (2026-07-15)
+
+**Contexto:** `docs/15` detectó (con un cliente UI5 externo) que el `$metadata` de
+`@phrasecode/odata` es un CSDL+JSON custom que SAPUI5 no puede bootstrappear, y por
+tanto el demo usaba un shim EDMX. Las demás gaps de `docs/15` (#4 `$expand`, #8
+`$batch` write → 405) se **refutaron empíricamente**: funcionan contra el server vivo
+con el envelope real de `ODataModel` v4 (ver tests Fase T).
+
+**Qué se hizo (Fase R):**
+- `src/common/service/odata/odata-metadata.ts` (NUEVO): `transformToCsdl(raw)` convierte
+  la metadata cruda de la librería (`dataSource.getMetadata(controllerEndpoints)`) en
+  CSDL JSON 4.01: namespace `ODataServer`, `$EntityContainer: ODataServer.Container`,
+  `EntitySet`s por endpoint kebab con `$Type` namespaced, y `$NavigationPropertyBinding`
+  por navegación. Reusa la metadata de la librería (ya parcheada con `$Endpoint` kebab y
+  tipos EDM) y solo re‑escribe la FORMA.
+- `src/common/service/odata/odata.service.ts`: ruta `GET /\\$metadata` (¡`$` escapado,
+  como en `/$count`; sin escapar path‑to‑regexp lo trata como ancla) registrada
+  **antes** de `new ExpressRouter(...)`, para ganar el match y sustituir la de la librería.
+
+**Verificación:** server vivo devuelve CSDL 4.01 con `$EntityContainer` resoluble y
+`EntitySet`s; tests Fase R en `odata-expand.integration.test.ts` (sin BD) afirman la
+estructura. `pnpm test` → **152 passing + 1 todo**. Sin regresiones.
+
+**Nota de robustez:** el server previamente servía formato viejo porque la ruta
+`/\\$metadata` sin escapar no matcheaba (mismo pitfall que `/$count`); corregido con
+`/\\$metadata`.
+
+### Sesión 15 — Fase X: ETag / concurrencia optimista (2026-07-15)
+
+**Contexto:** `docs/15` (Fase U) y el análisis de compatibilidad real identifican que
+SAPUI5 `ODataModel` v4 usa `@odata.etag` y las cabeceras `If-Match`/`If-None-Match`
+para concurrencia optimista. El servidor **no emitía `@odata.etag`** ni validaba
+`If-Match`, por lo que UI5 no puede hacer update/delete de forma estándar (debe
+desactivar el etag en el cliente). Esto era el único bloqueo duro del "100%".
+
+**Implementación:**
+- `src/common/service/odata/odata-etag.ts` (NUEVO): `injectEtag()` recorre
+  recursivamente la respuesta (colección, entidad individual y navegaciones
+  `$expand`) y añade `@odata.etag` desde `updatedAt` (fallback `createdAt`),
+  normalizado a **ISO 8601** (`Date.toISOString()`). `etagMatches()` compara el
+  `If-Match` recibido (quito comillas envolventes y reconozco `*`) con el etag
+  actual.
+- `src/common/service/odata/odata.service.ts`: middleware que envuelve
+  `res.json` para inyectar `@odata.etag` en TODAS las respuestas OData
+  (incluida la ruta GET de la librería y `$metadata`).
+- `src/common/service/odata/odata-write.service.ts`: `getCurrentEtag()` devuelve
+  el etag ISO actual; `update()` **rota `updatedAt`** en cada escritura para que
+  el etag cambie y la concurrencia optimista sea efectiva (el modelo OData no
+  tiene `timestamps:true`).
+- `src/common/service/odata/models/category.odata.model.ts`: se mapean
+  `createdAt`/`updatedAt` (ya existen en la tabla `categories` vía el modelo
+  core con `timestamps:true`) como fuente de etag para `CategoryOData`.
+- `src/common/service/odata/odata-write.routes.ts`: validación `If-Match` en
+  PATCH/PUT/DELETE (escritura directa `$direct`). 404 si no existe, **412** si
+  hay desajuste.
+- `src/common/middleware/batch.middleware.ts`: `parseHttpPart()` ahora extrae
+  los headers del **request HTTP interno** (donde SAPUI5 emite `If-Match` dentro
+  del changeset); `dispatchWrite()` valida el etag en PATCH/PUT/DELETE y
+  `dispatchRead()` inyecta `@odata.etag` en las lecturas del `$batch`.
+
+**Decisiones técnicas:**
+- **Concurrencia OPT-IN:** la validación `If-Match` solo se aplica cuando el
+  cliente la envía. Sin `If-Match`, el comportamiento es el de antes
+  (compatibilidad con clientes que no usan etag y con los tests Fase H/T).
+- **Fuente de etag = `updatedAt` ISO:** evita dependencias de esquema nuevas y
+  es estable entre lectura y escritura (mismo `toISOString()` que el
+  `updatedAt` serializado).
+- **Rotación forzada en `update`:** garantiza que el etag cambie tras cada
+  modificación, requisito para que UI5 detecte concurrencia.
+
+**Verificación:** `pnpm test` → **161 passing + 1 todo** (9 tests nuevos de Fase
+X en `odata-expand.integration.test.ts`, gated por BD): GET colección/entidad
+inyectan `@odata.etag`; `$expand` anida `@odata.etag` en la navegación; PATCH/DELETE
+directos y en `$batch` con `If-Match` correcto → 200/204; con `If-Match`
+incorrecto → **412**; PATCH renueva el etag. Sin regresiones en A–R.
+
+**Pendiente de la sesión:** actualizar `README.md` y reconciliar `docs/15`
+(sección "Evaluación de la validación REAL" auto‑contradictoria y que cita un
+`ui5-odata-demo` inexistente en este workspace). Luego Fase F (merge a `master`
++ tag `v1.1.0`).
+
+---
+
+### Sesión 16 — Fase G2: formato de error OData v4 estándar (2026-07-15)
+
+**Contexto:** `docs/15` (Fase V, análisis de compatibilidad real) y el contrato de
+`ODataModel` v4 identifican que SAPUI5 `MessageManager` lee `error.message` del
+cuerpo OData v4. El servidor emitía `{ error: "msg" }` / `{ error: "msg", detail: "..." }`,
+una forma NO estándar que UI5 no parsea (el mensaje no llega al control
+`MessagePopover`). Esto era un gap de compatibilidad además del etag (Fase X).
+
+**Implementación:**
+- `src/common/service/odata/odata-error.ts` (NUEVO): `oDataError(status, message, detail?, target?)`
+  construye `{ error: { code, message, target?, details[] } }`. `normalizeErrorBody(body, fallbackStatus)`
+  convierte un cuerpo de error NO estándar al formato estándar **solo si el cuerpo
+  contiene la clave `error`** (no destruye respuestas de éxito: colección/entidad/
+  `$metadata`). Si ya es estándar lo devuelve intacto. Red de seguridad para el path
+  de lectura de `@phrasecode/odata` (no cableado a mano).
+- `src/common/service/odata/odata-write.routes.ts`: las rutas de escritura directa
+  (`POST`/`PATCH`/`PUT`/`DELETE`) devuelven `oDataError(...)` en 404/412/500
+  (antes `{ error, detail }`).
+- `src/common/service/odata/odata.service.ts`: el wrapper de `res.json` aplica
+  `normalizeErrorBody(body, res.statusCode)` a TODAS las respuestas (incluida la ruta
+  GET de la librería y `$metadata`), y omite `injectEtag` cuando el cuerpo es un error.
+- `src/common/middleware/batch.middleware.ts`: `ChangesetError` y los errores de
+  top-level `$batch` emiten `oDataError(...)`. El mensaje del changeset usa el
+  `STATUS_TEXT` correspondiente (`"Precondition Failed"` para 412, `"Not Found"` para
+  404, `"Method Not Allowed"` para 405) para que SAPUI5 lo muestre correctamente; el
+  `detail` conserva el diagnóstico (p.ej. la entidad).
+
+**Decisiones técnicas:**
+- **`normalizeErrorBody` NO transforma cuerpos de éxito.** La primera versión del
+  helper convertía CUALQUIER cuerpo en error (rompía colecciones/entidades →
+  `{ error: { code: "200" } }`), lo que destruía todas las lecturas. Se corrigió para
+  solo actuar cuando existe la clave `error`.
+- **`res.statusCode` como fallback de `code`:** el wrapper `res.json` corre tras
+  `res.status()`, así que `res.statusCode` alimenta el `code` del error estándar
+  cuando el cuerpo no lo trae.
+- **G2 anida dentro del `describe.skipIf(!dbAvailable)`** de integración (mismo ciclo
+  de vida de BD que Fase X/H), para no chocar con el `db.close()` en `afterAll`.
+
+**Verificación:** `pnpm test` → **164 passing + 1 todo** (3 tests nuevos de Fase G2 en
+`odata-expand.integration.test.ts`, gated por BD + 2 ajustes a asserts heredados de
+Fase H que esperaban el literal `"Changeset rolled back"` → ahora afirman la forma
+estándar `{ code: "404", … }`). Sin regresiones en A–R/X.
+
+**Pendiente de la sesión:** reconciliar `docs/15` (sección auto‑contradictoria / demo
+inexistente) y `README.md` (fila de errores estándar). Luego Fase F (merge a `master`
++ tag `v1.1.0`).
+
+> **Estado docs (cierre):** la reconciliación de `docs/15` (Fases R/S/T marcadas como
+> hechas, G2 añadida, conclusiones alineadas) y la fila de errores en `README.md` ya
+> están aplicadas. No quedan tareas de documentación abiertas para este ciclo; el
+> único paso manual restante es el merge a `master` + tag `v1.1.0` (Fase F), que
+> requiere desbloquear la protección de `master` de forma consciente.
+
+---
 
 ## Decisiones técnicas globales
 

@@ -14,6 +14,7 @@ interface BatchOp {
     url: string;
     contentId: string;
     body?: Record<string, unknown>;
+    ifMatch?: string;
 }
 
 function buildChangeset(ops: BatchOp[], boundary = "batch_h", changeset = "cs_h"): string {
@@ -39,8 +40,33 @@ function buildChangeset(ops: BatchOp[], boundary = "batch_h", changeset = "cs_h"
     return lines.join("\r\n");
 }
 
-async function postBatch(app: Express, body: string, boundary = "batch_h"): Promise<{ status: number; text: string }> {
-    const res = await request(app)
+// Construye un $batch changeset con el envelope EXACTO que emite SAPUI5
+// (ODataModel v4): cabeceras OData-Version/Accept en la petición interna,
+// Content-Transfer-Encoding: binary y Content-ID en cada parte.
+function buildSapui5Changeset(ops: BatchOp[], boundary = "batch_sapui5", changeset = "cs_sapui5"): string {
+    const lines: string[] = [`--${boundary}`, `Content-Type: multipart/mixed; boundary=${changeset}`, ""];
+    for (const op of ops) {
+        lines.push(`--${changeset}`);
+        lines.push("Content-Type: application/http");
+        lines.push("Content-Transfer-Encoding: binary");
+        lines.push(`Content-ID: ${op.contentId}`);
+        lines.push("");
+        lines.push(`${op.method} ${op.url} HTTP/1.1`);
+        lines.push("OData-Version: 4.0");
+        lines.push("Accept: application/json;odata.metadata=minimal");
+        if (op.ifMatch !== undefined) lines.push(`If-Match: ${op.ifMatch}`);
+        lines.push("Content-Type: application/json");
+        lines.push("");
+        if (op.body !== undefined) lines.push(JSON.stringify(op.body));
+        lines.push("");
+    }
+    lines.push(`--${changeset}--`);
+    lines.push(`--${boundary}--`);
+    lines.push("");
+    return lines.join("\r\n");
+}
+
+async function postBatch(app: Express, body: string, boundary = "batch_h"): Promise<{ status: number; text: string }> {    const res = await request(app)
         .post("/odata/$batch")
         .set("Content-Type", `multipart/mixed;boundary=${boundary}`)
         .send(body)
@@ -79,18 +105,41 @@ async function dbReady(): Promise<boolean> {
 // poder saltar el suite de integración de forma determinista cuando no hay BD.
 const dbAvailable = await dbReady();
 
-// Regresión del pendiente (1) de Sesión 7: el $Endpoint del $metadata debe
-// coincidir con la ruta kebab registrada por el router parcheado. No requiere BD.
-describe("OData $metadata: naming kebab coherente con la ruta (Fase E)", () => {
+// Fase R: $metadata CSDL JSON 4.01 válido para SAPUI5/OpenUI5 ODataModel v4.
+// Reemplaza el CSDL+JSON custom de la librería (que UI5 no puede bootstrappear).
+describe("OData $metadata: CSDL 4.01 válido para SAPUI5 (Fase R)", () => {
     const app = expressApp();
 
-    it("emite $Endpoint en kebab-case igual a la ruta registrada", async () => {
+    it("expone $EntityContainer con EntitySets namespaced y $NavigationPropertyBinding", async () => {
         const res = await request(app).get("/odata/$metadata");
 
         expect(res.status).toBe(200);
         const meta = res.body as Record<string, any>;
-        expect(meta.entities.ProductOData.$Endpoint).toBe("/product-odata");
-        expect(meta.entities.CategoryOData.$Endpoint).toBe("/category-odata");
+        expect(meta.$Version).toBe("4.0");
+        expect(meta.$EntityContainer).toBe("ODataServer.Container");
+
+        const container = meta["ODataServer.Container"];
+        expect(container.$kind).toBe("EntityContainer");
+        // EntitySets por endpoint kebab, con $Type totalmente cualificado.
+        expect(container["product-odata"].$kind).toBe("EntitySet");
+        expect(container["product-odata"].$Type).toBe("ODataServer.ProductOData");
+        expect(container["category-odata"].$Type).toBe("ODataServer.CategoryOData");
+        // Bindings de navegación para que UI5 resuelva las rutas de expansión.
+        expect(container["product-odata"].$NavigationPropertyBinding.category).toBe("category-odata");
+        expect(container["category-odata"].$NavigationPropertyBinding.products).toBe("product-odata");
+    });
+
+    it("los EntityTypes son namespaced y la navegación usa $Type cualificado", async () => {
+        const res = await request(app).get("/odata/$metadata");
+
+        expect(res.status).toBe(200);
+        const meta = res.body as Record<string, any>;
+        const product = meta["ODataServer.ProductOData"];
+        expect(product.$kind).toBe("EntityType");
+        expect(product.category.$kind).toBe("NavigationProperty");
+        expect(product.category.$Type).toBe("ODataServer.CategoryOData");
+        const category = meta["ODataServer.CategoryOData"];
+        expect(category.products.$Type).toBe("Collection(ODataServer.ProductOData)");
     });
 });
 
@@ -103,7 +152,8 @@ describe("OData tipos EDM + $format (Fase I)", () => {
         const res = await request(app).get("/odata/$metadata");
 
         expect(res.status).toBe(200);
-        const product = (res.body as Record<string, any>).entities.ProductOData;
+        const product = (res.body as Record<string, any>)["ODataServer.ProductOData"];
+        expect(product.$kind).toBe("EntityType");
         expect(product.id.$Type).toBe("Edm.Int32");
         expect(product.precio.$Type).toBe("Edm.Decimal");
         expect(product.createdAt.$Type).toBe("Edm.DateTimeOffset");
@@ -113,7 +163,7 @@ describe("OData tipos EDM + $format (Fase I)", () => {
     it("$format=json es aceptado (no 400/415) sobre $metadata", async () => {
         const res = await request(app).get("/odata/$metadata?$format=json");
         expect(res.status).toBe(200);
-        expect((res.body as Record<string, any>).entities).toHaveProperty("ProductOData");
+        expect((res.body as Record<string, any>)["ODataServer.Container"]).toHaveProperty("product-odata");
     });
 
     it("$format con valor no-JSON devuelve 415 Unsupported Media Type", async () => {
@@ -465,8 +515,11 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         const { status, text } = await postBatch(app, body);
 
         expect(status).toBe(200);
-        expect(text).toContain("Changeset rolled back");
+        // G2: el error del changeset usa el formato OData v4 estándar
+        // (code 404 + mensaje "Not Found" + detalle con la entidad).
         expect(text).toContain("HTTP/1.1 404 Not Found");
+        expect(text).toContain('"code":"404"');
+        expect(text).toContain("Entity 'category-odata(99999999)' not found");
 
         // Atomicidad: el POST previo NO debe haber persistido tras el rollback.
         const row = await CategoryModel.findOne({ where: { nombre: "H_Rollback" } });
@@ -500,7 +553,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         expect(status).toBe(200);
         expect(text).toContain("HTTP/1.1 200 OK");
-        expect(text).not.toContain("Changeset rolled back");
+        expect(text).not.toContain('"error"');
         expect(text).toContain('"value"');
     });
 
@@ -532,4 +585,202 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
             .send({ nombre: "H_Nope" });
         expect(res.status).toBe(404);
     });
+
+    // --- Fase T: validación del envelope $batch EXACTO de SAPUI5 (ODataModel v4) ---
+    // Reproduce el wire-format realista que emite el cliente SAPUI5/OpenUI5 para
+    // un changeset de escritura (cabeceras OData-Version/Accept, Content-ID,
+    // changeset anidado). Si pasa, el server maneja el $batch write de UI5 sin 405.
+    describe("Fase T: $batch write changeset con envelope de SAPUI5 (Fase H+)", () => {
+        it("T: changeset POST con envelope SAPUI5 crea la entidad (201 + Location + Content-ID)", async () => {
+            const body = buildSapui5Changeset([
+                { method: "POST", url: "category-odata", contentId: "1", body: { nombre: "H_Sapui5Post" } },
+            ]);
+            const { status, text } = await postBatch(app, body, "batch_sapui5", );
+
+            expect(status).toBe(200);
+            expect(text).toContain("HTTP/1.1 201 Created");
+            expect(text).toContain("Content-ID: 1");
+            expect(text).toMatch(/Location: \/odata\/category-odata\(\d+\)/);
+            expect(text).toContain('"nombre":"H_Sapui5Post"');
+        });
+
+        it("T: changeset PATCH/DELETE con envelope SAPUI5 (200/204)", async () => {
+            const seed = await CategoryModel.create({ nombre: "H_Sapui5Upd" });
+            const body = buildSapui5Changeset([
+                { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "H_Sapui5Upd_Changed" } },
+                { method: "DELETE", url: `category-odata(${seed.id})`, contentId: "2" },
+            ]);
+            const { status, text } = await postBatch(app, body, "batch_sapui5");
+
+            expect(status).toBe(200);
+            expect(text).toContain("HTTP/1.1 200 OK");
+            expect(text).toContain("HTTP/1.1 204 No Content");
+            const row = await CategoryModel.findByPk(seed.id);
+            expect(row).toBeNull();
+        });
+
+        it("T: deep-create resuelve referencia Content-ID ($1) en envelope SAPUI5", async () => {
+            const body = buildSapui5Changeset([
+                { method: "POST", url: "category-odata", contentId: "1", body: { nombre: "H_Sapui5Cid" } },
+                { method: "PATCH", url: "category-odata($1)", contentId: "2", body: { nombre: "H_Sapui5Cid_Updated" } },
+            ]);
+            const { status, text } = await postBatch(app, body, "batch_sapui5");
+
+            expect(status).toBe(200);
+            expect(text).toContain("HTTP/1.1 201 Created");
+            expect(text).toContain("HTTP/1.1 200 OK");
+            const updated = await CategoryModel.findOne({ where: { nombre: "H_Sapui5Cid_Updated" } });
+            expect(updated).not.toBeNull();
+            const stale = await CategoryModel.findOne({ where: { nombre: "H_Sapui5Cid" } });
+            expect(stale).toBeNull();
+        });
+    });
+
+    // --- Fase X / G1: ETag y concurrencia optimista para SAPUI5 ODataModel v4 ---
+    // El servidor debe emitir `@odata.etag` en lecturas y validar `If-Match`
+    // en update/delete (con el envelope de $batch y escritura directa).
+    describe("Fase X: ETag / optimistic concurrency (G1)", () => {
+        const etagOf = (body: Record<string, any>) => body["@odata.etag"] as string | undefined;
+
+        it("GET colección inyecta @odata.etag en cada entidad", async () => {
+            await CategoryModel.create({ nombre: "X_EtagColl" });
+            const res = await request(app).get("/odata/category-odata");
+            expect(res.status).toBe(200);
+            const items = res.body.value as Record<string, any>[];
+            expect(items.length).toBeGreaterThan(0);
+            for (const item of items) expect(item["@odata.etag"]).toEqual(expect.any(String));
+        });
+
+        it("GET entidad individual inyecta @odata.etag", async () => {
+            const seed = await CategoryModel.create({ nombre: "X_EtagSingle" });
+            const res = await request(app).get(`/odata/category-odata/${seed.id}`);
+            expect(res.status).toBe(200);
+            expect(etagOf(res.body as Record<string, any>)).toEqual(expect.any(String));
+        });
+
+        it("$expand anida @odata.etag en la navegación", async () => {
+            const cat = await CategoryModel.create({ nombre: "X_EtagNav" });
+            await ProductModel.create({ nombre: "X_ProdNav", precio: 10, categoria: "X_EtagNav", categoriaId: cat.id });
+            const res = await request(app).get(`/odata/category-odata?$expand=products`);
+            expect(res.status).toBe(200);
+            const cats = res.body.value as Record<string, any>[];
+            const target = cats.find((c) => c.id === cat.id);
+            expect(target).toBeDefined();
+            expect(etagOf(target!)).toEqual(expect.any(String));
+            const products = target!.products as Record<string, any>[];
+            expect(products.length).toBeGreaterThan(0);
+            expect(products[0]["@odata.etag"]).toEqual(expect.any(String));
+        });
+
+        it("PATCH directo con If-Match correcto actualiza y renueva @odata.etag (200)", async () => {
+            const seed = await CategoryModel.create({ nombre: "X_EtagUpd" });
+            const getRes = await request(app).get(`/odata/category-odata/${seed.id}`);
+            const etag = etagOf(getRes.body as Record<string, any>)!;
+
+            const res = await request(app)
+                .patch(`/odata/category-odata/${seed.id}`)
+                .set("If-Match", etag)
+                .send({ nombre: "X_EtagUpd_Changed" });
+            expect(res.status).toBe(200);
+            expect(etagOf(res.body as Record<string, any>)).toEqual(expect.any(String));
+            expect(etagOf(res.body as Record<string, any>)).not.toBe(etag);
+        });
+
+        it("PATCH directo con If-Match incorrecto devuelve 412", async () => {
+            const seed = await CategoryModel.create({ nombre: "X_Etag412" });
+            const res = await request(app)
+                .patch(`/odata/category-odata/${seed.id}`)
+                .set("If-Match", "etag-que-no-coincide")
+                .send({ nombre: "X_Etag412_Changed" });
+            expect(res.status).toBe(412);
+        });
+
+        it("DELETE directo con If-Match correcto borra (204)", async () => {
+            const seed = await CategoryModel.create({ nombre: "X_EtagDel" });
+            const getRes = await request(app).get(`/odata/category-odata/${seed.id}`);
+            const etag = etagOf(getRes.body as Record<string, any>)!;
+
+            const res = await request(app)
+                .delete(`/odata/category-odata/${seed.id}`)
+                .set("If-Match", etag);
+            expect(res.status).toBe(204);
+            const row = await CategoryModel.findByPk(seed.id);
+            expect(row).toBeNull();
+        });
+
+        it("DELETE directo con If-Match incorrecto devuelve 412", async () => {
+            const seed = await CategoryModel.create({ nombre: "X_EtagDel412" });
+            const res = await request(app)
+                .delete(`/odata/category-odata/${seed.id}`)
+                .set("If-Match", "etag-que-no-coincide");
+            expect(res.status).toBe(412);
+        });
+
+        it("T: $batch changeset PATCH con If-Match correcto (200)", async () => {
+            const seed = await CategoryModel.create({ nombre: "X_BatchUpd" });
+            const getRes = await request(app).get(`/odata/category-odata/${seed.id}`);
+            const etag = etagOf(getRes.body as Record<string, any>)!;
+            const body = buildSapui5Changeset([
+                { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "X_BatchUpd_Changed" }, ifMatch: etag },
+            ]);
+            const { status, text } = await postBatch(app, body, "batch_sapui5");
+            expect(status).toBe(200);
+            expect(text).toContain("HTTP/1.1 200 OK");
+        });
+
+        it("T: $batch changeset PATCH con If-Match incorrecto (412)", async () => {
+            const seed = await CategoryModel.create({ nombre: "X_Batch412" });
+            const body = buildSapui5Changeset([
+                { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "X_Batch412_Changed" }, ifMatch: "etag-que-no-coincide" },
+            ]);
+            const { status, text } = await postBatch(app, body, "batch_sapui5");
+            expect(status).toBe(200);
+            expect(text).toContain("HTTP/1.1 412 Precondition Failed");
+        });
+    });
+
+    // G2: los errores se emiten en el formato OData v4 estándar que SAPUI5
+    // `MessageManager` sabe parsear: { error: { code, message, target?, details[] } }.
+    // Ver docs/14 (Sesión 16, G2).
+    describe("G2: errores OData v4 estándar (SAPUI5 MessageManager)", () => {
+        const app = expressApp();
+
+        it("PATCH directo a entidad inexistente devuelve 404 con forma estándar", async () => {
+            const res = await request(app)
+                .patch("/odata/category-odata/999999")
+                .send({ nombre: "X_G2_404" });
+            expect(res.status).toBe(404);
+            expect(res.body.error).toBeDefined();
+            expect(res.body.error.code).toBe("404");
+            expect(res.body.error.message).toBe("Entity not found");
+            expect(Array.isArray(res.body.error.details)).toBe(true);
+        });
+
+        it("PATCH directo con If-Match incorrecto devuelve 412 con details", async () => {
+            const seed = await CategoryModel.create({ nombre: "X_G2_412" });
+            const res = await request(app)
+                .patch(`/odata/category-odata/${seed.id}`)
+                .set("If-Match", "etag-que-no-coincide")
+                .send({ nombre: "X_G2_412_Changed" });
+            expect(res.status).toBe(412);
+            expect(res.body.error.code).toBe("412");
+            expect(res.body.error.message).toBe("Precondition Failed");
+            expect(res.body.error.details[0].message).toBe("ETag mismatch");
+        });
+
+        it("$batch changeset PATCH con If-Match incorrecto (412) usa forma estándar en la parte", async () => {
+            const seed = await CategoryModel.create({ nombre: "X_G2_Batch412" });
+            const body = buildSapui5Changeset([
+                { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "X_G2_Batch412_Changed" }, ifMatch: "etag-que-no-coincide" },
+            ]);
+            const { status, text } = await postBatch(app, body, "batch_sapui5");
+        expect(status).toBe(200);
+        const part = firstJson(text);
+        expect(part.error).toBeDefined();
+        expect(part.error.code).toBe("412");
+        expect(part.error.message).toBe("Precondition Failed");
+        expect(part.error.details[0].message).toContain("ETag mismatch");
+        });
+    });
 });
+

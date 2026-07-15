@@ -7,6 +7,9 @@ import { CategoryODataController } from "./controllers/category.odata.controller
 import { BatchMiddleware } from "../../middleware/batch.middleware.js";
 import { registerWriteRoutes } from "./odata-write.routes.js";
 import { stripFormat } from "./odata-format.js";
+import { transformToCsdl } from "./odata-metadata.js";
+import { injectEtag } from "./odata-etag.js";
+import { normalizeErrorBody, type ODataErrorShape } from "./odata-error.js";
 
 const oDataExpressApp: Router = Router();
 
@@ -39,6 +42,53 @@ oDataExpressApp.use((req, res, next) => {
         return;
     }
     req.url = query ? `${path}?${query}` : path;
+    next();
+});
+
+// Fase R: $metadata CSDL JSON 4.01 válido para SAPUI5/OpenUI5 ODataModel v4.
+// Se registra ANTES del ExpressRouter de la librería para ganar el match de ruta
+// (el de la librería emite un CSDL+JSON custom que UI5 no puede bootstrappear).
+// NOTA: `\\$` para que JS genere `/\$metadata`; path-to-regexp trata `$` sin
+// escapar como ancla de fin de regex (igual que en /$count del parche).
+oDataExpressApp.get("/\\$metadata", (_req, res) => {
+    try {
+        const controllerEndpoints = odataControllers.map((controller) => {
+            const endpoint = controller.getEndpoint();
+            return {
+                modelName: controller.getBaseModel().getModelName(),
+                endpoint: endpoint.startsWith("/") ? endpoint : `/${endpoint}`,
+            };
+        });
+        const rawMetadata = dataSource.getMetadata(controllerEndpoints);
+        res.set("X-Metadata-Engine", "csdl-v4");
+        res.send(transformToCsdl(rawMetadata));
+    } catch (error) {
+        res.status(500).json({
+            error: "Error generating $metadata",
+            detail: (error as Error).message,
+        });
+    }
+});
+
+// G1: inyecta `@odata.etag` en las respuestas OData (colección, entidad
+// individual y navegaciones `$expand`) para que SAPUI5 `ODataModel` v4 pueda
+// aplicar control de concurrencia optimista. Se envuelve `res.json` (la ruta
+// GET de la librería y la de `$metadata` serializan vía este método).
+oDataExpressApp.use((_req, res, next) => {
+    const originalJson = res.json.bind(res);
+    res.json = (body: unknown) => {
+        // G2: red de seguridad — cualquier cuerpo de error (incluido el emitido
+        // por el path de lectura de @phrasecode/odata, p.ej.
+        // `{error:"msg"}`) se normaliza al formato OData v4 estándar que
+        // SAPUI5 `MessageManager` sabe parsear.
+        const normalized = normalizeErrorBody(body, res.statusCode);
+        const isError =
+            normalized &&
+            typeof normalized === "object" &&
+            typeof (normalized as ODataErrorShape).error?.message === "string";
+        if (!isError) injectEtag(normalized);
+        return originalJson(normalized);
+    };
     next();
 });
 
