@@ -1,0 +1,21 @@
+#!/bin/sh
+# master está CONGELADO.
+# No se permite commit (ni merge) en master hasta que la rama
+# feat/odata-sapui5-compat cumpla las condiciones de aceptación:
+#   (1) 100% de compatibilidad con SAPUI5/OpenUI5 (Fases A-G verificadas), y
+#   (2) pruebas de rendimiento sin regresión vs v1.1.0.
+# El desbloqueo es consciente y explícito (solo al finalizar todo):
+#   ALLOW_MASTER_COMMIT=1 git commit ...
+#   ALLOW_MASTER_COMMIT=1 git merge feat/odata-sapui5-compat
+branch=$(git symbolic-ref --short HEAD 2>/dev/null || git branch --show-current)
+if [ "$branch" = "master" ]; then
+  if [ -z "$ALLOW_MASTER_COMMIT" ]; then
+    echo "=================================================================="
+    echo "  BLOQUEADO: 'master' esta congelado."
+    echo "  No se permite commit/merge en master hasta que feat/odata-sapui5-compat"
+    echo "  cumpla 100% compatibilidad SAPUI5 + pruebas de rendimiento sin regresion."
+    echo "  Desbloqueo consciente (solo al finalizar): ALLOW_MASTER_COMMIT=1 git ..."
+    echo "=================================================================="
+    exit 1
+  fi
+fi

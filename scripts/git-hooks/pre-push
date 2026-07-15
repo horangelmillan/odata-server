@@ -1,0 +1,21 @@
+#!/bin/sh
+# Bloquea push a master (incluye fast-forward, que no dispara pre-commit).
+# Desbloqueo consciente: ALLOW_MASTER_PUSH=1 git push ...
+remote="$1"
+z40=0000000000000000000000000000000000000000
+while read local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/master)
+      if [ -z "$ALLOW_MASTER_PUSH" ]; then
+        echo "=================================================================="
+        echo "  BLOQUEADO: push a 'master' ($remote) congelado."
+        echo "  master no recibe nada hasta cumplir las condiciones de aceptacion:"
+        echo "    (1) 100% compatibilidad SAPUI5  (2) rendimiento sin regresion vs v1.1.0"
+        echo "  Desbloqueo consciente (solo al finalizar): ALLOW_MASTER_PUSH=1 git push ..."
+        echo "=================================================================="
+        exit 1
+      fi
+      ;;
+  esac
+done
+exit 0

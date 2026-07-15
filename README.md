@@ -399,6 +399,28 @@ En `package.json` se usa `pg@^8.22.0`. La versión `16.x` no existe en el regist
 
 ---
 
+## Git hooks (congelamiento de `master`)
+
+`scripts/git-hooks/` contiene `pre-commit`, `pre-merge-commit` y `pre-push` que **bloquean
+cualquier operación sobre `master`** salvo que se habilite explícitamente:
+
+```bash
+ALLOW_MASTER_COMMIT=1 git commit ...        # o merge
+ALLOW_MASTER_PUSH=1    git push ...
+```
+
+El `core.hooksPath` es configuración **local**, así que tras clonar hay que activarlos:
+
+```bash
+git config core.hooksPath scripts/git-hooks
+```
+
+> Nota: estos hooks congelan `master` a nivel de esta máquina. Una vez que el trabajo de
+> compatibilidad SAPUI5 esté listo para integrarse, desbloquea con las variables anteriores
+> o elimina el hook correspondiente.
+
+---
+
 ## Benchmark de rendimiento (gate de merge)
 
 `scripts/bench/` mide la regresión de rendimiento vs el release `v1.1.0` con `autocannon`
