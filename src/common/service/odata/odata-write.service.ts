@@ -1,0 +1,122 @@
+import type { Sequelize, Transaction, ModelStatic, Model as SequelizeModel } from "sequelize";
+import { dataSource } from "./datasource.js";
+
+// --- Contratos mínimos de la metadata que expone @phrasecode/odata ---
+// (Model.getMetadata() en la librería; ver core/model.js)
+
+interface ColumnMeta {
+    propertyKey: string;
+    columnIdentifier: string;
+    isPrimaryKey?: boolean;
+    isAutoIncrement?: boolean;
+}
+
+interface ModelMetadata {
+    tableMetadata: { modelName: string; tableIdentifier: string };
+    columnMetadata: ColumnMeta[];
+}
+
+export interface ODataBaseModel {
+    getMetadata(): ModelMetadata;
+    getModelName(): string;
+}
+
+// La librería no expone una ruta de escritura: su DataSource solo hace
+// executeSelect/rawQuery. Para NO duplicar el pool de conexiones (anti-pattern),
+// reutilizamos la MISMA instancia de Sequelize que ya creó el SequelizerAdaptor.
+// Es la única dependencia interna que tocamos; se aísla aquí tras un solo cast.
+interface DataSourceInternal {
+    sequelizerAdaptor: { sequelize: Sequelize };
+}
+
+export interface WriteResult {
+    primaryKey: string;
+    key: unknown;
+    entity: Record<string, unknown> | null;
+}
+
+class ODataWriteService {
+    private sequelize(): Sequelize {
+        return (dataSource as unknown as DataSourceInternal).sequelizerAdaptor.sequelize;
+    }
+
+    runInTransaction<T>(fn: (tx: Transaction) => Promise<T>): Promise<T> {
+        return this.sequelize().transaction(fn);
+    }
+
+    private resolve(model: ODataBaseModel): {
+        meta: ModelMetadata;
+        sqModel: ModelStatic<SequelizeModel>;
+        pk: ColumnMeta;
+    } {
+        const meta = model.getMetadata();
+        const sqModel = this.sequelize().models[meta.tableMetadata.tableIdentifier] as
+            | ModelStatic<SequelizeModel>
+            | undefined;
+        if (!sqModel) {
+            throw new Error(`Sequelize model for '${meta.tableMetadata.tableIdentifier}' not found`);
+        }
+        const pk = meta.columnMetadata.find((column) => column.isPrimaryKey) ?? meta.columnMetadata[0];
+        return { meta, sqModel, pk };
+    }
+
+    // Whitelist: solo columnas conocidas del modelo; ignora navegación y campos
+    // desconocidos. En create se descarta la PK auto-incremental.
+    private toColumns(
+        meta: ModelMetadata,
+        data: Record<string, unknown>,
+        options: { includePk: boolean },
+    ): Record<string, unknown> {
+        const byProperty = new Map(meta.columnMetadata.map((column) => [column.propertyKey, column]));
+        const payload: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(data ?? {})) {
+            const column = byProperty.get(key);
+            if (!column) continue;
+            if (column.isPrimaryKey && column.isAutoIncrement && !options.includePk) continue;
+            payload[column.columnIdentifier] = value;
+        }
+        return payload;
+    }
+
+    async create(
+        model: ODataBaseModel,
+        data: Record<string, unknown>,
+        tx: Transaction,
+    ): Promise<WriteResult> {
+        const { meta, sqModel, pk } = this.resolve(model);
+        const payload = this.toColumns(meta, data, { includePk: false });
+        const created = await sqModel.create(payload, { transaction: tx });
+        const json = created.toJSON() as Record<string, unknown>;
+        return { primaryKey: pk.propertyKey, key: json[pk.columnIdentifier], entity: json };
+    }
+
+    async update(
+        model: ODataBaseModel,
+        keyValue: unknown,
+        data: Record<string, unknown>,
+        tx: Transaction,
+    ): Promise<WriteResult> {
+        const { meta, sqModel, pk } = this.resolve(model);
+        const payload = this.toColumns(meta, data, { includePk: false });
+        const [affected] = await sqModel.update(payload, {
+            where: { [pk.columnIdentifier]: keyValue },
+            transaction: tx,
+        });
+        if (affected === 0) {
+            return { primaryKey: pk.propertyKey, key: keyValue, entity: null };
+        }
+        const row = await sqModel.findByPk(keyValue as never, { transaction: tx });
+        return { primaryKey: pk.propertyKey, key: keyValue, entity: row ? (row.toJSON() as Record<string, unknown>) : null };
+    }
+
+    async remove(model: ODataBaseModel, keyValue: unknown, tx: Transaction): Promise<{ deleted: boolean }> {
+        const { sqModel, pk } = this.resolve(model);
+        const affected = await sqModel.destroy({
+            where: { [pk.columnIdentifier]: keyValue },
+            transaction: tx,
+        });
+        return { deleted: affected > 0 };
+    }
+}
+
+export const odataWriteService = new ODataWriteService();

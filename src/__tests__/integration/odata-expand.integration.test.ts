@@ -1,9 +1,70 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import { Op } from "sequelize";
 import request from "supertest";
+import type { Express } from "express";
 import expressApp from "../../main.js";
 import { db } from "../../common/service/ORM/sequelize.service.js";
 import { ProductModel } from "../../core/product/model/product.model.js";
 import { CategoryModel } from "../../core/category/model/category.model.js";
+
+// --- Helpers Fase H: construir y parsear peticiones $batch de escritura ---
+
+interface BatchOp {
+    method: string;
+    url: string;
+    contentId: string;
+    body?: Record<string, unknown>;
+}
+
+function buildChangeset(ops: BatchOp[], boundary = "batch_h", changeset = "cs_h"): string {
+    const lines: string[] = [`--${boundary}`, `Content-Type: multipart/mixed; boundary=${changeset}`, ""];
+    for (const op of ops) {
+        lines.push(`--${changeset}`);
+        lines.push("Content-Type: application/http");
+        lines.push("Content-Transfer-Encoding: binary");
+        lines.push(`Content-ID: ${op.contentId}`);
+        lines.push("");
+        lines.push(`${op.method} ${op.url} HTTP/1.1`);
+        if (op.body !== undefined) {
+            lines.push("Content-Type: application/json");
+            lines.push("");
+            lines.push(JSON.stringify(op.body));
+        } else {
+            lines.push("");
+        }
+    }
+    lines.push(`--${changeset}--`);
+    lines.push(`--${boundary}--`);
+    lines.push("");
+    return lines.join("\r\n");
+}
+
+async function postBatch(app: Express, body: string, boundary = "batch_h"): Promise<{ status: number; text: string }> {
+    const res = await request(app)
+        .post("/odata/$batch")
+        .set("Content-Type", `multipart/mixed;boundary=${boundary}`)
+        .send(body)
+        .buffer(true)
+        .parse((response, callback) => {
+            let data = "";
+            response.on("data", (chunk) => (data += chunk));
+            response.on("end", () => callback(null, data));
+        });
+    return { status: res.status, text: res.body as unknown as string };
+}
+
+function firstJson(text: string): Record<string, any> {
+    const start = text.indexOf("{", text.indexOf("Content-Type: application/json"));
+    let depth = 0;
+    for (let i = start; i < text.length; i++) {
+        if (text[i] === "{") depth++;
+        else if (text[i] === "}") {
+            depth--;
+            if (depth === 0) return JSON.parse(text.substring(start, i + 1)) as Record<string, any>;
+        }
+    }
+    throw new Error("No JSON object found in batch response");
+}
 
 async function dbReady(): Promise<boolean> {
     try {
@@ -286,5 +347,139 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         expect(electronic.products.length).toBe(3);
         expect(electronic.products[0]).toHaveProperty("nombre");
         expect(electronic.products[0]).not.toHaveProperty("precio");
+    });
+
+    // --- Fase H: escritura vía $batch (changesets atómicos) + escritura directa ---
+    // Datos aislados con prefijo "H_" y limpieza en afterEach para no alterar el
+    // seed que usan las pruebas de lectura (Fases E/G) de este mismo archivo.
+
+    afterEach(async () => {
+        // OJO: en LIKE el `_` es comodín de un carácter; escapamos con `\` para
+        // que "H\_%" matchee el prefijo literal "H_" y NO borre el seed "Hogar".
+        await ProductModel.destroy({ where: { nombre: { [Op.like]: "H\\_%" } } });
+        await CategoryModel.destroy({ where: { nombre: { [Op.like]: "H\\_%" } } });
+    });
+
+    it("H: changeset POST crea la entidad (201 + Location + Content-ID)", async () => {
+        const body = buildChangeset([
+            { method: "POST", url: "category-odata", contentId: "1", body: { nombre: "H_CreateCat" } },
+        ]);
+        const { status, text } = await postBatch(app, body);
+
+        expect(status).toBe(200);
+        expect(text).toContain("HTTP/1.1 201 Created");
+        expect(text).toContain("Content-ID: 1");
+        expect(text).toMatch(/Location: \/odata\/category-odata\(\d+\)/);
+
+        const created = firstJson(text);
+        expect(created.nombre).toBe("H_CreateCat");
+        expect(created).toHaveProperty("id");
+
+        const row = await CategoryModel.findOne({ where: { nombre: "H_CreateCat" } });
+        expect(row).not.toBeNull();
+    });
+
+    it("H: changeset PATCH actualiza la entidad (200)", async () => {
+        const seed = await CategoryModel.create({ nombre: "H_Upd" });
+        const body = buildChangeset([
+            { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "H_Upd_Changed" } },
+        ]);
+        const { status, text } = await postBatch(app, body);
+
+        expect(status).toBe(200);
+        expect(text).toContain("HTTP/1.1 200 OK");
+
+        const row = await CategoryModel.findByPk(seed.id);
+        expect(row?.nombre).toBe("H_Upd_Changed");
+    });
+
+    it("H: changeset DELETE elimina la entidad (204)", async () => {
+        const seed = await CategoryModel.create({ nombre: "H_Del" });
+        const body = buildChangeset([
+            { method: "DELETE", url: `category-odata(${seed.id})`, contentId: "1" },
+        ]);
+        const { status, text } = await postBatch(app, body);
+
+        expect(status).toBe(200);
+        expect(text).toContain("HTTP/1.1 204 No Content");
+
+        const row = await CategoryModel.findByPk(seed.id);
+        expect(row).toBeNull();
+    });
+
+    it("H: changeset atómico hace rollback completo si una operación falla", async () => {
+        const body = buildChangeset([
+            { method: "POST", url: "category-odata", contentId: "1", body: { nombre: "H_Rollback" } },
+            { method: "PATCH", url: "category-odata(99999999)", contentId: "2", body: { nombre: "H_ShouldNotApply" } },
+        ]);
+        const { status, text } = await postBatch(app, body);
+
+        expect(status).toBe(200);
+        expect(text).toContain("Changeset rolled back");
+        expect(text).toContain("HTTP/1.1 404 Not Found");
+
+        // Atomicidad: el POST previo NO debe haber persistido tras el rollback.
+        const row = await CategoryModel.findOne({ where: { nombre: "H_Rollback" } });
+        expect(row).toBeNull();
+    });
+
+    it("H: changeset resuelve referencia Content-ID ($1) entre operaciones", async () => {
+        const body = buildChangeset([
+            { method: "POST", url: "category-odata", contentId: "1", body: { nombre: "H_Cid" } },
+            { method: "PATCH", url: "category-odata($1)", contentId: "2", body: { nombre: "H_Cid_Updated" } },
+        ]);
+        const { status, text } = await postBatch(app, body);
+
+        expect(status).toBe(200);
+        expect(text).toContain("HTTP/1.1 201 Created");
+        expect(text).toContain("HTTP/1.1 200 OK");
+
+        const updated = await CategoryModel.findOne({ where: { nombre: "H_Cid_Updated" } });
+        expect(updated).not.toBeNull();
+        const stale = await CategoryModel.findOne({ where: { nombre: "H_Cid" } });
+        expect(stale).toBeNull();
+    });
+
+    it("H: changeset con GET dentro se procesa como lectura (compat SAPUI5)", async () => {
+        // SAPUI5 v4 envía lecturas dentro de un multipart/mixed; el GET debe
+        // resolverse como lectura de solo lectura (200), no rechazarse.
+        const body = buildChangeset([
+            { method: "GET", url: "category-odata", contentId: "1" },
+        ]);
+        const { status, text } = await postBatch(app, body);
+
+        expect(status).toBe(200);
+        expect(text).toContain("HTTP/1.1 200 OK");
+        expect(text).not.toContain("Changeset rolled back");
+        expect(text).toContain('"value"');
+    });
+
+    it("H: escritura directa ($direct) POST/PATCH/DELETE por entidad", async () => {
+        const createRes = await request(app)
+            .post("/odata/category-odata")
+            .send({ nombre: "H_Direct" });
+        expect(createRes.status).toBe(201);
+        expect(createRes.headers["location"]).toMatch(/\/odata\/category-odata\(\d+\)/);
+        const id = (createRes.body as Record<string, any>).id as number;
+        expect(id).toBeGreaterThan(0);
+
+        const patchRes = await request(app)
+            .patch(`/odata/category-odata/${id}`)
+            .send({ nombre: "H_Direct_Changed" });
+        expect(patchRes.status).toBe(200);
+        expect((patchRes.body as Record<string, any>).nombre).toBe("H_Direct_Changed");
+
+        const deleteRes = await request(app).delete(`/odata/category-odata/${id}`);
+        expect(deleteRes.status).toBe(204);
+
+        const row = await CategoryModel.findByPk(id);
+        expect(row).toBeNull();
+    });
+
+    it("H: escritura directa PATCH a entidad inexistente devuelve 404", async () => {
+        const res = await request(app)
+            .patch("/odata/category-odata/99999999")
+            .send({ nombre: "H_Nope" });
+        expect(res.status).toBe(404);
     });
 });

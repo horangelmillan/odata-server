@@ -5,6 +5,7 @@ import { dataSource } from "./datasource.js";
 import { ProductODataController } from "./controllers/product.odata.controller.js";
 import { CategoryODataController } from "./controllers/category.odata.controller.js";
 import { BatchMiddleware } from "../../middleware/batch.middleware.js";
+import { registerWriteRoutes } from "./odata-write.routes.js";
 
 const oDataExpressApp: Router = Router();
 
@@ -44,5 +45,8 @@ odataControllers.forEach((controller) => {
 });
 
 oDataExpressApp.post("/\\$batch", BatchMiddleware.handler(batchRegistry));
+
+// Escritura directa (modo $direct de SAPUI5): POST/PATCH/PUT/DELETE por entidad.
+registerWriteRoutes(oDataExpressApp, odataControllers);
 
 export { oDataExpressApp };

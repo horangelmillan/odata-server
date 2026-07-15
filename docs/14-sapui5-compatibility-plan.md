@@ -24,6 +24,12 @@ Lograr compatibilidad 100% con SAPUI5/OpenUI5 OData v4, parcheando `@phrasecode/
 | F | Documentación + merge | `docs/14-*.md`, README, merge a master, tag `v1.1.0` | 📝 docs ✅ · merge/tag pendiente |
 | G | Recorte de navegación | `$select`/`$filter`/`$orderby`/`$top`/`$skip` sobre navigation properties (ambas direcciones) + combinación con `$count` | ✅ |
 | G.1 | Verificación con tráfico SAPUI5 | Peticiones idénticas a `ODataModel` v4 (URL-encode `%2C`, cabeceras `OData-Version`, `$batch` changeset) como punto de control | ✅ |
+| H | `$batch` de escritura | Changesets atómicos: escritura propia en OData (POST/PUT/PATCH/DELETE) vía Sequelize dentro de `db.transaction()`, con `Content-ID`, referencias `$<id>` y escritura directa por entidad (`$direct`) | ✅ |
+| I | Tipos/fechas EDM + `$format` | Conversión de tipos EDM (`DateTimeOffset`, `Edm.Decimal`, etc.) y soporte de `$format` | ⏳ pendiente |
+| P | Rendimiento (gate merge) | Baseline `v1.1.0` vs `feat` con autocannon; gate de regresión ≤10% en p95/throughput; 0 errores | ⏳ pendiente |
+| F | Cierre: merge + tag | Desbloquear `master`, merge de `feat/odata-sapui5-compat`, tag `v1.1.0`. **Bloqueado** hasta A–I ✅ + P ✅ | 🔒 bloqueado |
+
+> **Congelamiento de `master`:** `master` está protegida en GitHub (`lock_branch` + `enforce_admins`, repo público) y no recibe merges hasta cumplir **todas** las condiciones de aceptación: A–I verificadas con tests + fase P (rendimiento) sin regresión ≤10% vs `v1.1.0`. Desbloqueo consciente: `gh api -X DELETE repos/horangelmillan/odata-server/branches/master/protection`.
 
 ---
 
@@ -344,6 +350,55 @@ compatibilidad antes de tocar el cliente.
 
 **Decisión:** se adopta la opción 1 como punto de control automatizado (ya integrado) y se documenta
 la opción 2/3/4 como siguiente paso para validación visual fina con un cliente UI5 real.
+
+---
+
+### Sesión 11 — Fase H: `$batch` de escritura (changesets atómicos) + escritura directa (2026-07-15)
+
+**Contexto:** `@phrasecode/odata` v0.3.1 no expone ruta de escritura. En vez de delegar el changeset a
+los servicios REST (`core/`), se implementó **escritura propia en OData** reutilizando la MISMA
+instancia Sequelize del datasource (`dataSource.sequelizerAdaptor.sequelize`), para que la escritura
+comparta conexión/transacción con la lectura.
+
+> **Deuda arquitectónica anotada:** hoy la lógica REST vive en `core/<dominio>` y los modelos/
+> controllers OData en `common/`. Lo consistente sería que OData sea la capa de escritura de primera
+> clase (o al revés, unificar). Se documenta para planificar el cambio en otro ciclo; **no** se aborda
+> aquí para no ampliar el alcance de la rama de compatibilidad.
+
+**Implementación:**
+- `src/common/service/odata/odata-write.service.ts` (NUEVO): `create`/`update`/`remove` +
+  `runInTransaction`. Deriva la whitelist de columnas y la PK desde `model.getMetadata()`
+  (`columnMetadata`: `isPrimaryKey`, `isAutoIncrement`, `propertyKey`), ignorando columnas
+  auto-incrementales en el `create`.
+- `src/common/middleware/batch.middleware.ts` (REESCRITO a `BatchMiddleware.handler(registry)`):
+  - Un `multipart/mixed` con **solo GETs** (SAPUI5 envuelve lecturas así) se procesa como lectura
+    **sin** abrir transacción; el GET se despacha con el mismo `controller.get()` que la ruta directa.
+  - Un changeset con **escrituras** corre dentro de `runInTransaction`: atomicidad total (rollback
+    completo ante cualquier fallo), mapa `Content-ID` para referencias `$<id>` (deep-create), y
+    `Location: /odata/<entidad>(<key>)` en el 201.
+  - Fuera de un changeset solo se admite GET; cualquier otro método → **405** (contrato Fase C.2).
+- `src/common/service/odata/odata-write.routes.ts` (NUEVO): `registerWriteRoutes(router, controllers)`
+  para escritura directa por entidad (`POST /odata/<e>`, `PATCH|PUT|DELETE /odata/<e>/:id`), útil con
+  `groupId: "$direct"` de SAPUI5. Se registra en `odata.service.ts` tras la ruta `$batch`.
+
+**Bugs corregidos durante la verificación:**
+- **Comodín SQL en el `afterEach` de tests:** `LIKE 'H_%'` borraba la categoría seed **"Hogar"**
+  (`_` es comodín de un carácter en LIKE). Se escapó a `LIKE 'H\_%'` para matchear el prefijo literal
+  `H_` y no tocar el seed de las Fases E/G.
+- **GET en changeset:** al principio se rechazaba con 405; se corrigió a lectura para no romper el
+  contrato Fase C.2/SAPUI5 (que envuelve lecturas en `multipart/mixed`).
+- **Top-level no-GET:** debía ser **405** (no 400) según el test de Fase C.2.
+
+**Tests (8 nuevos, en `odata-expand.integration.test.ts`, gated por BD):** changeset POST (201 +
+`Location` + `Content-ID`), PATCH (200), DELETE (204), **rollback atómico** ante fallo, resolución de
+referencia `Content-ID` (`$1`), GET-en-changeset tratado como lectura, escritura directa
+`POST/PATCH/DELETE`, y PATCH a inexistente → 404.
+
+**Resultado:** `pnpm test` → **143 passing + 1 todo** (135 base + 8 Fase H), 23 test files en verde,
+contra Postgres (Docker). Sin regresiones en las suites A–G.
+
+**Pendiente de la sesión:** actualizar `README.md`; luego Fase I (tipos/fechas EDM + `$format`) y
+Fase P (gate de rendimiento) antes del merge a `master`.
 
 ---
 

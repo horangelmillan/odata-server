@@ -164,7 +164,16 @@ curl -X POST http://localhost:3000/api/core/products \
 | `GET /odata/category-odata?$expand=products($filter=precio gt 100)` | Recorte de navegación: `$filter` sobre hijos (Fase G) |
 | `GET /odata/category-odata?$expand=products($orderby=nombre;$top=2;$skip=1)` | Recorte de navegación: `$orderby`/`$top`/`$skip` sobre hijos (Fase G) |
 | `GET /odata/product-odata?$expand=category($select=id,nombre)` | Recorte de navegación `belongsTo` (Fase G) |
-| `POST /odata/$batch` | `$batch` de solo lectura (multipart/mixed) (Fase C.2) |
+| `POST /odata/$batch` | `$batch` lectura y escritura (multipart/mixed); changesets atómicos con `Content-ID` (Fases C.2 + H) |
+| `POST /odata/product-odata` | Alta directa de entidad (modo `$direct` de SAPUI5) → `201` + `Location` (Fase H) |
+| `PATCH/PUT /odata/product-odata/:id` | Modificación directa por clave → `200` (Fase H) |
+| `DELETE /odata/product-odata/:id` | Baja directa por clave → `204` (Fase H) |
+
+> **Escritura OData (Fase H):** el `$batch` procesa **changesets atómicos** (`multipart/mixed`): todo el
+> changeset se ejecuta en una transacción (`db.transaction()`) y hace rollback completo ante cualquier
+> fallo. Soporta referencias `Content-ID` (`$1`) para deep-create y devuelve `Location` en el `201`.
+> Los `GET` envueltos en un changeset (como los emite SAPUI5) se resuelven como lectura. La escritura
+> reutiliza la misma instancia Sequelize del datasource; no delega en los servicios REST.
 
 > **Naming de endpoints:** el nombre en `/odata/<nombre>` se genera en kebab-case a partir del nombre de la clase (p.ej. `ProductOData` → `/odata/product-odata`). El `$Endpoint` del `$metadata` usa el mismo `getEndpoint()`, por lo que ruta y metadata coinciden y SAPUI5 resuelve las URLs correctamente.
 
@@ -179,7 +188,8 @@ curl "http://localhost:3000/odata/product-odata/1"
 curl "http://localhost:3000/odata/product-odata/\$count?\$filter=precio gt 100"
 curl "http://localhost:3000/odata/product-odata?\$expand=category"
 
-# Solo lectura permitida (GET) en las entidades; escrituras por REST o \$batch con groupId "$direct"
+# Escritura OData: changeset atómico vía $batch, o escritura directa por entidad (groupId "$direct")
+curl -X POST "http://localhost:3000/odata/category-odata" -H "Content-Type: application/json" -d '{"nombre":"Nueva"}'
 ```
 
 ---
@@ -359,10 +369,15 @@ Si actualizas la librería, verifica que los parches sigan siendo necesarios (ma
 
 ### Compatibilidad SAPUI5/OpenUI5 (v1.1.0)
 
-Las fases A–D del plan `docs/14-sapui5-compatibility-plan.md` añaden las features que SAPUI5/OpenUI5 OData v4 espera y que la librería no trae de serie:
+Las fases A–H del plan `docs/14-sapui5-compatibility-plan.md` añaden las features que SAPUI5/OpenUI5 OData v4 espera y que la librería no trae de serie:
 
 - Acceso por clave, `/$count`, `/$batch` de lectura (Fases A–C).
 - Navigation properties (`$expand`) vía decoradores `@BelongsTo`/`@HasMany` (Fase D).
+- Recorte de navegación (`$select`/`$filter`/`$orderby`/`$top`/`$skip` en `$expand`) (Fase G).
+- Escritura OData: `$batch` con changesets atómicos (transacción + `Content-ID`) y escritura directa por entidad (Fase H).
+
+> **Nota:** Fases I (tipos/fechas EDM + `$format`) y P (gate de rendimiento) están pendientes; el
+> merge a `master` está bloqueado hasta completarlas (ver `docs/14`).
 
 **Pendientes investigados antes del merge (resueltos como no-bloqueantes):**
 
