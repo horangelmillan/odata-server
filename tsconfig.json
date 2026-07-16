@@ -4,7 +4,7 @@
     "tsBuildInfoFile": "./.tsbuildinfo",
     "target": "ES2017",
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
+    "emitDecoratorMetadata": false,
     "module": "NodeNext",
     "baseUrl": "./",
     "paths": {
