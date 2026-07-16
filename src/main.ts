@@ -18,12 +18,15 @@ export default function () {
         exposedHeaders: ["OData-Version"],
     };
 
+    app.use(express.json());
     app.use(helmet());
     app.use(cors(corsOptions));
 
     app.use(
         "/odata",
         (req, res, next) => {
+            // Compatibilidad: controladores con endpoint plano (sin prefijo demo/)
+            req.url = req.url.replace(/^\/demo\//, "/");
             if (req.path.includes("$metadata")) req.url = "/$metadata";
             req.url = req.url.replace(/\((\d+)\)/g, "/$1");
             res.set("OData-Version", "4.0");
@@ -32,8 +35,7 @@ export default function () {
         oDataExpressApp,
     );
 
-    app.use(express.json());
-    app.use(compression());
+    app.use(compression({ eTag: false }));
 
     if (env.isDev) {
         app.use(morgan("dev"));

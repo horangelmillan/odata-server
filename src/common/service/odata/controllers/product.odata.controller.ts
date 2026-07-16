@@ -5,7 +5,8 @@ export class ProductODataController extends ODataControler {
     constructor() {
         super({
             model: ProductOData,
-            allowedMethod: ["get"],
+            endpoint: "product-odata",
+            allowedMethod: ["get", "post", "put", "delete"],
         });
     }
 

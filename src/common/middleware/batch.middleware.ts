@@ -182,12 +182,19 @@ function primaryKeyOf(controller: ODataControler): string {
 }
 
 function resolveTarget(url: string, registry: Map<string, ODataControler>): ResolvedTarget | null {
-    const queryIndex = url.indexOf("?");
-    const pathSegment = (queryIndex >= 0 ? url.substring(0, queryIndex) : url).replace(/^\//, "");
-    const queryPart = queryIndex >= 0 ? url.substring(queryIndex + 1) : "";
+    // Normaliza ruta: SAPUI5 envía /odata/product-odata, el registro espera product-odata
+    let normalizedUrl = url.replace(/^\//, "");
+    normalizedUrl = normalizedUrl.replace(/^odata\//i, "");
 
-    const keyMatch = pathSegment.match(/^([^/?(]+)\(([^)]+)\)$/);
-    const slashMatch = pathSegment.match(/^([^/?(]+)\/([^/?]+)$/);
+    const queryIndex = normalizedUrl.indexOf("?");
+    const pathSegment = (queryIndex >= 0 ? normalizedUrl.substring(0, queryIndex) : normalizedUrl);
+    const queryPart = queryIndex >= 0 ? normalizedUrl.substring(queryIndex + 1) : "";
+
+    // Compatibilidad: los controladores ya no usan prefijo demo/
+    const normalizedSegment = pathSegment.replace(/^demo\//, "");
+
+    const keyMatch = normalizedSegment.match(/^([^/?(]+)\(([^)]+)\)$/);
+    const slashMatch = normalizedSegment.match(/^([^/?(]+)\/([^/?]+)$/);
 
     let entitySet: string;
     let key: string | null = null;
@@ -198,7 +205,7 @@ function resolveTarget(url: string, registry: Map<string, ODataControler>): Reso
         entitySet = slashMatch[1];
         key = slashMatch[2].trim();
     } else {
-        entitySet = pathSegment.split("/")[0];
+        entitySet = normalizedSegment.split("/")[0];
     }
 
     const controller = registry.get(entitySet);

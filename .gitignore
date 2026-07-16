@@ -3,3 +3,5 @@ dist/
 .tsbuildinfo
 .env
 *.log
+ui5-odata-demo
+.playwright-mcp/
