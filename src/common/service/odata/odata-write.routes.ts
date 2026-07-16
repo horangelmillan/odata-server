@@ -5,10 +5,19 @@ import { injectEtag, etagMatches } from "./odata-etag.js";
 import { oDataError } from "./odata-error.js";
 import { JSONValidatorException } from "../../exception/json-validator.exception.js";
 import { ProductCreateDTO, ProductUpdateDTO } from "../../../core/product/dto/product.dto.js";
+import { CategoryCreateDTO, CategoryUpdateDTO } from "../../../core/category/dto/category.dto.js";
 import { transformAndValidate, ClassType } from "class-transformer-validator";
 import { ValidationError } from "class-validator";
 
-async function transformAndValidateProduct<T extends object>(
+// Mapa endpoint OData -> DTOs de validación del dominio. La escritura directa
+// valida el body contra el DTO correspondiente antes de tocar la BD; en fallo
+// responde 400 OData v4. (F1: product; F2: category.)
+const endpointDTOs: Record<string, { create: ClassType<object>; update: ClassType<object> }> = {
+    "product-odata": { create: ProductCreateDTO, update: ProductUpdateDTO },
+    "category-odata": { create: CategoryCreateDTO, update: CategoryUpdateDTO },
+};
+
+async function transformAndValidateDTO<T extends object>(
     dto: ClassType<T>,
     data: unknown,
 ): Promise<T> {
@@ -39,19 +48,20 @@ function modelOf(controller: ODataControler): ODataBaseModel {
     return controller.getBaseModel() as unknown as ODataBaseModel;
 }
 
-// F1: validación DTO en escritura directa OData. Reusa los DTOs del dominio
-// `product` (mismos que la ruta REST) para que el POST/PATCH /odata/product-odata
-// falle con 400 en formato OData v4 cuando el body es inválido.
-async function validateProductBody(
+// F1/F2: validación DTO en escritura directa OData. Reusa los DTOs del dominio
+// correspondiente (mismos que la ruta REST) para que el POST/PATCH
+// /odata/<entidad> falle con 400 en formato OData v4 cuando el body es inválido.
+async function validateBody(
     endpoint: string,
     req: Request,
     res: Response,
     isUpdate: boolean,
 ): Promise<Record<string, unknown> | null> {
-    if (endpoint !== "product-odata") return (req.body ?? {}) as Record<string, unknown>;
+    const dtos = endpointDTOs[endpoint];
+    if (!dtos) return (req.body ?? {}) as Record<string, unknown>;
     try {
-        const dto = isUpdate ? ProductUpdateDTO : ProductCreateDTO;
-        const validated = await transformAndValidateProduct(dto, req.body ?? {});
+        const dto = isUpdate ? dtos.update : dtos.create;
+        const validated = await transformAndValidateDTO(dto, req.body ?? {});
         return validated as unknown as Record<string, unknown>;
     } catch (error) {
         if (error instanceof JSONValidatorException) {
@@ -77,7 +87,7 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
 
         router.post(base, json, async (req: Request, res: Response) => {
             try {
-                const body = await validateProductBody(endpoint, req, res, false);
+                const body = await validateBody(endpoint, req, res, false);
                 if (body === null) return;
                 const result = await odataWriteService.runInTransaction((tx) =>
                     odataWriteService.create(model, body, tx),
@@ -92,7 +102,7 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
 
         const updateHandler = async (req: Request, res: Response): Promise<void> => {
             try {
-                const body = await validateProductBody(endpoint, req, res, true);
+                const body = await validateBody(endpoint, req, res, true);
                 if (body === null) return;
                 // G1: concurrencia optimista (opt-in). Solo se valida `If-Match`
                 // cuando el cliente lo envía; si no, se comporta como antes

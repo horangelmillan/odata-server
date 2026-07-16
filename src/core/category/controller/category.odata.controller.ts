@@ -1,11 +1,11 @@
 import { ODataControler, QueryParser } from "@phrasecode/odata";
-import { CategoryOData } from "../models/category.odata.model.js";
+import { CategoryOData } from "../model/category.odata.model.js";
 
 export class CategoryODataController extends ODataControler {
     constructor() {
         super({
             model: CategoryOData,
-            allowedMethod: ["get"],
+            allowedMethod: ["get", "post", "put", "delete"],
         });
     }
 

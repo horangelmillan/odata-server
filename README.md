@@ -1,6 +1,6 @@
 # odata-server
 
-Servidor backend Node.js/TypeScript que expone una API REST para operaciones CRUD y un endpoint **OData v4** para consultas, sobre PostgreSQL. Sigue una arquitectura **Modular Monolith con Shared Kernel**.
+Servidor backend Node.js/TypeScript que expone **OData v4** como único protocolo (lectura **y** escritura) sobre PostgreSQL, siguiendo una arquitectura **Modular Monolith con Shared Kernel**. No hay capa REST: OData es el dominio único y fuente de verdad de la API.
 
 ---
 
@@ -9,10 +9,9 @@ Servidor backend Node.js/TypeScript que expone una API REST para operaciones CRU
 | Capa | Tecnología |
 |---|---|
 | Runtime | Node.js 20 + TypeScript 5.9 (ESM, NodeNext) |
-| Framework | Express 4 |
-| ORM (REST) | Sequelize 6 |
-| OData | `@phrasecode/odata` v0.3.1 |
-| BD | PostgreSQL |
+| Framework | Express 4 (solo como host del router OData + middleware transversal) |
+| OData | `@phrasecode/odata` v0.3.1 (fuente de verdad del contrato de API) |
+| BD | PostgreSQL (vía Sequelize interno del `DataSource` OData) |
 | Validación | `class-validator` / `class-transformer` |
 | Auth | bcrypt + JWT |
 | Tests | Vitest + supertest |
@@ -32,34 +31,37 @@ src/
 │   ├── middleware/            # Middleware global (error handler, validación, seguridad)
 │   ├── model/                 # Clases base
 │   ├── dto/                   # Clases base
-│   ├── router/                # Router global que agrega dominios
 │   └── service/
-│       ├── ORM/               # Singleton Sequelize
 │       └── odata/             # DataSource, ExpressRouter, modelos y controladores OData
+│           ├── datasource.ts        # DataSource @phrasecode/odata (la instancia Sequelize vive aquí)
+│           ├── odata.service.ts     # Montaje del router OData (lectura + $batch + escritura)
+│           ├── odata-write.*.ts    # Escritura directa y servicios de persistencia
+│           ├── odata-metadata.ts   # $metadata CSDL 4.01 (compat SAPUI5)
+│           ├── odata-format.ts     # Negociación de $format
+│           ├── odata-etag.ts       # @odata.etag / concurrencia optimista
+│           └── odata-error.ts      # Errores OData v4 estándar
 ├── core/                      # Módulos de dominio
-│   ├── main.ts                # Agrega routers de todos los dominios
+│   ├── main.ts                # Re-exporta modelos + controladores OData (registro de dominios)
 │   └── <dominio>/             # Un módulo por dominio de negocio
 │       ├── interface/         # Shape de la entidad
-│       ├── model/             # Modelo Sequelize (db.define)
+│       ├── model/             # Modelo OData (clases @Table/@Column decoradas)
 │       ├── dto/               # DTOs de validación (class-validator)
-│       ├── service/           # Lógica de negocio
-│       ├── controller/        # Handlers Express
-│       ├── route/             # Definición de rutas REST
-│       └── query/             # SQL nativo (opcional)
+│       ├── service/           # Lógica de negocio (opcional)
+│       └── controller/        # Controladores OData (extienden ODataControler)
 ├── __tests__/
 │   ├── unit/                  # Tests unitarios (reflejan estructura de src/)
-│   └── integration/           # Tests de integración (API endpoints)
-├── main.ts                    # Fábrica de la app Express
-server.ts                      # Entry point (autentica BD, sincroniza, inicia server)
+│   └── integration/           # Tests de integración (endpoints /odata)
+├── main.ts                    # Fábrica de la app Express (solo /odata + middleware)
+server.ts                      # Entry point (autentica BD vía dataSource, sincroniza, inicia server)
 ```
 
 ### Principios
 
-- **REST para escritura** (POST/PUT/DELETE) en `/api/core/*`
-- **OData para lectura** (GET) en `/odata/*` — CQRS ligero
-- **Separación de modelos**: Sequelize `db.define` para REST, clases decoradas con `@Table`/`@Column` para OData
-- **Singleton por módulo**: servicios y controladores son `const` exportados (cache del módulo ES)
-- **Inyección de dependencias manual**: el middleware de seguridad acepta callbacks en lugar de hardcodear modelos
+- **OData-as-domain**: un solo protocolo expuesto en `/odata/*` cubre lectura (GET) y escritura (POST/PATCH/PUT/DELETE vía `$batch` y modo `$direct`).
+- **Fuente de verdad única**: los modelos OData (`@Table`/`@Column`) son los únicos modelos. La instancia Sequelize vive dentro del `dataSource` (`dataSource.sequelizerAdaptor.sequelize`) y es la única usada para persistencia.
+- **Sin capa REST**: no hay routers, controladores ni modelos `db.define` REST; `core/main.ts` solo re-exporta los dominios OData para su registro.
+- **Singleton por módulo**: servicios y controladores son `const` exportados (cache del módulo ES).
+- **Inyección de dependencias manual**: el middleware de seguridad acepta callbacks en lugar de hardcodear modelos.
 
 ---
 
@@ -132,25 +134,7 @@ Ver `.env.example` para valores de referencia:
 
 ## API
 
-### REST — `/api/core/products`
-
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/api/core/products` | Listar todos los productos |
-| `GET` | `/api/core/products/:id` | Obtener un producto por ID |
-| `POST` | `/api/core/products` | Crear un producto (body JSON validado) |
-| `PUT` | `/api/core/products/:id` | Actualizar un producto |
-| `DELETE` | `/api/core/products/:id` | Eliminar un producto |
-
-Ejemplo de creación:
-
-```bash
-curl -X POST http://localhost:3000/api/core/products \
-  -H "Content-Type: application/json" \
-  -d '{"nombre":"Teclado","precio":200,"categoria":"Periféricos"}'
-```
-
-### OData — `/odata`
+### OData — `/odata` (único protocolo expuesto)
 
 | Ruta | Descripción |
 |---|---|
@@ -204,85 +188,82 @@ curl -X POST "http://localhost:3000/odata/category-odata" -H "Content-Type: appl
 
 ---
 
-## Cómo agregar un nuevo módulo REST
+## Cómo agregar un nuevo dominio OData
+
+> La capa REST fue eliminada en la Fase F3 del refactor `docs/05-refactor-odata-as-domain`. No hay `route/`, `controller/` REST ni modelos `db.define`. Todo el dominio se modela como OData.
 
 ### 1. Crear la estructura del dominio
 
 ```
 src/core/<dominio>/
 ├── interface/<entidad>.interface.ts
-├── model/<entidad>.model.ts
+├── model/<entidad>.odata.model.ts
 ├── dto/<entidad>.dto.ts
-├── service/<entidad>.service.ts
-├── controller/<entidad>.controller.ts
-├── route/<entidad>.route.ts
+├── service/<entidad>.service.ts   # opcional (lógica de negocio)
+├── controller/<entidad>.odata.controller.ts
 └── main.ts
 ```
 
 ### 2. Definir la entidad
 
 ```typescript
-// interface/product.interface.ts
-export interface IProduct {
+// interface/<entidad>.interface.ts
+export interface IMiEntidad {
     id?: number;
     nombre: string;
-    precio: number;
-    categoria: string;
 }
 ```
 
-### 3. Definir el modelo Sequelize
+### 3. Definir el modelo OData (única fuente de verdad)
 
 ```typescript
-// model/product.model.ts
-import { Model, InferAttributes, InferCreationAttributes, CreationOptional } from "sequelize";
-import { db, DataTypes } from "../../../common/service/ORM/sequelize.service.js";
-import { IProduct } from "../interface/product.interface.js";
+// model/<entidad>.odata.model.ts
+import { Model, Table, Column, DataTypes } from "@phrasecode/odata";
 
-interface ProductModel extends Model<InferAttributes<ProductModel>, InferCreationAttributes<ProductModel>>, IProduct {
-    id: CreationOptional<number>;
-    createdAt: CreationOptional<Date>;
-    updatedAt: CreationOptional<Date>;
+@Table({ tableName: "mi_entidad" })
+export class MiEntidadOData extends Model<MiEntidadOData> {
+    @Column({ dataType: DataTypes.INTEGER, isPrimaryKey: true, isAutoIncrement: true })
+    id!: number;
+    @Column({ dataType: DataTypes.STRING })
+    nombre!: string;
 }
-
-export const ProductModel = db.define<ProductModel>("Product", {
-    id:       { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    nombre:   { type: DataTypes.STRING, allowNull: false },
-    precio:   { type: DataTypes.DECIMAL, allowNull: false },
-    categoria:{ type: DataTypes.STRING, allowNull: false },
-}, { tableName: "products", timestamps: true });
 ```
 
-### 4. Crear DTOs de validación
+### 4. Crear DTOs de validación (escritura)
 
 ```typescript
-// dto/product.dto.ts
-import { IsString, IsNumber, Min } from "class-validator";
-import { IProduct } from "../interface/product.interface.js";
+// dto/<entidad>.dto.ts
+import { IsString } from "class-validator";
+import { IMiEntidad } from "../interface/<entidad>.interface.js";
 
-export class ProductCreateDTO implements IProduct {
+export class MiEntidadCreateDTO implements IMiEntidad {
     @IsString() nombre!: string;
-    @IsNumber() @Min(0) precio!: number;
-    @IsString() categoria!: string;
     id?: number;
 }
 ```
 
-### 5. Servicio, controlador, rutas
-
-Sigue el patrón de `src/core/product/` como referencia: el servicio implementa `BaseService`, el controlador delega en el servicio y usa `next(error)` para errores, las rutas usan `ValidatorMiddleware.validateBodyWithDTO`.
-
-### 6. Registrar en core/main.ts
+### 5. Crear el controlador OData y registrar en `core/main.ts`
 
 ```typescript
-import { Router } from "express";
-import { productRouter } from "./product/route/product.route.js";
+// controller/<entidad>.odata.controller.ts
+import { ODataControler } from "@phrasecode/odata";
+import { MiEntidadOData } from "../model/<entidad>.odata.model.js";
 
-export const CoreRouter = Router();
-CoreRouter.use("/products", productRouter);
+export class MiEntidadODataController extends ODataControler {
+    constructor() {
+        super({ model: MiEntidadOData, allowedMethod: ["get"] });
+        this.setMaxTop(100);
+    }
+}
 ```
 
-Luego en `src/core/main.ts` se monta `CoreRouter` con los demás dominios.
+```typescript
+// core/main.ts — re-exporta modelos + controladores para el registro OData
+import { MiEntidadOData, MiEntidadODataController } from "./<dominio>/main.js";
+export { MiEntidadOData, MiEntidadODataController };
+```
+
+Luego se añaden al `dataSource` (`datasource.ts`) y al arreglo de `odataControllers` en `odata.service.ts`.
 
 ---
 

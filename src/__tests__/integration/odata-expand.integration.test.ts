@@ -3,15 +3,14 @@ import { Op } from "sequelize";
 import request from "supertest";
 import type { Express } from "express";
 import expressApp from "../../main.js";
-import { db } from "../../common/service/ORM/sequelize.service.js";
 import { dataSource } from "../../common/service/odata/datasource.js";
-import { CategoryModel } from "../../core/category/model/category.model.js";
 
-// F1: `ProductModel` (db.define de Sequelize) fue eliminado; el modelo OData es
-// ahora la única fuente de verdad. Para sembrar/limpiar en los tests de
-// integración usamos la instancia Sequelize del `dataSource` OData (misma tabla).
+// F3: el ORM Sequelize compartido fue eliminado. Los modelos OData son la
+// única fuente de verdad y la instancia Sequelize vive dentro del `dataSource`.
+// Para sembrar/limpiar en los tests usamos esa misma instancia (misma tabla).
 const odataSeq = (dataSource as unknown as { sequelizerAdaptor: { sequelize: any } }).sequelizerAdaptor.sequelize;
 const ProductSeq = odataSeq.models.products;
+const CategorySeq = odataSeq.models.categories;
 
 // --- Helpers Fase H: construir y parsear peticiones $batch de escritura ---
 
@@ -100,7 +99,7 @@ function firstJson(text: string): Record<string, any> {
 
 async function dbReady(): Promise<boolean> {
     try {
-        await db.authenticate();
+        await odataSeq.authenticate();
         return true;
     } catch {
         return false;
@@ -184,13 +183,12 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     let homeId = 0;
 
     beforeAll(async () => {
-        await db.sync({ alter: true });
         await odataSeq.sync({ alter: true });
-        await CategoryModel.destroy({ where: {} });
+        await CategorySeq.destroy({ where: {} });
         await ProductSeq.destroy({ where: {} });
 
-        const electronics = await CategoryModel.create({ nombre: "Electrónica" });
-        const home = await CategoryModel.create({ nombre: "Hogar" });
+        const electronics = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "Electrónica" });
+        const home = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "Hogar" });
         electronicId = electronics.id;
         homeId = home.id;
 
@@ -208,7 +206,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     });
 
     afterAll(async () => {
-        await db.close();
+        await odataSeq.close();
     });
 
     it("product?$expand=category anida la categoría en cada producto", async () => {
@@ -471,7 +469,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         // OJO: en LIKE el `_` es comodín de un carácter; escapamos con `\` para
         // que "H\_%" matchee el prefijo literal "H_" y NO borre el seed "Hogar".
         await ProductSeq.destroy({ where: { nombre: { [Op.like]: "H\\_%" } } });
-        await CategoryModel.destroy({ where: { nombre: { [Op.like]: "H\\_%" } } });
+        await CategorySeq.destroy({ where: { nombre: { [Op.like]: "H\\_%" } } });
     });
 
     it("H: changeset POST crea la entidad (201 + Location + Content-ID)", async () => {
@@ -489,12 +487,12 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         expect(created.nombre).toBe("H_CreateCat");
         expect(created).toHaveProperty("id");
 
-        const row = await CategoryModel.findOne({ where: { nombre: "H_CreateCat" } });
+        const row = await CategorySeq.findOne({ where: { nombre: "H_CreateCat" } });
         expect(row).not.toBeNull();
     });
 
     it("H: changeset PATCH actualiza la entidad (200)", async () => {
-        const seed = await CategoryModel.create({ nombre: "H_Upd" });
+        const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "H_Upd" });
         const body = buildChangeset([
             { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "H_Upd_Changed" } },
         ]);
@@ -503,12 +501,12 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         expect(status).toBe(200);
         expect(text).toContain("HTTP/1.1 200 OK");
 
-        const row = await CategoryModel.findByPk(seed.id);
+        const row = await CategorySeq.findByPk(seed.id);
         expect(row?.nombre).toBe("H_Upd_Changed");
     });
 
     it("H: changeset DELETE elimina la entidad (204)", async () => {
-        const seed = await CategoryModel.create({ nombre: "H_Del" });
+        const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "H_Del" });
         const body = buildChangeset([
             { method: "DELETE", url: `category-odata(${seed.id})`, contentId: "1" },
         ]);
@@ -517,7 +515,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         expect(status).toBe(200);
         expect(text).toContain("HTTP/1.1 204 No Content");
 
-        const row = await CategoryModel.findByPk(seed.id);
+        const row = await CategorySeq.findByPk(seed.id);
         expect(row).toBeNull();
     });
 
@@ -536,7 +534,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         expect(text).toContain("Entity 'category-odata(99999999)' not found");
 
         // Atomicidad: el POST previo NO debe haber persistido tras el rollback.
-        const row = await CategoryModel.findOne({ where: { nombre: "H_Rollback" } });
+        const row = await CategorySeq.findOne({ where: { nombre: "H_Rollback" } });
         expect(row).toBeNull();
     });
 
@@ -551,9 +549,9 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         expect(text).toContain("HTTP/1.1 201 Created");
         expect(text).toContain("HTTP/1.1 200 OK");
 
-        const updated = await CategoryModel.findOne({ where: { nombre: "H_Cid_Updated" } });
+        const updated = await CategorySeq.findOne({ where: { nombre: "H_Cid_Updated" } });
         expect(updated).not.toBeNull();
-        const stale = await CategoryModel.findOne({ where: { nombre: "H_Cid" } });
+        const stale = await CategorySeq.findOne({ where: { nombre: "H_Cid" } });
         expect(stale).toBeNull();
     });
 
@@ -589,7 +587,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         const deleteRes = await request(app).delete(`/odata/category-odata/${id}`);
         expect(deleteRes.status).toBe(204);
 
-        const row = await CategoryModel.findByPk(id);
+        const row = await CategorySeq.findByPk(id);
         expect(row).toBeNull();
     });
 
@@ -619,7 +617,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         });
 
         it("T: changeset PATCH/DELETE con envelope SAPUI5 (200/204)", async () => {
-            const seed = await CategoryModel.create({ nombre: "H_Sapui5Upd" });
+            const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "H_Sapui5Upd" });
             const body = buildSapui5Changeset([
                 { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "H_Sapui5Upd_Changed" } },
                 { method: "DELETE", url: `category-odata(${seed.id})`, contentId: "2" },
@@ -629,7 +627,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
             expect(status).toBe(200);
             expect(text).toContain("HTTP/1.1 200 OK");
             expect(text).toContain("HTTP/1.1 204 No Content");
-            const row = await CategoryModel.findByPk(seed.id);
+            const row = await CategorySeq.findByPk(seed.id);
             expect(row).toBeNull();
         });
 
@@ -643,9 +641,9 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
             expect(status).toBe(200);
             expect(text).toContain("HTTP/1.1 201 Created");
             expect(text).toContain("HTTP/1.1 200 OK");
-            const updated = await CategoryModel.findOne({ where: { nombre: "H_Sapui5Cid_Updated" } });
+            const updated = await CategorySeq.findOne({ where: { nombre: "H_Sapui5Cid_Updated" } });
             expect(updated).not.toBeNull();
-            const stale = await CategoryModel.findOne({ where: { nombre: "H_Sapui5Cid" } });
+            const stale = await CategorySeq.findOne({ where: { nombre: "H_Sapui5Cid" } });
             expect(stale).toBeNull();
         });
     });
@@ -657,7 +655,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         const etagOf = (body: Record<string, any>) => body["@odata.etag"] as string | undefined;
 
         it("GET colección inyecta @odata.etag en cada entidad", async () => {
-            await CategoryModel.create({ nombre: "X_EtagColl" });
+            await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_EtagColl" });
             const res = await request(app).get("/odata/category-odata");
             expect(res.status).toBe(200);
             const items = res.body.value as Record<string, any>[];
@@ -666,14 +664,14 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         });
 
         it("GET entidad individual inyecta @odata.etag", async () => {
-            const seed = await CategoryModel.create({ nombre: "X_EtagSingle" });
+            const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_EtagSingle" });
             const res = await request(app).get(`/odata/category-odata/${seed.id}`);
             expect(res.status).toBe(200);
             expect(etagOf(res.body as Record<string, any>)).toEqual(expect.any(String));
         });
 
         it("$expand anida @odata.etag en la navegación", async () => {
-            const cat = await CategoryModel.create({ nombre: "X_EtagNav" });
+            const cat = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_EtagNav" });
             const nowNav = new Date();
             await ProductSeq.create({ nombre: "X_ProdNav", precio: 10, categoria: "X_EtagNav", categoriaId: cat.id, createdAt: nowNav, updatedAt: nowNav });
             const res = await request(app).get(`/odata/category-odata?$expand=products`);
@@ -688,7 +686,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         });
 
         it("PATCH directo con If-Match correcto actualiza y renueva @odata.etag (200)", async () => {
-            const seed = await CategoryModel.create({ nombre: "X_EtagUpd" });
+            const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_EtagUpd" });
             const getRes = await request(app).get(`/odata/category-odata/${seed.id}`);
             const etag = etagOf(getRes.body as Record<string, any>)!;
 
@@ -702,7 +700,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         });
 
         it("PATCH directo con If-Match incorrecto devuelve 412", async () => {
-            const seed = await CategoryModel.create({ nombre: "X_Etag412" });
+            const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_Etag412" });
             const res = await request(app)
                 .patch(`/odata/category-odata/${seed.id}`)
                 .set("If-Match", "etag-que-no-coincide")
@@ -711,7 +709,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         });
 
         it("DELETE directo con If-Match correcto borra (204)", async () => {
-            const seed = await CategoryModel.create({ nombre: "X_EtagDel" });
+            const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_EtagDel" });
             const getRes = await request(app).get(`/odata/category-odata/${seed.id}`);
             const etag = etagOf(getRes.body as Record<string, any>)!;
 
@@ -719,12 +717,12 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
                 .delete(`/odata/category-odata/${seed.id}`)
                 .set("If-Match", etag);
             expect(res.status).toBe(204);
-            const row = await CategoryModel.findByPk(seed.id);
+            const row = await CategorySeq.findByPk(seed.id);
             expect(row).toBeNull();
         });
 
         it("DELETE directo con If-Match incorrecto devuelve 412", async () => {
-            const seed = await CategoryModel.create({ nombre: "X_EtagDel412" });
+            const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_EtagDel412" });
             const res = await request(app)
                 .delete(`/odata/category-odata/${seed.id}`)
                 .set("If-Match", "etag-que-no-coincide");
@@ -732,7 +730,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         });
 
         it("T: $batch changeset PATCH con If-Match correcto (200)", async () => {
-            const seed = await CategoryModel.create({ nombre: "X_BatchUpd" });
+            const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_BatchUpd" });
             const getRes = await request(app).get(`/odata/category-odata/${seed.id}`);
             const etag = etagOf(getRes.body as Record<string, any>)!;
             const body = buildSapui5Changeset([
@@ -744,7 +742,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         });
 
         it("T: $batch changeset PATCH con If-Match incorrecto (412)", async () => {
-            const seed = await CategoryModel.create({ nombre: "X_Batch412" });
+            const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_Batch412" });
             const body = buildSapui5Changeset([
                 { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "X_Batch412_Changed" }, ifMatch: "etag-que-no-coincide" },
             ]);
@@ -772,7 +770,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         });
 
         it("PATCH directo con If-Match incorrecto devuelve 412 con details", async () => {
-            const seed = await CategoryModel.create({ nombre: "X_G2_412" });
+            const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_G2_412" });
             const res = await request(app)
                 .patch(`/odata/category-odata/${seed.id}`)
                 .set("If-Match", "etag-que-no-coincide")
@@ -784,7 +782,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         });
 
         it("$batch changeset PATCH con If-Match incorrecto (412) usa forma estándar en la parte", async () => {
-            const seed = await CategoryModel.create({ nombre: "X_G2_Batch412" });
+            const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_G2_Batch412" });
             const body = buildSapui5Changeset([
                 { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "X_G2_Batch412_Changed" }, ifMatch: "etag-que-no-coincide" },
             ]);

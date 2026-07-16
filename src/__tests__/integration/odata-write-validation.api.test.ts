@@ -45,3 +45,37 @@ describe("OData escritura directa: validación DTO (F1)", () => {
         expect(res.body.error.code).toBe("400");
     });
 });
+
+describe("OData escritura directa: validación DTO (F2)", () => {
+    const app = () => expressApp();
+
+    it("POST /odata/category-odata con body inválido -> 400 OData v4", async () => {
+        // Falta `nombre`; campo requerido por CategoryCreateDTO.
+        const res = await request(app())
+            .post("/odata/category-odata")
+            .send({});
+
+        expect(res.status).toBe(400);
+        expect(res.body.error).toBeDefined();
+        expect(res.body.error.code).toBe("400");
+        expect(typeof res.body.error.message).toBe("string");
+    });
+
+    it("POST /odata/category-odata con campo extra no permitido -> 400 OData v4", async () => {
+        const res = await request(app())
+            .post("/odata/category-odata")
+            .send({ nombre: "Test", extraField: "not-allowed" });
+
+        expect(res.status).toBe(400);
+        expect(res.body.error.code).toBe("400");
+    });
+
+    it("PATCH /odata/category-odata/:id con body inválido -> 400 OData v4", async () => {
+        const res = await request(app())
+            .patch("/odata/category-odata/1")
+            .send({});
+
+        expect(res.status).toBe(400);
+        expect(res.body.error.code).toBe("400");
+    });
+});

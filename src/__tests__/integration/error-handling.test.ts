@@ -9,16 +9,23 @@ vi.mock("../../common/service/odata/odata.service.js", () => {
 import expressApp from "../../main.js";
 
 describe("Error handling", () => {
-    it("should return 404 for unknown routes", async () => {
+    it("should return 404 for unknown OData routes", async () => {
         const app = expressApp();
-        const res = await request(app).get("/api/nonexistent");
+        const res = await request(app).get("/odata/nonexistent");
 
         expect(res.status).toBe(404);
     });
 
-    it("should return 404 for unknown nested routes", async () => {
+    it("should return 404 for unknown nested OData routes", async () => {
         const app = expressApp();
-        const res = await request(app).get("/api/core/nonexistent");
+        const res = await request(app).get("/odata/unknown-entity/nonexistent");
+
+        expect(res.status).toBe(404);
+    });
+
+    it("F3: /api is not mounted — REST surface removed", async () => {
+        const app = expressApp();
+        const res = await request(app).get("/api/core/products");
 
         expect(res.status).toBe(404);
     });

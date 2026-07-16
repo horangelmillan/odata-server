@@ -3,7 +3,7 @@ import { ExpressRouter, ODataControler } from "@phrasecode/odata";
 import { env } from "../../config/env.config.js";
 import { dataSource } from "./datasource.js";
 import { ProductODataController } from "../../../core/product/controller/product.odata.controller.js";
-import { CategoryODataController } from "./controllers/category.odata.controller.js";
+import { CategoryODataController } from "../../../core/category/controller/category.odata.controller.js";
 import { BatchMiddleware } from "../../middleware/batch.middleware.js";
 import { registerWriteRoutes } from "./odata-write.routes.js";
 import { stripFormat } from "./odata-format.js";

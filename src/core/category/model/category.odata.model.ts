@@ -1,5 +1,5 @@
 import { Model, Table, Column, DataTypes, HasMany } from "@phrasecode/odata";
-import { ProductOData } from "../../../../core/product/model/product.odata.model.js";
+import { ProductOData } from "../../product/model/product.odata.model.js";
 
 @Table({ tableName: "categories" })
 export class CategoryOData extends Model<CategoryOData> {

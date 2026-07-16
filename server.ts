@@ -1,7 +1,7 @@
 import http from "node:http";
 import { Express } from "express";
 import expressApp from "./src/main.js";
-import { db } from "./src/common/service/ORM/sequelize.service.js";
+import { dataSource } from "./src/common/service/odata/datasource.js";
 import { env } from "./src/common/config/env.config.js";
 
 const server: http.Server = http.createServer();
@@ -9,10 +9,12 @@ const app: Express = expressApp();
 
 const initServer = async () => {
     try {
-        await db.authenticate()
+        const sequelize = (dataSource as unknown as { sequelizerAdaptor: { sequelize: { authenticate: () => Promise<void>; sync: (opts: { alter: boolean }) => Promise<void> } } }).sequelizerAdaptor.sequelize;
+
+        await sequelize.authenticate()
             .then(() => console.log("database is authenticated"));
 
-        await db.sync({ alter: true })
+        await sequelize.sync({ alter: true })
             .then(() => console.log("database is synced"));
     } catch (err) {
         return console.log(err, "something went wrong with the database connection, the server will not start.");

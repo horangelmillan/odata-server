@@ -1,8 +1,4 @@
-import express, { Router } from "express";
-import { categoryRouter } from "./route/category.route.js";
+import { CategoryOData } from "./model/category.odata.model.js";
+import { CategoryODataController } from "./controller/category.odata.controller.js";
 
-const CategoryRouter: Router = express.Router();
-
-CategoryRouter.use("/", categoryRouter);
-
-export { CategoryRouter };
+export { CategoryOData, CategoryODataController };

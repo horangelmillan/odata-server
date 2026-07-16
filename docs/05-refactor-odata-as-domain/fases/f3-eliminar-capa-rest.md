@@ -67,12 +67,12 @@ await sequelize.authenticate(); await sequelize.sync({ alter: true });
 
 ## 2. Criterios de aceptación
 
-- [ ] `src/main.ts` no monta `/api`; solo `/odata`.
-- [ ] `global.router.ts` eliminado; `core/main.ts` reorientado a registro OData.
-- [ ] `route/` y `controller/` REST de `product`/`category` eliminados.
-- [ ] `common/service/ORM` eliminado (si libre de refs).
-- [ ] `server.ts` sincroniza vía `dataSource.sequelizerAdaptor.sequelize.sync()`.
-- [ ] `GET /api/*` no expuesto; `pnpm test` en verde; build sin refs colgantes.
+- [x] `src/main.ts` no monta `/api`; solo `/odata`.
+- [x] `global.router.ts` eliminado; `core/main.ts` reorientado a registro OData.
+- [x] `route/` y `controller/` REST de `product`/`category` eliminados.
+- [x] `common/service/ORM` eliminado (libre de refs: `product.model.ts` y `product.query/` borrados; `odata-expand.integration.test.ts` migrado a la instancia del `dataSource`).
+- [x] `server.ts` sincroniza vía `dataSource.sequelizerAdaptor.sequelize.sync()`.
+- [x] `GET /api/*` no expuesto (404 verificado); `pnpm test` en verde (142 passed); build sin refs colgantes a archivos borrados (`tsc --noEmit` no reporta ninguna referencia a `global.router`, `GlobalRouter`, `CoreRouter`, `common/service/ORM`, `sequelize.service`, `product.model`, `product.query` ni `/api`).
 
 ---
 
