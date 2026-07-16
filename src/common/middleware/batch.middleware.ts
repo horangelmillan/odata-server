@@ -231,7 +231,9 @@ async function dispatchRead(
     target: ResolvedTarget,
     controller: ODataControler,
 ): Promise<ResponseBlock> {
-    let pathEntity = target.entitySet;
+    // G3: el entitySet puede incluir un prefijo de namespace (p.ej. `demo/product-odata`)
+    // que el QueryParser no entiende; extraemos solo el último segmento (nombre de entidad).
+    const modelEntityName = target.entitySet.split("/").pop() ?? target.entitySet;
 
     // Fase I: negociación de `$format` dentro del $batch. JSON -> se elimina;
     // otro formato -> 415 (el QueryParser rechazaría `$format` con 400).
@@ -252,7 +254,7 @@ async function dispatchRead(
     // entiende paréntesis codificados, por lo que decodificamos para mantener el
     // mismo comportamiento que la ruta GET directa (Fase G).
     const normalizedQuery = new URLSearchParams(queryPart).toString();
-    const queryString = `/${pathEntity}?${normalizedQuery}`;
+    const queryString = `/${modelEntityName}?${normalizedQuery}`;
     const queryParser = new QueryParser(decodeURIComponent(queryString), controller.getBaseModel());
     const result = await controller.get(queryParser);
     // G1: inyecta `@odata.etag` en la respuesta de lectura del $batch para que
