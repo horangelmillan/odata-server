@@ -9,6 +9,7 @@ import { GlAccountOData } from "../../../core/finance/glaccount/model/glaccount.
 import { InvoiceOData } from "../../../core/finance/invoice/model/invoice.odata.model.js";
 import { SupplierInvoiceOData } from "../../../core/finance/supplierinvoice/model/supplierinvoice.odata.model.js";
 import { InvoiceItemOData } from "../../../core/finance/invoiceitem/model/invoiceitem.odata.model.js";
+import { PaymentOData } from "../../../core/finance/payment/model/payment.odata.model.js";
 
 const dbConfig = env.isProd ? env.prodDb : env.devDb;
 
@@ -25,7 +26,7 @@ const dataSourceConfig: Record<string, unknown> = {
         idle: 10000,
         acquire: 30000,
     },
-    models: [ProductOData, CategoryOData, CompanyOData, CustomerOData, SupplierOData, GlAccountOData, InvoiceOData, SupplierInvoiceOData, InvoiceItemOData],
+    models: [ProductOData, CategoryOData, CompanyOData, CustomerOData, SupplierOData, GlAccountOData, InvoiceOData, SupplierInvoiceOData, InvoiceItemOData, PaymentOData],
 };
 
 if (env.isProd) {
