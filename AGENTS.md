@@ -33,6 +33,7 @@ Usa la skill **node-modular-monolith** para crear nuevos módulos/dominios OData
   simulado). El `getEndpoint()` del controlador define el prefijo. La carpeta física
   `src/core/demo/` y `src/core/finance/` refleja el mismo namespace.
 - El controlador OData se registra en `src/common/service/odata/odata.service.ts`.
+- El seed financiero idempotente vive en `scripts/seed/financial-seed.ts` y se ejecuta con `pnpm seed` o `pnpm db:reset`.
 - Usar `env.config.ts` para toda lectura de variables de entorno — nunca `process.env` directamente
 
 ## Parche conocido

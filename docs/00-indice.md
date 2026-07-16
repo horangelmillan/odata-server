@@ -65,7 +65,8 @@ re-montable** (`pnpm seed` / `pnpm db:reset` recrea los mismos datos). El domini
 - [`fases/f0.1-prefijo-demo-bloqueado.md`](06-financial-eco/fases/f0.1-prefijo-demo-bloqueado.md) — 🚧 F0.1 en pausa por issue #3.
 - [`fases/f1-modelos-financieros.md`](06-financial-eco/fases/f1-modelos-financieros.md) — 8 dominios (sub-fases `f1.1`–`f1.8`)
 - [`fases/f2-seed-remontable.md`](06-financial-eco/fases/f2-seed-remontable.md) — Seed idempotente (sub-fases `f2.0`–`f2.8`)
-- [`fases/f3-relaciones-y-estados.md`](06-financial-eco/fases/f3-relaciones-y-estados.md)
-- [`fases/f4-tests-ecosistema.md`](06-financial-eco/fases/f4-tests-ecosistema.md)
-- [`fases/f5-documentacion.md`](06-financial-eco/fases/f5-documentacion.md)
+- [`fases/f3-relaciones-y-estados.md`](06-financial-eco/fases/f3-relaciones-y-estados.md) ✅
+- [`fases/f4-tests-ecosistema.md`](06-financial-eco/fases/f4-tests-ecosistema.md) ✅
+- [`fases/f5-documentacion.md`](06-financial-eco/fases/f5-documentacion.md) ✅
+- [`../02-patrones/16-financial-module.md`](02-patrones/16-financial-module.md) — Patrón de módulo financiero con entidades, navegaciones, seed y ejemplos `$expand`/`$filter`.
 - [`fases/f6-merge-a-master.md`](06-financial-eco/fases/f6-merge-a-master.md)
