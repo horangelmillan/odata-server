@@ -3,6 +3,7 @@
 > **Fase:** F7 · **Esfuerzo:** Bajo · **Sesión:** 8/8
 > **Depende de:** F0–F6 (todos los criterios de aceptación cumplidos).
 > **Actualiza:** `docs/00-indice.md`, este archivo.
+> **Estado:** ✅ Completada (merge vía PR #1 + tag `v2.0.0-odata-domain`).
 
 ---
 
@@ -58,10 +59,15 @@ git -C "C:\Users\Horan\Desktop\servidor OData\servidor-odata" push origin v2.0.0
 
 ## 3. Criterios de aceptación
 
-- [ ] Todas las condiciones de aceptación cumplidas.
-- [ ] Merge a `master` realizado (o decidido no hacerlo si falta algo).
-- [ ] Tag aplicado.
-- [ ] `docs/00-indice.md` marca el ciclo como completado.
+- [x] Todas las condiciones de aceptación cumplidas.
+- [x] Merge a `master` realizado (vía PR #1, no por DELETE de protección).
+- [x] Tag `v2.0.0-odata-domain` aplicado y pusheado.
+- [x] `docs/00-indice.md` marca el ciclo como completado.
+
+> **Nota de ejecución:** se desvió del paso 2.2 original (DELETE de protección) a un flujo PR
+> transparente: `master` quedó protegida (PR + check `test` + `enforce_admins`, sin aprobación
+> externa por ser proyecto personal). El merge se hizo por GitHub y el tag se aplicó sobre
+> `master` ya mergeado. Nunca se eliminó la protección de rama.
 
 ---
 
