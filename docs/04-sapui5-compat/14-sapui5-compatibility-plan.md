@@ -651,3 +651,24 @@ git add .
 git commit -m "fase X: descripción del cambio"
 git push origin feat/odata-sapui5-compat
 ```
+
+---
+
+## Cierre de deuda arquitectónica (Sesión 11 → ciclo `refactor/odata-as-domain`)
+
+> **Resolución de la deuda anotada en la Sesión 11 (línea ~367):** aquel ciclo
+> `feat/odata-sapui5-compat` implementó la escritura OData reusando la instancia Sequelize del
+> datasource, pero dejó la lógica REST en `core/<dominio>` y los modelos/controllers OData en
+> `common/` — una dualidad que se documentó explícitamente como deuda y se pospuso "para otro
+> ciclo". **Ese otro ciclo es `refactor/odata-as-domain`.**
+>
+> En las fases F1–F4 de [`docs/05-refactor-odata-as-domain/00-plan-maestro.md`](../05-refactor-odata-as-domain/00-plan-maestro.md)
+> se eliminó la capa REST por completo y se promovió OData a dominio de primera clase dentro de
+> `core/<dominio>/` (interface / model `@Table`/`@Column` / dto / service / controller), convirtiendo
+> `common/service/odata/` en **shared kernel** (infraestructura OData transversal). La deuda de la
+> Sesión 11 queda **resuelta**: ya no hay dos protocolos ni modelos duplicados; `@phrasecode/odata`
+> es la única fuente de verdad del modelo y del contrato de API.
+>
+> Los documentos `docs/05-refactor-odata-as-domain/historia-04-*.md` y `historia-06-*.md` conservan
+> el diseño previo (OData en Shared Kernel + REST en core / CQRS ligero REST-OData) como contexto
+> histórico, revocado por el ciclo citado.

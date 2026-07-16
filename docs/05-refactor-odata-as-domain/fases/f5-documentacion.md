@@ -63,12 +63,12 @@ misma carpeta) para trazabilidad de por qué se tomó la decisión.
 
 ## 2. Criterios de aceptación
 
-- [ ] `README.md` sin referencias a REST como protocolo de escritura; árbol de arquitectura nuevo.
-- [ ] `AGENTS.md` refleja OData-as-domain.
-- [ ] `05-odata-module-pattern.md` y `11-example-module-product.md` OData-first.
-- [ ] `14-sapui5-compatibility-plan.md` enlaza la resolución de la deuda.
-- [ ] `historia-04/06` marcados como históricos.
-- [ ] `docs/00-indice.md` actualizado.
+- [x] `README.md` sin referencias a REST como protocolo de escritura; árbol de arquitectura nuevo.
+- [x] `AGENTS.md` refleja OData-as-domain.
+- [x] `05-odata-module-pattern.md` y `11-example-module-product.md` OData-first.
+- [x] `14-sapui5-compatibility-plan.md` enlaza la resolución de la deuda.
+- [x] `historia-04/06` marcados como históricos.
+- [x] `docs/00-indice.md` actualizado.
 
 ---
 

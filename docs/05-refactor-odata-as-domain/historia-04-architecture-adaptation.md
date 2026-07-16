@@ -1,3 +1,5 @@
+> **DOCUMENTO HISTÓRICO** — describe el diseño previo (OData en Shared Kernel + REST en core). Revocado por el ciclo `refactor/odata-as-domain` (ver `00-plan-maestro.md`).
+
 # 04 — Adaptación de Arquitectura: OData + Modular Monolith
 
 ## 4.1 Principios de Integración

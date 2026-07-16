@@ -10,8 +10,8 @@ Servidor backend Node.js/TypeScript que expone **OData v4** como único protocol
 |---|---|
 | Runtime | Node.js 20 + TypeScript 5.9 (ESM, NodeNext) |
 | Framework | Express 4 (solo como host del router OData + middleware transversal) |
-| OData | `@phrasecode/odata` v0.3.1 (fuente de verdad del contrato de API) |
-| BD | PostgreSQL (vía Sequelize interno del `DataSource` OData) |
+| OData | `@phrasecode/odata` v0.3.1 (fuente de verdad del contrato de API **y** del modelo/ORM) |
+| BD | PostgreSQL (motor interno del `DataSource` OData, que usa Sequelize de forma transparente) |
 | Validación | `class-validator` / `class-transformer` |
 | Auth | bcrypt + JWT |
 | Tests | Vitest + supertest |
@@ -267,15 +267,19 @@ Luego se añaden al `dataSource` (`datasource.ts`) y al arreglo de `odataControl
 
 ---
 
-## Cómo agregar una entidad OData
+## Cómo agregar una entidad OData (OData-first)
 
-### 1. Crear el modelo OData
+> Todo el dominio vive en `src/core/<dominio>/`. `common/service/odata/` es shared kernel
+> (infraestructura OData transversal: `DataSource`, factory `ExpressRouter`, escritura base,
+> etag, errores, metadata, formato). Nunca coloques modelos o controladores de dominio ahí.
+
+### 1. Crear el modelo OData (fuente de verdad, en el dominio)
 
 ```typescript
-// src/common/service/odata/models/<entidad>.odata.model.ts
+// src/core/<dominio>/model/<entidad>.odata.model.ts
 import { Model, Table, Column, DataTypes } from "@phrasecode/odata";
 
-@Table({ tableName: "productos" })
+@Table({ tableName: "mi_entidad" })
 export class MiEntidadOData extends Model<MiEntidadOData> {
     @Column({ dataType: DataTypes.INTEGER, isPrimaryKey: true, isAutoIncrement: true })
     id!: number;
@@ -285,34 +289,52 @@ export class MiEntidadOData extends Model<MiEntidadOData> {
 }
 ```
 
-### 2. Crear el controlador OData
+### 2. Crear el DTO y el controlador OData (en el dominio)
 
 ```typescript
-// src/common/service/odata/controllers/<entidad>.odata.controller.ts
+// src/core/<dominio>/dto/<entidad>.dto.ts
+import { IsString } from "class-validator";
+export class MiEntidadCreateDTO {
+    @IsString() nombre!: string;
+}
+```
+
+```typescript
+// src/core/<dominio>/controller/<entidad>.odata.controller.ts
 import { ODataControler } from "@phrasecode/odata";
-import { MiEntidadOData } from "../models/<entidad>.odata.model.js";
+import { MiEntidadOData } from "../model/<entidad>.odata.model.js";
 
 export class MiEntidadODataController extends ODataControler {
     constructor() {
-        super({ model: MiEntidadOData, allowedMethod: ["get"] });
+        super({ model: MiEntidadOData, allowedMethod: ["get", "post", "put", "delete"] });
         this.setMaxTop(100);
     }
 }
 ```
 
-### 3. Registrar en odata.service.ts
+### 3. Exportar en `src/core/<dominio>/main.ts` y registrar en `odata.service.ts`
 
 ```typescript
-import { MiEntidadODataController } from "./controllers/<entidad>.odata.controller.js";
+// src/core/<dominio>/main.ts
+import { MiEntidadOData } from "./model/<entidad>.odata.model.js";
+import { MiEntidadODataController } from "./controller/<entidad>.odata.controller.js";
+export { MiEntidadOData, MiEntidadODataController };
+```
+
+```typescript
+// src/common/service/odata/odata.service.ts (shared kernel)
+import { MiEntidadOData } from "../../core/<dominio>/model/<entidad>.odata.model.js";
+import { MiEntidadODataController } from "../../core/<dominio>/controller/<entidad>.odata.controller.js";
 // ...
 const oDataExpressApp = ExpressRouter.create({
     dataSource,
-    controllers: [ProductODataController, MiEntidadODataController],
+    controllers: [ProductODataController, CategoryODataController, MiEntidadODataController],
     // ...
 });
 ```
 
-> El nombre del endpoint en `/odata/<nombre>` se genera automáticamente a partir del nombre de la clase en kebab-case. Por ejemplo, `ProductOData` → `/odata/product-odata`.
+> El nombre del endpoint en `/odata/<nombre>` se genera automáticamente a partir del nombre de la
+> clase en kebab-case. Por ejemplo, `MiEntidadOData` → `/odata/mi-entidad-odata`.
 
 ---
 

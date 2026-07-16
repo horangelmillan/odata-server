@@ -1,7 +1,8 @@
 # 11 — Ejemplo Completo: Módulo Product (OData-first)
 
-> **Estado:** F1 · OData es el dominio único de `product`. El `db.define` de Sequelize
-> fue eliminado; el modelo `@phrasecode/odata` es la única fuente de verdad.
+> **Estado:** F1–F5 · OData es el dominio único de `product` (ciclo `refactor/odata-as-domain`).
+> El `db.define` de Sequelize fue eliminado; el modelo `@phrasecode/odata` es la única fuente de verdad.
+> No hay capa REST: el servidor expone solo `/odata`.
 
 ## 11.1 Descripción
 
@@ -24,8 +25,7 @@ src/
     ├── service/product.service.ts             # Orquesta lectura+escritura (DTO-validado)
     ├── model/product.odata.model.ts          # Modelo @phrasecode/odata (FUENTE DE VERDAD)
     ├── dto/product.dto.ts                    # DTOs Create/Update (class-validator)
-    ├── interface/product.interface.ts       # Interface IProduct
-    └── query/product.query.ts               # SQL nativas opcionales (vía db)
+    └── interface/product.interface.ts       # Interface IProduct
 ```
 
 El registro del dominio en el servidor OData se hace importando desde `core/product/`:
@@ -51,7 +51,7 @@ export interface IProduct {
 ```typescript
 // src/core/product/model/product.odata.model.ts
 import { Model, Table, Column, DataTypes, BelongsTo } from "@phrasecode/odata";
-import { CategoryOData } from "../../../common/service/odata/models/category.odata.model.js";
+import { CategoryOData } from "../../../core/category/model/category.odata.model.js";
 
 @Table({ tableName: "products" })
 export class ProductOData extends Model<ProductOData> {

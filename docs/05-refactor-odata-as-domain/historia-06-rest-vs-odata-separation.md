@@ -1,3 +1,5 @@
+> **DOCUMENTO HISTÓRICO** — describe el diseño previo (CQRS ligero REST/OData). Revocado por el ciclo `refactor/odata-as-domain` (ver `00-plan-maestro.md`).
+
 # 06 — REST vs OData Separation (Lightweight CQRS)
 
 ## 6.1 Separation Philosophy
