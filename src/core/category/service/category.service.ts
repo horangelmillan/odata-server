@@ -2,13 +2,19 @@ import { transformAndValidate, ClassType } from "class-transformer-validator";
 import { ValidationError } from "class-validator";
 import { CategoryCreateDTO, CategoryUpdateDTO } from "../dto/category.dto.js";
 import { CategoryODataController } from "../controller/category.odata.controller.js";
-import { odataWriteService, type ODataBaseModel } from "../../../common/service/odata/odata-write.service.js";
+import {
+    odataWriteService,
+    type ODataBaseModel,
+    type WriteResult,
+} from "../../../common/service/odata/odata-write.service.js";
 import { JSONValidatorException } from "../../../common/exception/json-validator.exception.js";
 
 // Servicio OData-first del dominio `category`. Es la única capa de orquestación:
 // la lectura delega en el `ODataControler` (mismo query parser que /odata/category-odata)
 // y la escritura en `odataWriteService` (reusa la instancia Sequelize del datasource).
-// Toda escritura se valida con los DTOs `class-validator` antes de tocar la BD.
+// Toda escritura se valida con los DTOs `class-validator` (F4: la validación vive
+// en el dominio; `odata-write.routes.ts` delega aquí y convierte el fallo de
+// validación en un 400 OData v4).
 
 function modelOf(controller: CategoryODataController): ODataBaseModel {
     return controller.getBaseModel() as unknown as ODataBaseModel;
@@ -46,7 +52,7 @@ class CategoryService {
         return result;
     }
 
-    async create(data: unknown): Promise<unknown> {
+    async create(data: unknown): Promise<WriteResult> {
         const dto = await validate(CategoryCreateDTO, data);
         const model = modelOf(this.controller);
         return await odataWriteService.runInTransaction((tx) =>
@@ -54,7 +60,7 @@ class CategoryService {
         );
     }
 
-    async update(id: number, data: unknown): Promise<unknown> {
+    async update(id: number, data: unknown): Promise<WriteResult> {
         const dto = await validate(CategoryUpdateDTO, data);
         const model = modelOf(this.controller);
         return await odataWriteService.runInTransaction((tx) =>

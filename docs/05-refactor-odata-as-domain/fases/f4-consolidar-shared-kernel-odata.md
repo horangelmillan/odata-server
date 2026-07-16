@@ -69,11 +69,39 @@ La whitelist de columnas se deriva de `model.getMetadata()` (OK), pero el body n
 
 ## 3. Criterios de aceptación
 
-- [ ] Escritura validada por DTO en `product.service` y `category.service`.
-- [ ] Sin cast frágil a `.models[tableIdentifier]` (o documentado y justificado).
-- [ ] `common/service/odata/` es solo infra (sin modelos/controladores de dominio).
-- [ ] Errores de validación → 400 OData estándar.
-- [ ] `pnpm test` en verde.
+- [x] Escritura validada por DTO en `product.service` y `category.service`.
+- [x] Sin cast frágil a `.models[tableIdentifier]` (o documentado y justificado).
+- [x] `common/service/odata/` es solo infra (sin modelos/controladores de dominio).
+- [x] Errores de validación → 400 OData estándar.
+- [x] `pnpm test` en verde.
+
+### 3.1 Notas de la implementación
+
+- **Validación DTO en el dominio (2.1):** `core/product/service/product.service.ts` y
+  `core/category/service/category.service.ts` validan `ProductCreateDTO`/`ProductUpdateDTO` y
+  `CategoryCreateDTO`/`CategoryUpdateDTO` con `class-validator` vía `transformAndValidate`, y
+  lanzan `JSONValidatorException` en fallo. `create`/`update` devuelven `WriteResult`.
+- **Cast frágil (2.2):** el modelo de `@phrasecode/odata` (`getBaseModel()`) **NO** es un
+  `ModelStatic` de Sequelize — solo expone `getMetadata()`. Por eso el SequelizerAdaptor define
+  el modelo Sequelize por separado y lo indexa en `sequelize.models[tableIdentifier]`. El cast
+  frágil `dataSource.sequelizerAdaptor.sequelize.models[tableIdentifier]` se mantiene pero
+  **centralizado y tipado** en `ODataWriteService.resolveSequelizeModel(model)`, documentado en
+  `odata-write.service.ts`. Alternativa considerada: exponer `dataSource.getSequelizeModel(Model)`,
+  pero requeriría parchear la API de la librería; se descartó para no ampliar el parche.
+- **Delegación de rutas (2.3):** `odata-write.routes.ts` ya NO importa ni valida DTOs ni llama a
+  `odataWriteService.create/update` directo. Mapea `endpoint -> { productService, categoryService }`
+  y delega; captura `JSONValidatorException` y responde 400 OData v4 estándar. `odataWriteService`
+  queda como utilidad interna (transacciones, etag, whitelist).
+- **Shared kernel (2.4):** `common/service/odata/` contiene solo infra
+  (`datasource`, `odata.service`, `odata-write.service` base, `odata-write.routes`,
+  `odata-error`, `odata-etag`, `odata-format`, `odata-metadata`). Los modelos/controladores de
+  dominio residen en `core/<dominio>/`.
+- **Trace (2.5):** `codebase-memory` confirma `main.ts -> odata.service.ts -> registerWriteRoutes`
+  y controladores de `core/`. No hay imports a `core/*/route` ni a `common/service/ORM` en `src/`.
+- **Tests (2.6):** `odata-write-validation.api.test.ts` (POST/PATCH inválido -> 400 OData) en
+  verde, junto con las suites de escritura/etag/error/batch/count. `pnpm test`: 143 passed, 1 todo
+  (mismo conteo que el baseline F3). `tsc --build` presenta los mismos errores preexistentes que
+  en F3 (bcrypt types, vitest globals, IDbConfig, ExpressRouter patch) — no introducidos por F4.
 
 ---
 
