@@ -57,9 +57,7 @@ describe("Financial $expand contra Postgres (F3)", () => {
         await Customer.create({ id: "C0002", nombre: "Cliente Sin Facturas", companyId: "1000", pais: "FR" });
     });
 
-    afterAll(async () => {
-        if (dbAvailable) await odataSeq.close();
-    });
+
 
     it("invoice?$expand=customer anida el cliente", async () => {
         const res = await request(app).get("/odata/finance/invoice-odata?$expand=customer");
