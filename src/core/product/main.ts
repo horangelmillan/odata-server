@@ -1,8 +1,4 @@
-import express, { Router } from "express";
-import { productRouter } from "./route/product.route.js";
+import { ProductOData } from "./model/product.odata.model.js";
+import { ProductODataController } from "./controller/product.odata.controller.js";
 
-const ProductRouter: Router = express.Router();
-
-ProductRouter.use("/", productRouter);
-
-export { ProductRouter };
+export { ProductOData, ProductODataController };

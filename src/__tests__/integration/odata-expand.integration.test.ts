@@ -4,8 +4,14 @@ import request from "supertest";
 import type { Express } from "express";
 import expressApp from "../../main.js";
 import { db } from "../../common/service/ORM/sequelize.service.js";
-import { ProductModel } from "../../core/product/model/product.model.js";
+import { dataSource } from "../../common/service/odata/datasource.js";
 import { CategoryModel } from "../../core/category/model/category.model.js";
+
+// F1: `ProductModel` (db.define de Sequelize) fue eliminado; el modelo OData es
+// ahora la única fuente de verdad. Para sembrar/limpiar en los tests de
+// integración usamos la instancia Sequelize del `dataSource` OData (misma tabla).
+const odataSeq = (dataSource as unknown as { sequelizerAdaptor: { sequelize: any } }).sequelizerAdaptor.sequelize;
+const ProductSeq = odataSeq.models.products;
 
 // --- Helpers Fase H: construir y parsear peticiones $batch de escritura ---
 
@@ -179,18 +185,26 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
     beforeAll(async () => {
         await db.sync({ alter: true });
+        await odataSeq.sync({ alter: true });
         await CategoryModel.destroy({ where: {} });
-        await ProductModel.destroy({ where: {} });
+        await ProductSeq.destroy({ where: {} });
 
         const electronics = await CategoryModel.create({ nombre: "Electrónica" });
         const home = await CategoryModel.create({ nombre: "Hogar" });
         electronicId = electronics.id;
         homeId = home.id;
 
-        await ProductModel.create({ nombre: "Laptop", precio: 1500, categoria: "Electrónica", categoriaId: electronicId });
-        await ProductModel.create({ nombre: "Mouse", precio: 25, categoria: "Electrónica", categoriaId: electronicId });
-        await ProductModel.create({ nombre: "Teclado", precio: 40, categoria: "Electrónica", categoriaId: electronicId });
-        await ProductModel.create({ nombre: "Silla", precio: 300, categoria: "Hogar", categoriaId: homeId });
+        // F1: el seed de productos usa la instancia Sequelize del `dataSource`
+        // OData, cuyo modelo se define con `timestamps: false` (ver
+        // `@phrasecode/odata`). Por eso fijamos createdAt/updatedAt en el
+        // seed explícitamente para que los tests de fechas ISO (Fase I) y el
+        // @odata.etag anidado en $expand tengan valor (igual que hacía el
+        // antes `ProductModel` REST con `timestamps: true`).
+        const now = new Date();
+        await ProductSeq.create({ nombre: "Laptop", precio: 1500, categoria: "Electrónica", categoriaId: electronicId, createdAt: now, updatedAt: now });
+        await ProductSeq.create({ nombre: "Mouse", precio: 25, categoria: "Electrónica", categoriaId: electronicId, createdAt: now, updatedAt: now });
+        await ProductSeq.create({ nombre: "Teclado", precio: 40, categoria: "Electrónica", categoriaId: electronicId, createdAt: now, updatedAt: now });
+        await ProductSeq.create({ nombre: "Silla", precio: 300, categoria: "Hogar", categoriaId: homeId, createdAt: now, updatedAt: now });
     });
 
     afterAll(async () => {
@@ -456,7 +470,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     afterEach(async () => {
         // OJO: en LIKE el `_` es comodín de un carácter; escapamos con `\` para
         // que "H\_%" matchee el prefijo literal "H_" y NO borre el seed "Hogar".
-        await ProductModel.destroy({ where: { nombre: { [Op.like]: "H\\_%" } } });
+        await ProductSeq.destroy({ where: { nombre: { [Op.like]: "H\\_%" } } });
         await CategoryModel.destroy({ where: { nombre: { [Op.like]: "H\\_%" } } });
     });
 
@@ -660,7 +674,8 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         it("$expand anida @odata.etag en la navegación", async () => {
             const cat = await CategoryModel.create({ nombre: "X_EtagNav" });
-            await ProductModel.create({ nombre: "X_ProdNav", precio: 10, categoria: "X_EtagNav", categoriaId: cat.id });
+            const nowNav = new Date();
+            await ProductSeq.create({ nombre: "X_ProdNav", precio: 10, categoria: "X_EtagNav", categoriaId: cat.id, createdAt: nowNav, updatedAt: nowNav });
             const res = await request(app).get(`/odata/category-odata?$expand=products`);
             expect(res.status).toBe(200);
             const cats = res.body.value as Record<string, any>[];

@@ -3,6 +3,30 @@ import { ODataControler } from "@phrasecode/odata";
 import { odataWriteService, type ODataBaseModel } from "./odata-write.service.js";
 import { injectEtag, etagMatches } from "./odata-etag.js";
 import { oDataError } from "./odata-error.js";
+import { JSONValidatorException } from "../../exception/json-validator.exception.js";
+import { ProductCreateDTO, ProductUpdateDTO } from "../../../core/product/dto/product.dto.js";
+import { transformAndValidate, ClassType } from "class-transformer-validator";
+import { ValidationError } from "class-validator";
+
+async function transformAndValidateProduct<T extends object>(
+    dto: ClassType<T>,
+    data: unknown,
+): Promise<T> {
+    try {
+        return (await transformAndValidate(dto, data as object, {
+            validator: {
+                validationError: { target: false },
+                whitelist: true,
+                forbidNonWhitelisted: true,
+            },
+        })) as T;
+    } catch (error: unknown) {
+        if (error instanceof Array && error.every((e) => e instanceof ValidationError)) {
+            throw new JSONValidatorException(`Error validando ${dto.name}`, error);
+        }
+        throw error;
+    }
+}
 
 // Escritura directa OData (modo groupId "$direct" de SAPUI5). Reutiliza el
 // mismo write service (y por tanto la misma instancia Sequelize/pool) que el
@@ -15,6 +39,34 @@ function modelOf(controller: ODataControler): ODataBaseModel {
     return controller.getBaseModel() as unknown as ODataBaseModel;
 }
 
+// F1: validación DTO en escritura directa OData. Reusa los DTOs del dominio
+// `product` (mismos que la ruta REST) para que el POST/PATCH /odata/product-odata
+// falle con 400 en formato OData v4 cuando el body es inválido.
+async function validateProductBody(
+    endpoint: string,
+    req: Request,
+    res: Response,
+    isUpdate: boolean,
+): Promise<Record<string, unknown> | null> {
+    if (endpoint !== "product-odata") return (req.body ?? {}) as Record<string, unknown>;
+    try {
+        const dto = isUpdate ? ProductUpdateDTO : ProductCreateDTO;
+        const validated = await transformAndValidateProduct(dto, req.body ?? {});
+        return validated as unknown as Record<string, unknown>;
+    } catch (error) {
+        if (error instanceof JSONValidatorException) {
+            const details = error
+                .getErrors()
+                .map((e) => `${Object.keys(e.constraints ?? {}).join(", ")}`)
+                .join("; ");
+            res.status(400).json(oDataError(400, "Validation failed", details || "Invalid body"));
+            return null;
+        }
+        res.status(400).json(oDataError(400, "Validation failed", (error as Error).message));
+        return null;
+    }
+}
+
 export function registerWriteRoutes(router: Router, controllers: ODataControler[]): void {
     const json = express.json();
 
@@ -25,8 +77,10 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
 
         router.post(base, json, async (req: Request, res: Response) => {
             try {
+                const body = await validateProductBody(endpoint, req, res, false);
+                if (body === null) return;
                 const result = await odataWriteService.runInTransaction((tx) =>
-                    odataWriteService.create(model, req.body ?? {}, tx),
+                    odataWriteService.create(model, body, tx),
                 );
                 injectEtag(result.entity);
                 res.set("Location", `/odata/${endpoint}(${result.key})`);
@@ -38,6 +92,8 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
 
         const updateHandler = async (req: Request, res: Response): Promise<void> => {
             try {
+                const body = await validateProductBody(endpoint, req, res, true);
+                if (body === null) return;
                 // G1: concurrencia optimista (opt-in). Solo se valida `If-Match`
                 // cuando el cliente lo envía; si no, se comporta como antes
                 // (compatibilidad con clientes que no usan etag).
@@ -54,7 +110,7 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
                     }
                 }
                 const result = await odataWriteService.runInTransaction((tx) =>
-                    odataWriteService.update(model, req.params.id, req.body ?? {}, tx),
+                    odataWriteService.update(model, req.params.id, body, tx),
                 );
                 if (!result.entity) {
                     res.status(404).json(oDataError(404, "Entity not found"));

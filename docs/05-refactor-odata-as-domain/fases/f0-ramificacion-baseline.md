@@ -41,7 +41,7 @@ pnpm test
 ```
 **Registrar el número exacto** de tests en verde aquí abajo al cerrar la fase:
 ```
-BASELINE: ___ passing + ___ todo   (fecha: ____)
+BASELINE: 164 passing + 1 todo   (fecha: 2026-07-15)
 ```
 
 ### 1.5 (Opcional) Tag de baseline
@@ -54,10 +54,10 @@ git tag refactor-baseline
 
 ## 2. Criterios de aceptación
 
-- [ ] Rama `refactor/odata-as-domain` creada y activa.
-- [ ] `pnpm install` exitoso (parches OData aplicados).
-- [ ] Tests en verde; número anotado como baseline.
-- [ ] `master` sin cambios (todo el trabajo queda en la rama).
+- [x] Rama `refactor/odata-as-domain` creada y activa.
+- [x] `pnpm install` exitoso (parches OData aplicados).
+- [x] Tests en verde; número anotado como baseline.
+- [x] `master` sin cambios (todo el trabajo queda en la rama).
 
 ---
 

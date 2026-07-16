@@ -1,11 +1,11 @@
 import { ODataControler, QueryParser } from "@phrasecode/odata";
-import { ProductOData } from "../models/product.odata.model.js";
+import { ProductOData } from "../model/product.odata.model.js";
 
 export class ProductODataController extends ODataControler {
     constructor() {
         super({
             model: ProductOData,
-            allowedMethod: ["get"],
+            allowedMethod: ["get", "post", "put", "delete"],
         });
     }
 

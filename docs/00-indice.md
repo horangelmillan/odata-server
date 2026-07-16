@@ -32,14 +32,14 @@ Ciclo previo (`feat/odata-sapui5-compat`, tag `v1.1.0`): compatibilidad 100% con
 - [`pruebas-odata-product.md`](04-sapui5-compat/pruebas-odata-product.md) — Pruebas OData de producto.
 
 ## 05 — Ciclo de Refactorización: OData como Dominio Único
-**Ciclo actual.** Elimina REST y promueve OData a dominio de primera clase, con la misma
+**Ciclo actual.** Estado global: 🚧 **En progreso (F0 done · F1 done)**. Elimina REST y promueve OData a dominio de primera clase, con la misma
 estructura de carpetas que usaba REST (interface / model / dto / service / controller), y
 convirtiendo `common/service/odata/` en shared kernel. Ver detalle y ejecución fase a fase:
 - [`00-plan-maestro.md`](05-refactor-odata-as-domain/00-plan-maestro.md) — Plan maestro y decisión de arquitectura.
 - [`historia-04-architecture-adaptation.md`](05-refactor-odata-as-domain/historia-04-architecture-adaptation.md) — Doc original `04` (OData en Shared Kernel). **Contexto previo al cambio.**
 - [`historia-06-rest-vs-odata-separation.md`](05-refactor-odata-as-domain/historia-06-rest-vs-odata-separation.md) — Doc original `06` (CQRS ligero REST/OData). **Filosofía que este ciclo revierte.**
 - [`fases/f0-ramificacion-baseline.md`](05-refactor-odata-as-domain/fases/f0-ramificacion-baseline.md)
-- [`fases/f1-product-como-dominio-odata.md`](05-refactor-odata-as-domain/fases/f1-product-como-dominio-odata.md)
+- [`fases/f1-product-como-dominio-odata.md`](05-refactor-odata-as-domain/fases/f1-product-como-dominio-odata.md) ✅
 - [`fases/f2-category-como-dominio-odata.md`](05-refactor-odata-as-domain/fases/f2-category-como-dominio-odata.md)
 - [`fases/f3-eliminar-capa-rest.md`](05-refactor-odata-as-domain/fases/f3-eliminar-capa-rest.md)
 - [`fases/f4-consolidar-shared-kernel-odata.md`](05-refactor-odata-as-domain/fases/f4-consolidar-shared-kernel-odata.md)

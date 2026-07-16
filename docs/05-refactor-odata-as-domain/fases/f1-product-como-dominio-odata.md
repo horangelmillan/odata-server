@@ -96,13 +96,26 @@ Orquesta lectura y escritura usando la instancia Sequelize del datasource (sin d
 
 ## 3. Criterios de aceptación
 
-- [ ] `core/product/model/product.odata.model.ts` es la única fuente de verdad (sin `db.define`).
-- [ ] `core/product/controller/product.odata.controller.ts` extiende `ODataControler` con escritura.
-- [ ] `core/product/service/product.service.ts` orquesta lectura+escritura con validación DTO.
-- [ ] `odata.service.ts` y `datasource.ts` importan desde `core/product/`.
-- [ ] `GET/POST/PATCH/DELETE /odata/product-odata` funcionan; escritura inválida → 400 OData.
-- [ ] `$expand=category`, etag, `$metadata`, `$batch` intactos.
-- [ ] `pnpm test` en verde; `product.api.test.ts` (REST) eliminado.
+- [x] `core/product/model/product.odata.model.ts` es la única fuente de verdad (sin `db.define`).
+- [x] `core/product/controller/product.odata.controller.ts` extiende `ODataControler` con escritura.
+- [x] `core/product/service/product.service.ts` orquesta lectura+escritura con validación DTO.
+- [x] `odata.service.ts` y `datasource.ts` importan desde `core/product/`.
+- [x] `GET/POST/PATCH/DELETE /odata/product-odata` funcionan; escritura inválida → 400 OData.
+- [x] `$expand=category`, etag, `$metadata`, `$batch` intactos.
+- [x] `pnpm test` en verde; `product.api.test.ts` (REST) eliminado.
+
+> **Nota de tests (F1):** `pnpm test` → 138 passed / 0 failed / 1 todo.
+> Al migrar el seed de `odata-expand.integration.test.ts` del `ProductModel` REST
+> (Sequelize `timestamps: true`) a la instancia OData del `dataSource` (modelo
+> definido con `timestamps: false` en `@phrasecode/odata`), los productos
+> insertados no traían `createdAt`/`updatedAt`, lo que rompía 2 tests que asumen
+> esas columnas pobladas: `createdAt/updatedAt ISO 8601` (Fase I) y
+> `$expand anida @odata.etag` (Fase G1). Se fijaron esos campos en el seed
+> explícitamente (`createdAt`/`updatedAt: new Date()`), igual que hacía antes el
+> modelo REST. No es un bug del reubicado del modelo: el modelo OData es
+> idéntico al baseline; el cambio fue solo la fuente del seed.
+> Nuevo test añadido: `odata-write-validation.api.test.ts`
+> (POST/PATCH body inválido → 400 OData v4).
 
 ---
 

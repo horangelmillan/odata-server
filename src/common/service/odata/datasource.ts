@@ -1,6 +1,6 @@
 import { DataSource } from "@phrasecode/odata";
 import { env } from "../../config/env.config.js";
-import { ProductOData } from "./models/product.odata.model.js";
+import { ProductOData } from "../../../core/product/model/product.odata.model.js";
 import { CategoryOData } from "./models/category.odata.model.js";
 
 const dbConfig = env.isProd ? env.prodDb : env.devDb;
