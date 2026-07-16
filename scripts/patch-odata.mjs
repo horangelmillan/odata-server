@@ -143,7 +143,7 @@ patchFile(
 // Se reemplaza el método setUpODataRouters completo. El marcador PATCHED-COUNT-v2
 // permite reaplicar el parche aunque el archivo ya venga parcheado (p.ej. al
 // reconstruir la imagen Docker o tras actualizar el parche).
-const COUNT_PATCH_MARKER = "// PATCHED-COUNT-v3";
+const COUNT_PATCH_MARKER = "// PATCHED-COUNT-v4";
 const countSignature = "    setUpODataRouters(router, controller) {";
 const patchedMethod = `    setUpODataRouters(router, controller) {
         ${COUNT_PATCH_MARKER}
@@ -226,7 +226,11 @@ const patchedMethod = `    setUpODataRouters(router, controller) {
                             }
                         } catch (_) {}
                         const pkValue = req.params.id;
-                        const keyParams = new URLSearchParams();
+                        // Preserve the original query string (e.g. $expand, $select) but
+                        // override $filter with the key-access predicate.
+                        const reqQueryIdx = req.url.indexOf('?');
+                        const reqQs = reqQueryIdx >= 0 ? decodeURIComponent(req.url.substring(reqQueryIdx + 1)) : '';
+                        const keyParams = new URLSearchParams(reqQs);
                         keyParams.set('$filter', pkName + ' eq ' + pkValue);
                         const filterUrl = req.baseUrl + '/?' + keyParams.toString();
                         const queryParser = new query_1.QueryParser(filterUrl, model, this.config.queryOptions);

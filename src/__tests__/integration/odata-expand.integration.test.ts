@@ -116,7 +116,7 @@ describe("OData $metadata: CSDL 4.01 válido para SAPUI5 (Fase R)", () => {
     const app = expressApp();
 
     it("expone $EntityContainer con EntitySets namespaced y $NavigationPropertyBinding", async () => {
-        const res = await request(app).get("/odata/$metadata");
+        const res = await request(app).get("/odata/$metadata").set("Accept", "application/json");
 
         expect(res.status).toBe(200);
         const meta = res.body as Record<string, any>;
@@ -135,7 +135,7 @@ describe("OData $metadata: CSDL 4.01 válido para SAPUI5 (Fase R)", () => {
     });
 
     it("los EntityTypes son namespaced y la navegación usa $Type cualificado", async () => {
-        const res = await request(app).get("/odata/$metadata");
+        const res = await request(app).get("/odata/$metadata").set("Accept", "application/json");
 
         expect(res.status).toBe(200);
         const meta = res.body as Record<string, any>;
@@ -154,7 +154,7 @@ describe("OData tipos EDM + $format (Fase I)", () => {
     const app = expressApp();
 
     it("$metadata tipa precio como Edm.Decimal y las fechas como Edm.DateTimeOffset", async () => {
-        const res = await request(app).get("/odata/$metadata");
+        const res = await request(app).get("/odata/$metadata").set("Accept", "application/json");
 
         expect(res.status).toBe(200);
         const product = (res.body as Record<string, any>)["ODataServer.ProductOData"];
@@ -166,9 +166,21 @@ describe("OData tipos EDM + $format (Fase I)", () => {
     });
 
     it("$format=json es aceptado (no 400/415) sobre $metadata", async () => {
-        const res = await request(app).get("/odata/$metadata?$format=json");
+        const res = await request(app).get("/odata/$metadata?$format=json").set("Accept", "application/json");
         expect(res.status).toBe(200);
         expect((res.body as Record<string, any>)["ODataServer.Container"]).toHaveProperty("product-odata");
+    });
+
+    it("por defecto ($format ausente) sirve EDMX XML para SAPUI5 ODataModel v4", async () => {
+        const res = await request(app).get("/odata/$metadata");
+        expect(res.status).toBe(200);
+        expect(res.headers["content-type"]).toContain("application/xml");
+        expect(res.text).toContain("<edmx:Edmx");
+        // En EDMX el contenedor vive dentro del Schema con Namespace="ODataServer"
+        // y su nombre cualificado es ODataServer.Container (Name="Container").
+        expect(res.text).toContain('Namespace="ODataServer"');
+        expect(res.text).toContain('<EntityContainer Name="Container">');
+        expect(res.text).toContain('Name="product-odata"');
     });
 
     it("$format con valor no-JSON devuelve 415 Unsupported Media Type", async () => {

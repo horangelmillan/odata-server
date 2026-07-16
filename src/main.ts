@@ -31,7 +31,7 @@ export default function () {
         oDataExpressApp,
     );
 
-    app.use(compression());
+    app.use(compression({ eTag: false }));
 
     if (env.isDev) {
         app.use(morgan("dev"));

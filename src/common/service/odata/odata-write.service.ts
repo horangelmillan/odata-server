@@ -107,6 +107,15 @@ class ODataWriteService {
     ): Promise<WriteResult> {
         const { meta, sqModel, pk } = this.resolve(model);
         const payload = this.toColumns(meta, data, { includePk: false });
+        // G1: asegura un `@odata.etag` estable en la entidad creada (el modelo
+        // Sequelize real puede no tener timestamps:true), igual que en update.
+        const createdAtCol = meta.columnMetadata.find((column) => column.propertyKey === "createdAt");
+        const updatedAtCol = meta.columnMetadata.find((column) => column.propertyKey === "updatedAt");
+        const now = new Date();
+        if (createdAtCol && payload[createdAtCol.columnIdentifier] === undefined) {
+            payload[createdAtCol.columnIdentifier] = now;
+        }
+        if (updatedAtCol) payload[updatedAtCol.columnIdentifier] = now;
         const created = await sqModel.create(payload, { transaction: tx });
         const json = created.toJSON() as Record<string, unknown>;
         return { primaryKey: pk.propertyKey, key: json[pk.columnIdentifier], entity: json };

@@ -166,20 +166,31 @@ describe("OData SAPUI5 compat — Fase C.2 ($batch)", () => {
             expect(res.body).toContain("404 Not Found");
         });
 
-        it("responds 405 for non-GET methods inside the batch", async () => {
+        it("accepts top-level writes inside the batch (F6.1: changeset-less writes)", async () => {
+            // F6.1: SAPUI5 ODataModel v4 envía un `create` diferido como parte
+            // `application/http` de nivel superior del $batch (sin changeset). Antes
+            // el server respondía 405; ahora enruta la escritura en lugar de rechazarla.
+            // Este suite mockea el datasource, así que aquí solo verificamos que el
+            // request top-level NO es rechazado con 405/415 y que el $batch responde
+            // 200 con un bloque de respuesta HTTP para la operación. La escritura
+            // real (201 + Location) se cubre en los tests DB-backed de expand.
             const part = [
                 "Content-Type: application/http",
                 "Content-Transfer-Encoding: binary",
                 "",
                 "POST /product-odata HTTP/1.1",
                 "Accept: application/json",
+                "Content-Type: application/json",
                 "",
-                "",
+                JSON.stringify({ nombre: "Lote escrito desde $batch", precio: 9.99, categoriaId: 1 }),
             ].join("\r\n");
             const res = await postBatch(buildBatch([part]));
 
             expect(res.status).toBe(200);
-            expect(res.body).toContain("405 Method Not Allowed");
+            expect(res.headers["content-type"]).toContain("multipart/mixed");
+            expect(res.body).not.toContain("405 Method Not Allowed");
+            expect(res.body).not.toContain("415 Unsupported Media Type");
+            expect(res.body).toContain("HTTP/1.1");
         });
 
         it("rejects an invalid Content-Type with 400", async () => {
