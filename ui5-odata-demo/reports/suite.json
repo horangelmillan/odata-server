@@ -1,0 +1,55 @@
+{
+  "metaReady": true,
+  "metaError": null,
+  "results": [
+    {
+      "name": "Metadata served to UI5 (/odata/$metadata)",
+      "ok": true,
+      "info": "servedToUI5IsStandard=true contentType=application/xml; charset=utf-8 length=2494 | format=EDMX isStandard=true",
+      "url": "/odata/$metadata"
+    },
+    {
+      "name": "List ($top/$skip/$orderby/$filter/$count/$select)",
+      "ok": true,
+      "info": "total@odata.count=1 rows=1 first.precio(type)=string",
+      "url": "/odata/product-odata?$count=true&$top=3&$skip=0&$orderby=id desc&$filter=id eq 104&$select=id,nombre,precio,categoria"
+    },
+    {
+      "name": "By-key access /product-odata(104)",
+      "ok": true,
+      "info": "id=104 nombre=Renombrado",
+      "url": "/odata/product-odata(104)"
+    },
+    {
+      "name": "$expand category (belongsTo) + products (hasMany, nested $select/$top)",
+      "ok": true,
+      "info": "product.category={\"id\":112,\"nombre\":\"Hogar\",\"createdAt\":\"2026-07-16T02:13:26.280Z\",\"updatedAt\":\"2026-07-16T02:13:26.280Z\",\"@odata.etag\":\"2026-07-16T02:13:26.280Z\"} | category.products=92 items",
+      "url": "/odata/product-odata(104)?$expand=category AND /odata/category-odata(112)?$expand=products($select=id,nombre;$top=2)"
+    },
+    {
+      "name": "Create via $direct (POST)",
+      "ok": true,
+      "info": "created id=552",
+      "url": "/odata/product-odata (POST, groupId=$direct)"
+    },
+    {
+      "name": "Patch via $direct (PATCH)",
+      "ok": true,
+      "info": "patched id=553",
+      "url": "/odata/product-odata(553) (PATCH, groupId=$direct)"
+    },
+    {
+      "name": "Delete via $direct (DELETE)",
+      "ok": true,
+      "info": "deleted id=554",
+      "url": "/odata/product-odata(554) (DELETE, groupId=$direct)"
+    },
+    {
+      "name": "Create via $batch changeset (POST)",
+      "ok": false,
+      "info": "server $batch changeset did not return the created entities (created() timed out)",
+      "url": "/odata/$batch (multipart/mixed changeset, groupId=changes)"
+    }
+  ],
+  "rawMetadata": null
+}

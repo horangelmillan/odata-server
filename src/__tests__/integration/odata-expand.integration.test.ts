@@ -184,7 +184,7 @@ describe("OData tipos EDM + $format (Fase I)", () => {
     });
 
     it("$format con valor no-JSON devuelve 415 Unsupported Media Type", async () => {
-        const res = await request(app).get("/odata/demo/product-odata?$format=xml");
+        const res = await request(app).get("/odata/product-odata?$format=xml");
         expect(res.status).toBe(415);
     });
 });
@@ -222,7 +222,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     });
 
     it("product?$expand=category anida la categoría en cada producto", async () => {
-        const res = await request(app).get("/odata/demo/product-odata?$expand=category");
+        const res = await request(app).get("/odata/product-odata?$expand=category");
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
@@ -238,7 +238,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     });
 
     it("category?$expand=products anida la colección de productos", async () => {
-        const res = await request(app).get("/odata/demo/category-odata?$expand=products");
+        const res = await request(app).get("/odata/category-odata?$expand=products");
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
@@ -256,7 +256,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     });
 
     it("product?$expand=category&$count=true devuelve @odata.count y la expansión", async () => {
-        const res = await request(app).get("/odata/demo/product-odata?$expand=category&$count=true");
+        const res = await request(app).get("/odata/product-odata?$expand=category&$count=true");
 
         expect(res.status).toBe(200);
         const body = res.body as Record<string, any>;
@@ -269,7 +269,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     // --- Fase G: recorte de navegación ($select/$filter/$orderby/$top/$skip) ---
 
     it("hasMany: $expand=products($select=id,nombre) recorta columnas y adjunta hijos", async () => {
-        const res = await request(app).get(`/odata/demo/category-odata?$expand=products($select=id,nombre)`);
+        const res = await request(app).get(`/odata/category-odata?$expand=products($select=id,nombre)`);
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
@@ -286,7 +286,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     });
 
     it("hasMany: $expand=products($filter=precio gt 100) filtra hijos", async () => {
-        const res = await request(app).get(`/odata/demo/category-odata?$expand=products($filter=precio gt 100)`);
+        const res = await request(app).get(`/odata/category-odata?$expand=products($filter=precio gt 100)`);
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
@@ -299,7 +299,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     });
 
     it("hasMany: $expand=products($orderby=nombre asc;$top=2) ordena y limita hijos", async () => {
-        const res = await request(app).get(`/odata/demo/category-odata?$expand=products($orderby=nombre asc;$top=2)`);
+        const res = await request(app).get(`/odata/category-odata?$expand=products($orderby=nombre asc;$top=2)`);
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
@@ -310,7 +310,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     });
 
     it("hasMany: $expand=products($top=2;$skip=1) pagina hijos por padre", async () => {
-        const res = await request(app).get(`/odata/demo/category-odata?$expand=products($top=2;$skip=1)`);
+        const res = await request(app).get(`/odata/category-odata?$expand=products($top=2;$skip=1)`);
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
@@ -320,7 +320,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
     it("hasMany: $expand=products($select=id,nombre;$top=2;$filter=precio gt 10;$orderby=nombre) combina opciones", async () => {
         const res = await request(app).get(
-            `/odata/demo/category-odata?$expand=products($select=id,nombre;$top=2;$filter=precio gt 10;$orderby=nombre)`,
+            `/odata/category-odata?$expand=products($select=id,nombre;$top=2;$filter=precio gt 10;$orderby=nombre)`,
         );
 
         expect(res.status).toBe(200);
@@ -333,7 +333,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     });
 
     it("hasMany + $count=true: @odata.count es del padre y los hijos respetan recorte", async () => {
-        const res = await request(app).get(`/odata/demo/category-odata?$expand=products($select=id,nombre)&$count=true`);
+        const res = await request(app).get(`/odata/category-odata?$expand=products($select=id,nombre)&$count=true`);
 
         expect(res.status).toBe(200);
         const body = res.body as Record<string, any>;
@@ -343,7 +343,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     });
 
     it("belongsTo: $expand=category($select=id,nombre) recorta la entidad padre", async () => {
-        const res = await request(app).get(`/odata/demo/product-odata?$expand=category($select=id,nombre)`);
+        const res = await request(app).get(`/odata/product-odata?$expand=category($select=id,nombre)`);
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
@@ -357,7 +357,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
     it("belongsTo: $expand=category($filter=nombre eq 'Electrónica') filtra por navegación", async () => {
         const res = await request(app).get(
-            `/odata/demo/product-odata?$expand=category($filter=nombre eq 'Electrónica')`,
+            `/odata/product-odata?$expand=category($filter=nombre eq 'Electrónica')`,
         );
 
         expect(res.status).toBe(200);
@@ -370,7 +370,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     });
 
     it("top-level $select + nested $expand=category coexisten", async () => {
-        const res = await request(app).get(`/odata/demo/product-odata?$select=id,nombre,precio&$expand=category`);
+        const res = await request(app).get(`/odata/product-odata?$select=id,nombre,precio&$expand=category`);
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
@@ -390,7 +390,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
     it("SAPUI5: GET con opciones URL-encodeadas (%2C) aplica el recorte", async () => {
         const res = await request(app)
-            .get("/odata/demo/category-odata?$expand=products($select=id%2Cnombre)&$select=id%2Cnombre")
+            .get("/odata/category-odata?$expand=products($select=id%2Cnombre)&$select=id%2Cnombre")
             .set("OData-Version", "4.0")
             .set("Accept", "application/json;odata.metadata=minimal");
 
@@ -418,7 +418,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
             "Content-Transfer-Encoding: binary",
             "Content-ID: 1",
             "",
-            "GET demo/category-odata?$expand=products($select=id%2Cnombre) HTTP/1.1",
+            "GET category-odata?$expand=products($select=id%2Cnombre) HTTP/1.1",
             "Accept: application/json;odata.metadata=minimal",
             "OData-Version: 4.0",
             "",
@@ -454,7 +454,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     // --- Fase I: fechas Edm.DateTimeOffset en ISO 8601 + $format sobre datos ---
 
     it("I: product-odata devuelve createdAt/updatedAt en ISO 8601 (compat SAPUI5)", async () => {
-        const res = await request(app).get("/odata/demo/product-odata");
+        const res = await request(app).get("/odata/product-odata");
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
@@ -465,7 +465,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     });
 
     it("I: $format=json sobre datos devuelve 200 y la colección (se ignora)", async () => {
-        const res = await request(app).get("/odata/demo/product-odata?$format=json&$select=id,nombre");
+        const res = await request(app).get("/odata/product-odata?$format=json&$select=id,nombre");
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
@@ -486,14 +486,14 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
     it("H: changeset POST crea la entidad (201 + Location + Content-ID)", async () => {
         const body = buildChangeset([
-            { method: "POST", url: "demo/category-odata", contentId: "1", body: { nombre: "H_CreateCat" } },
+            { method: "POST", url: "category-odata", contentId: "1", body: { nombre: "H_CreateCat" } },
         ]);
         const { status, text } = await postBatch(app, body);
 
         expect(status).toBe(200);
         expect(text).toContain("HTTP/1.1 201 Created");
         expect(text).toContain("Content-ID: 1");
-        expect(text).toMatch(/Location: \/odata\/demo\/category-odata\(\d+\)/);
+        expect(text).toMatch(/Location: \/odata\/category-odata\(\d+\)/);
 
         const created = firstJson(text);
         expect(created.nombre).toBe("H_CreateCat");
@@ -506,7 +506,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     it("H: changeset PATCH actualiza la entidad (200)", async () => {
         const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "H_Upd" });
         const body = buildChangeset([
-            { method: "PATCH", url: `demo/category-odata(${seed.id})`, contentId: "1", body: { nombre: "H_Upd_Changed" } },
+            { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "H_Upd_Changed" } },
         ]);
         const { status, text } = await postBatch(app, body);
 
@@ -520,7 +520,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     it("H: changeset DELETE elimina la entidad (204)", async () => {
         const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "H_Del" });
         const body = buildChangeset([
-            { method: "DELETE", url: `demo/category-odata(${seed.id})`, contentId: "1" },
+            { method: "DELETE", url: `category-odata(${seed.id})`, contentId: "1" },
         ]);
         const { status, text } = await postBatch(app, body);
 
@@ -533,8 +533,8 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
     it("H: changeset atómico hace rollback completo si una operación falla", async () => {
         const body = buildChangeset([
-            { method: "POST", url: "demo/category-odata", contentId: "1", body: { nombre: "H_Rollback" } },
-            { method: "PATCH", url: "demo/category-odata(99999999)", contentId: "2", body: { nombre: "H_ShouldNotApply" } },
+            { method: "POST", url: "category-odata", contentId: "1", body: { nombre: "H_Rollback" } },
+            { method: "PATCH", url: "category-odata(99999999)", contentId: "2", body: { nombre: "H_ShouldNotApply" } },
         ]);
         const { status, text } = await postBatch(app, body);
 
@@ -543,7 +543,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         // (code 404 + mensaje "Not Found" + detalle con la entidad).
         expect(text).toContain("HTTP/1.1 404 Not Found");
         expect(text).toContain('"code":"404"');
-        expect(text).toContain("Entity 'demo/category-odata(99999999)' not found");
+        expect(text).toContain("Entity 'category-odata(99999999)' not found");
 
         // Atomicidad: el POST previo NO debe haber persistido tras el rollback.
         const row = await CategorySeq.findOne({ where: { nombre: "H_Rollback" } });
@@ -552,8 +552,8 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
     it("H: changeset resuelve referencia Content-ID ($1) entre operaciones", async () => {
         const body = buildChangeset([
-            { method: "POST", url: "demo/category-odata", contentId: "1", body: { nombre: "H_Cid" } },
-            { method: "PATCH", url: "demo/category-odata($1)", contentId: "2", body: { nombre: "H_Cid_Updated" } },
+            { method: "POST", url: "category-odata", contentId: "1", body: { nombre: "H_Cid" } },
+            { method: "PATCH", url: "category-odata($1)", contentId: "2", body: { nombre: "H_Cid_Updated" } },
         ]);
         const { status, text } = await postBatch(app, body);
 
@@ -571,7 +571,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         // SAPUI5 v4 envía lecturas dentro de un multipart/mixed; el GET debe
         // resolverse como lectura de solo lectura (200), no rechazarse.
         const body = buildChangeset([
-            { method: "GET", url: "demo/category-odata", contentId: "1" },
+            { method: "GET", url: "category-odata", contentId: "1" },
         ]);
         const { status, text } = await postBatch(app, body);
 
@@ -583,20 +583,20 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
     it("H: escritura directa ($direct) POST/PATCH/DELETE por entidad", async () => {
         const createRes = await request(app)
-            .post("/odata/demo/category-odata")
+            .post("/odata/category-odata")
             .send({ nombre: "H_Direct" });
         expect(createRes.status).toBe(201);
-        expect(createRes.headers["location"]).toMatch(/\/odata\/demo\/category-odata\(\d+\)/);
+        expect(createRes.headers["location"]).toMatch(/\/odata\/category-odata\(\d+\)/);
         const id = (createRes.body as Record<string, any>).id as number;
         expect(id).toBeGreaterThan(0);
 
         const patchRes = await request(app)
-            .patch(`/odata/demo/category-odata/${id}`)
+            .patch(`/odata/category-odata/${id}`)
             .send({ nombre: "H_Direct_Changed" });
         expect(patchRes.status).toBe(200);
         expect((patchRes.body as Record<string, any>).nombre).toBe("H_Direct_Changed");
 
-        const deleteRes = await request(app).delete(`/odata/demo/category-odata/${id}`);
+        const deleteRes = await request(app).delete(`/odata/category-odata/${id}`);
         expect(deleteRes.status).toBe(204);
 
         const row = await CategorySeq.findByPk(id);
@@ -605,7 +605,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
     it("H: escritura directa PATCH a entidad inexistente devuelve 404", async () => {
         const res = await request(app)
-            .patch("/odata/demo/category-odata/99999999")
+            .patch("/odata/category-odata/99999999")
             .send({ nombre: "H_Nope" });
         expect(res.status).toBe(404);
     });
@@ -617,22 +617,22 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     describe("Fase T: $batch write changeset con envelope de SAPUI5 (Fase H+)", () => {
         it("T: changeset POST con envelope SAPUI5 crea la entidad (201 + Location + Content-ID)", async () => {
             const body = buildSapui5Changeset([
-                { method: "POST", url: "demo/category-odata", contentId: "1", body: { nombre: "H_Sapui5Post" } },
+                { method: "POST", url: "category-odata", contentId: "1", body: { nombre: "H_Sapui5Post" } },
             ]);
             const { status, text } = await postBatch(app, body, "batch_sapui5", );
 
             expect(status).toBe(200);
             expect(text).toContain("HTTP/1.1 201 Created");
             expect(text).toContain("Content-ID: 1");
-            expect(text).toMatch(/Location: \/odata\/demo\/category-odata\(\d+\)/);
+            expect(text).toMatch(/Location: \/odata\/category-odata\(\d+\)/);
             expect(text).toContain('"nombre":"H_Sapui5Post"');
         });
 
         it("T: changeset PATCH/DELETE con envelope SAPUI5 (200/204)", async () => {
             const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "H_Sapui5Upd" });
             const body = buildSapui5Changeset([
-                { method: "PATCH", url: `demo/category-odata(${seed.id})`, contentId: "1", body: { nombre: "H_Sapui5Upd_Changed" } },
-                { method: "DELETE", url: `demo/category-odata(${seed.id})`, contentId: "2" },
+                { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "H_Sapui5Upd_Changed" } },
+                { method: "DELETE", url: `category-odata(${seed.id})`, contentId: "2" },
             ]);
             const { status, text } = await postBatch(app, body, "batch_sapui5");
 
@@ -645,8 +645,8 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         it("T: deep-create resuelve referencia Content-ID ($1) en envelope SAPUI5", async () => {
             const body = buildSapui5Changeset([
-                { method: "POST", url: "demo/category-odata", contentId: "1", body: { nombre: "H_Sapui5Cid" } },
-                { method: "PATCH", url: "demo/category-odata($1)", contentId: "2", body: { nombre: "H_Sapui5Cid_Updated" } },
+                { method: "POST", url: "category-odata", contentId: "1", body: { nombre: "H_Sapui5Cid" } },
+                { method: "PATCH", url: "category-odata($1)", contentId: "2", body: { nombre: "H_Sapui5Cid_Updated" } },
             ]);
             const { status, text } = await postBatch(app, body, "batch_sapui5");
 
@@ -668,7 +668,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         it("GET colección inyecta @odata.etag en cada entidad", async () => {
             await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_EtagColl" });
-            const res = await request(app).get("/odata/demo/category-odata");
+            const res = await request(app).get("/odata/category-odata");
             expect(res.status).toBe(200);
             const items = res.body.value as Record<string, any>[];
             expect(items.length).toBeGreaterThan(0);
@@ -677,7 +677,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         it("GET entidad individual inyecta @odata.etag", async () => {
             const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_EtagSingle" });
-            const res = await request(app).get(`/odata/demo/category-odata/${seed.id}`);
+            const res = await request(app).get(`/odata/category-odata/${seed.id}`);
             expect(res.status).toBe(200);
             expect(etagOf(res.body as Record<string, any>)).toEqual(expect.any(String));
         });
@@ -686,7 +686,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
             const cat = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_EtagNav" });
             const nowNav = new Date();
             await ProductSeq.create({ nombre: "X_ProdNav", precio: 10, categoria: "X_EtagNav", categoriaId: cat.id, createdAt: nowNav, updatedAt: nowNav });
-            const res = await request(app).get(`/odata/demo/category-odata?$expand=products`);
+            const res = await request(app).get(`/odata/category-odata?$expand=products`);
             expect(res.status).toBe(200);
             const cats = res.body.value as Record<string, any>[];
             const target = cats.find((c) => c.id === cat.id);
@@ -699,11 +699,11 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         it("PATCH directo con If-Match correcto actualiza y renueva @odata.etag (200)", async () => {
             const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_EtagUpd" });
-            const getRes = await request(app).get(`/odata/demo/category-odata/${seed.id}`);
+            const getRes = await request(app).get(`/odata/category-odata/${seed.id}`);
             const etag = etagOf(getRes.body as Record<string, any>)!;
 
             const res = await request(app)
-                .patch(`/odata/demo/category-odata/${seed.id}`)
+                .patch(`/odata/category-odata/${seed.id}`)
                 .set("If-Match", etag)
                 .send({ nombre: "X_EtagUpd_Changed" });
             expect(res.status).toBe(200);
@@ -714,7 +714,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         it("PATCH directo con If-Match incorrecto devuelve 412", async () => {
             const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_Etag412" });
             const res = await request(app)
-                .patch(`/odata/demo/category-odata/${seed.id}`)
+                .patch(`/odata/category-odata/${seed.id}`)
                 .set("If-Match", "etag-que-no-coincide")
                 .send({ nombre: "X_Etag412_Changed" });
             expect(res.status).toBe(412);
@@ -722,11 +722,11 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         it("DELETE directo con If-Match correcto borra (204)", async () => {
             const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_EtagDel" });
-            const getRes = await request(app).get(`/odata/demo/category-odata/${seed.id}`);
+            const getRes = await request(app).get(`/odata/category-odata/${seed.id}`);
             const etag = etagOf(getRes.body as Record<string, any>)!;
 
             const res = await request(app)
-                .delete(`/odata/demo/category-odata/${seed.id}`)
+                .delete(`/odata/category-odata/${seed.id}`)
                 .set("If-Match", etag);
             expect(res.status).toBe(204);
             const row = await CategorySeq.findByPk(seed.id);
@@ -736,17 +736,17 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         it("DELETE directo con If-Match incorrecto devuelve 412", async () => {
             const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_EtagDel412" });
             const res = await request(app)
-                .delete(`/odata/demo/category-odata/${seed.id}`)
+                .delete(`/odata/category-odata/${seed.id}`)
                 .set("If-Match", "etag-que-no-coincide");
             expect(res.status).toBe(412);
         });
 
         it("T: $batch changeset PATCH con If-Match correcto (200)", async () => {
             const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_BatchUpd" });
-            const getRes = await request(app).get(`/odata/demo/category-odata/${seed.id}`);
+            const getRes = await request(app).get(`/odata/category-odata/${seed.id}`);
             const etag = etagOf(getRes.body as Record<string, any>)!;
             const body = buildSapui5Changeset([
-                { method: "PATCH", url: `demo/category-odata(${seed.id})`, contentId: "1", body: { nombre: "X_BatchUpd_Changed" }, ifMatch: etag },
+                { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "X_BatchUpd_Changed" }, ifMatch: etag },
             ]);
             const { status, text } = await postBatch(app, body, "batch_sapui5");
             expect(status).toBe(200);
@@ -756,7 +756,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         it("T: $batch changeset PATCH con If-Match incorrecto (412)", async () => {
             const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_Batch412" });
             const body = buildSapui5Changeset([
-                { method: "PATCH", url: `demo/category-odata(${seed.id})`, contentId: "1", body: { nombre: "X_Batch412_Changed" }, ifMatch: "etag-que-no-coincide" },
+                { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "X_Batch412_Changed" }, ifMatch: "etag-que-no-coincide" },
             ]);
             const { status, text } = await postBatch(app, body, "batch_sapui5");
             expect(status).toBe(200);
@@ -772,7 +772,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         it("PATCH directo a entidad inexistente devuelve 404 con forma estándar", async () => {
             const res = await request(app)
-                .patch("/odata/demo/category-odata/999999")
+                .patch("/odata/category-odata/999999")
                 .send({ nombre: "X_G2_404" });
             expect(res.status).toBe(404);
             expect(res.body.error).toBeDefined();
@@ -784,7 +784,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         it("PATCH directo con If-Match incorrecto devuelve 412 con details", async () => {
             const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_G2_412" });
             const res = await request(app)
-                .patch(`/odata/demo/category-odata/${seed.id}`)
+                .patch(`/odata/category-odata/${seed.id}`)
                 .set("If-Match", "etag-que-no-coincide")
                 .send({ nombre: "X_G2_412_Changed" });
             expect(res.status).toBe(412);
@@ -796,7 +796,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         it("$batch changeset PATCH con If-Match incorrecto (412) usa forma estándar en la parte", async () => {
             const seed = await CategorySeq.create({ createdAt: new Date(), updatedAt: new Date(), nombre: "X_G2_Batch412" });
             const body = buildSapui5Changeset([
-                { method: "PATCH", url: `demo/category-odata(${seed.id})`, contentId: "1", body: { nombre: "X_G2_Batch412_Changed" }, ifMatch: "etag-que-no-coincide" },
+                { method: "PATCH", url: `category-odata(${seed.id})`, contentId: "1", body: { nombre: "X_G2_Batch412_Changed" }, ifMatch: "etag-que-no-coincide" },
             ]);
             const { status, text } = await postBatch(app, body, "batch_sapui5");
         expect(status).toBe(200);

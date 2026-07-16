@@ -194,13 +194,15 @@ function resolveTarget(url: string, registry: Map<string, ODataControler>): Reso
 
     // G3: el path puede incluir prefijo de namespace (p.ej. `demo/product-odata(1)`).
     // Buscamos el controller por prefijo mas largo en el registry.
+    // Compatibilidad: los controladores ya no usan prefijo `demo/`; normalizamos.
+    const normalizedSegment = pathSegment.replace(/^demo\//, "");
     const sortedKeys = [...registry.keys()].sort((a, b) => b.length - a.length);
     let matchedKey: string | null = null;
-    let rest: string = pathSegment;
+    let rest: string = normalizedSegment;
     for (const key of sortedKeys) {
-        if (pathSegment === key || pathSegment.startsWith(key + "(") || pathSegment.startsWith(key + "/") || pathSegment.startsWith(key + "?")) {
+        if (normalizedSegment === key || normalizedSegment.startsWith(key + "(") || normalizedSegment.startsWith(key + "/") || normalizedSegment.startsWith(key + "?")) {
             matchedKey = key;
-            rest = pathSegment.slice(key.length);
+            rest = normalizedSegment.slice(key.length);
             break;
         }
     }
