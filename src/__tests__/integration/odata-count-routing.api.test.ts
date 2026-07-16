@@ -66,7 +66,7 @@ describe("OData /$count routing end-to-end (real oDataExpressApp)", () => {
     };
 
     it("matches /$count (Fase B) and returns the plain total count", async () => {
-        const res = await request(app()).get("/odata/demo/product-odata/$count");
+        const res = await request(app()).get("/odata/product-odata/$count");
         expect(res.status).toBe(200);
         expect(res.headers["content-type"]).toContain("text/plain");
         expect(res.text).toBe("3");
@@ -74,7 +74,7 @@ describe("OData /$count routing end-to-end (real oDataExpressApp)", () => {
 
     it("matches /$count?$filter=... and applies the filter to the count", async () => {
         const res = await request(app()).get(
-            "/odata/demo/product-odata/$count?$filter=precio gt 100",
+            "/odata/product-odata/$count?$filter=precio gt 100",
         );
         expect(res.status).toBe(200);
         expect(res.text).toBe("2");
@@ -82,14 +82,14 @@ describe("OData /$count routing end-to-end (real oDataExpressApp)", () => {
 
     it("matches /$count with an encoded query (?%24filter=...%26$top=1)", async () => {
         const res = await request(app()).get(
-            "/odata/demo/product-odata/$count?%24filter=precio%20gt%20100%26%24top=1%26%24skip=1",
+            "/odata/product-odata/$count?%24filter=precio%20gt%20100%26%24top=1%26%24skip=1",
         );
         expect(res.status).toBe(200);
         expect(res.text).toBe("2");
     });
 
     it("does NOT treat $count as a key (precedence over /:id)", async () => {
-        const res = await request(app()).get("/odata/demo/product-odata/$count");
+        const res = await request(app()).get("/odata/product-odata/$count");
         expect(res.status).toBe(200);
         expect(res.text).toBe("3");
     });

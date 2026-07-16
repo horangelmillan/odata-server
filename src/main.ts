@@ -17,12 +17,16 @@ export default function () {
         exposedHeaders: ["OData-Version"],
     };
 
+    app.use(express.json());
     app.use(helmet());
     app.use(cors(corsOptions));
 
     app.use(
         "/odata",
         (req, res, next) => {
+            // Compatibilidad: los controladores ya no usan prefijo `demo/`;
+            // cualquier ruta entrante con `/demo/` se normaliza.
+            req.url = req.url.replace(/^\/demo\//, "/");
             if (req.path.includes("$metadata")) req.url = "/$metadata";
             req.url = req.url.replace(/\((\d+)\)/g, "/$1");
             res.set("OData-Version", "4.0");

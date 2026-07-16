@@ -62,6 +62,7 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
                 // F4: la validación DTO ocurre en el dominio (service.create).
                 const result = await service.create(req.body ?? {});
                 injectEtag(result.entity);
+                result.entity["@odata.context"] = `/$metadata#${modelName}/$entity`;
                 res.set("Location", `/odata/${endpoint}(${result.key})`);
                 res.status(201).json(result.entity);
             } catch (error) {
@@ -102,6 +103,7 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
                     return;
                 }
                 injectEtag(result.entity);
+                result.entity["@odata.context"] = `/$metadata#${modelName}/$entity`;
                 res.status(200).json(result.entity);
             } catch (error) {
                 if (error instanceof JSONValidatorException) {
