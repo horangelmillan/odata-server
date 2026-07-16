@@ -1,21 +1,22 @@
 name: CI
 
 on:
-  pull_request:
-    branches: [master]
   push:
+    branches: [master, "feature/*"]
+  pull_request:
     branches: [master]
 
 jobs:
   test:
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: odata_test
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: odata_dev
         ports:
           - 5432:5432
         options: >-
@@ -23,16 +24,19 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/odata_test
-      NODE_ENV: test
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 20.18.0
           cache: pnpm
+
       - run: pnpm install --frozen-lockfile
+
       - run: pnpm test
