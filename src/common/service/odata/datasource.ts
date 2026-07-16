@@ -4,6 +4,7 @@ import { ProductOData } from "../../../core/product/model/product.odata.model.js
 import { CategoryOData } from "../../../core/category/model/category.odata.model.js";
 import { CompanyOData } from "../../../core/finance/company/model/company.odata.model.js";
 import { CustomerOData } from "../../../core/finance/customer/model/customer.odata.model.js";
+import { SupplierOData } from "../../../core/finance/supplier/model/supplier.odata.model.js";
 
 const dbConfig = env.isProd ? env.prodDb : env.devDb;
 
@@ -20,7 +21,7 @@ const dataSourceConfig: Record<string, unknown> = {
         idle: 10000,
         acquire: 30000,
     },
-    models: [ProductOData, CategoryOData, CompanyOData, CustomerOData],
+    models: [ProductOData, CategoryOData, CompanyOData, CustomerOData, SupplierOData],
 };
 
 if (env.isProd) {
