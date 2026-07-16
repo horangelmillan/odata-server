@@ -1,6 +1,7 @@
-import { Model, Table, Column, DataTypes, BelongsTo } from "@phrasecode/odata";
+import { Model, Table, Column, DataTypes, BelongsTo, HasMany } from "@phrasecode/odata";
 import { CompanyOData } from "../../company/model/company.odata.model.js";
 import { CustomerOData } from "../../customer/model/customer.odata.model.js";
+import { InvoiceItemOData } from "../../invoiceitem/model/invoiceitem.odata.model.js";
 
 @Table({ tableName: "invoices", timestamps: true })
 export class InvoiceOData extends Model<InvoiceOData> {
@@ -36,4 +37,7 @@ export class InvoiceOData extends Model<InvoiceOData> {
 
     @BelongsTo(() => CustomerOData, { relation: [{ foreignKey: "id", sourceKey: "customerId" }] })
     customer!: CustomerOData;
+
+    @HasMany(() => InvoiceItemOData, { relation: [{ foreignKey: "invoiceId", sourceKey: "id" }] })
+    items!: InvoiceItemOData[];
 }

@@ -1,4 +1,5 @@
-import { Model, Table, Column, DataTypes } from "@phrasecode/odata";
+import { Model, Table, Column, DataTypes, HasMany } from "@phrasecode/odata";
+import { InvoiceItemOData } from "../../invoiceitem/model/invoiceitem.odata.model.js";
 
 @Table({ tableName: "glaccounts", timestamps: true })
 export class GlAccountOData extends Model<GlAccountOData> {
@@ -13,4 +14,7 @@ export class GlAccountOData extends Model<GlAccountOData> {
 
     @Column({ dataType: DataTypes.DATE })
     updatedAt!: Date;
+
+    @HasMany(() => InvoiceItemOData, { relation: [{ foreignKey: "glAccountId", sourceKey: "id" }] })
+    items!: InvoiceItemOData[];
 }

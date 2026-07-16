@@ -10,6 +10,7 @@ import { SupplierODataController } from "../../../core/finance/supplier/controll
 import { GlAccountODataController } from "../../../core/finance/glaccount/controller/glaccount.odata.controller.js";
 import { InvoiceODataController } from "../../../core/finance/invoice/controller/invoice.odata.controller.js";
 import { SupplierInvoiceODataController } from "../../../core/finance/supplierinvoice/controller/supplierinvoice.odata.controller.js";
+import { InvoiceItemODataController } from "../../../core/finance/invoiceitem/controller/invoiceitem.odata.controller.js";
 import { BatchMiddleware } from "../../middleware/batch.middleware.js";
 import { registerWriteRoutes } from "./odata-write.routes.js";
 import { stripFormat } from "./odata-format.js";
@@ -19,7 +20,7 @@ import { normalizeErrorBody, type ODataErrorShape } from "./odata-error.js";
 
 const oDataExpressApp: Router = Router();
 
-const odataControllers: ODataControler[] = [new ProductODataController(), new CategoryODataController(), new CompanyODataController(), new CustomerODataController(), new SupplierODataController(), new GlAccountODataController(), new InvoiceODataController(), new SupplierInvoiceODataController()];
+const odataControllers: ODataControler[] = [new ProductODataController(), new CategoryODataController(), new CompanyODataController(), new CustomerODataController(), new SupplierODataController(), new GlAccountODataController(), new InvoiceODataController(), new SupplierInvoiceODataController(), new InvoiceItemODataController()];
 
 // Normaliza el path OData: Express NO decodifica `%24`->`$` antes del route
 // matching, así que `/%24count` (u `%24metadata`/`%24batch`) no matchea la ruta
