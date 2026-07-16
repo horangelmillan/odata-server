@@ -4,6 +4,7 @@ import { env } from "../../config/env.config.js";
 import { dataSource } from "./datasource.js";
 import { ProductODataController } from "../../../core/product/controller/product.odata.controller.js";
 import { CategoryODataController } from "../../../core/category/controller/category.odata.controller.js";
+import { CompanyODataController } from "../../../core/finance/company/controller/company.odata.controller.js";
 import { BatchMiddleware } from "../../middleware/batch.middleware.js";
 import { registerWriteRoutes } from "./odata-write.routes.js";
 import { stripFormat } from "./odata-format.js";
@@ -13,7 +14,7 @@ import { normalizeErrorBody, type ODataErrorShape } from "./odata-error.js";
 
 const oDataExpressApp: Router = Router();
 
-const odataControllers: ODataControler[] = [new ProductODataController(), new CategoryODataController()];
+const odataControllers: ODataControler[] = [new ProductODataController(), new CategoryODataController(), new CompanyODataController()];
 
 // Normaliza el path OData: Express NO decodifica `%24`->`$` antes del route
 // matching, así que `/%24count` (u `%24metadata`/`%24batch`) no matchea la ruta
