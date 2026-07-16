@@ -1,5 +1,6 @@
 import { Model, Table, Column, DataTypes, HasMany } from "@phrasecode/odata";
 import { CustomerOData } from "../../customer/model/customer.odata.model.js";
+import { InvoiceOData } from "../../invoice/model/invoice.odata.model.js";
 
 @Table({ tableName: "companies", timestamps: true })
 export class CompanyOData extends Model<CompanyOData> {
@@ -23,4 +24,7 @@ export class CompanyOData extends Model<CompanyOData> {
 
     @HasMany(() => CustomerOData, { relation: [{ foreignKey: "companyId", sourceKey: "id" }] })
     customers!: CustomerOData[];
+
+    @HasMany(() => InvoiceOData, { relation: [{ foreignKey: "companyId", sourceKey: "id" }] })
+    invoices!: InvoiceOData[];
 }

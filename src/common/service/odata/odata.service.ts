@@ -8,6 +8,7 @@ import { CompanyODataController } from "../../../core/finance/company/controller
 import { CustomerODataController } from "../../../core/finance/customer/controller/customer.odata.controller.js";
 import { SupplierODataController } from "../../../core/finance/supplier/controller/supplier.odata.controller.js";
 import { GlAccountODataController } from "../../../core/finance/glaccount/controller/glaccount.odata.controller.js";
+import { InvoiceODataController } from "../../../core/finance/invoice/controller/invoice.odata.controller.js";
 import { BatchMiddleware } from "../../middleware/batch.middleware.js";
 import { registerWriteRoutes } from "./odata-write.routes.js";
 import { stripFormat } from "./odata-format.js";
@@ -17,7 +18,7 @@ import { normalizeErrorBody, type ODataErrorShape } from "./odata-error.js";
 
 const oDataExpressApp: Router = Router();
 
-const odataControllers: ODataControler[] = [new ProductODataController(), new CategoryODataController(), new CompanyODataController(), new CustomerODataController(), new SupplierODataController(), new GlAccountODataController()];
+const odataControllers: ODataControler[] = [new ProductODataController(), new CategoryODataController(), new CompanyODataController(), new CustomerODataController(), new SupplierODataController(), new GlAccountODataController(), new InvoiceODataController()];
 
 // Normaliza el path OData: Express NO decodifica `%24`->`$` antes del route
 // matching, así que `/%24count` (u `%24metadata`/`%24batch`) no matchea la ruta
