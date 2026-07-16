@@ -1,76 +1,56 @@
-# F2 — Seed idempotente re-montable (datos coherentes tipo S/4HANA)
+# F2 — Seed idempotente re-montable (datos coherentes)
 
-> **Fase:** F2 · **Esfuerzo:** Alto · **Sesión:** 10/N (se divide en sub-fases `f2.0` + `f2.1`…`f2.8`)
-> **Depende de:** F1 (tablas creadas).
-> **Actualiza:** `package.json` (scripts `seed`/`db:reset`), `docs/00-indice.md`, este archivo.
+> **Fase:** F2 · **Esfuerzo:** Alto · **Depende de:** F1 (tablas creadas).
+> **Actualiza:** `package.json` (scripts `seed`/`db:reset`), este archivo.
 
 ---
 
 ## 0. Objetivo
 
-Crear un **seed idempotente determinista**: si la base de datos se borra, `pnpm seed` (o
-`pnpm db:reset`) la recrea **idéntica** — mismos IDs tipo SAP, mismas relaciones, mismos importes.
-Esto garantiza que las pruebas del LLM/chatbot no pierdan el rumbo.
+Crear un **seed idempotente determinista**: `pnpm seed` (o `pnpm db:reset`) recrea datos
+**idénticos** — mismos IDs tipo SAP, mismas relaciones.
 
-Principio del usuario: **volumen moderado (~50 facturas) pero complejidad alta** (relaciones,
-transacciones, clearing, estados). El seed vive en `scripts/seed/` con datos en
-`scripts/seed/data/*.json` versionados.
+El seed vive en `scripts/seed/financial-seed.ts` y genera los datos programáticamente
+(no JSON estáticos) para mantenerlo mantenible con ~50 facturas.
 
 ---
 
-## 1. Infra de seed (`f2.0`)
+## 1. Script único `scripts/seed/financial-seed.ts`
 
-- `scripts/seed/financial-seed.ts`:
-  - Carga los JSON de `scripts/seed/data/`.
-  - `clear()`: `DELETE` en **orden inverso a las FK** (payments → invoiceitems → invoices →
-    supplierinvoices → customers → suppliers → glaccounts → companies). Con `sequelize.query`
-    o `model.destroy({ truncate: true, cascade: true })`.
-  - `seed()`: `bulkCreate` en **orden de FK** (companies → customers/suppliers/glaccounts →
-    invoices → invoiceitems → supplierinvoices → payments) usando los IDs fijos de los JSON.
-  - No genera UUIDs: los IDs vienen de los JSON. Así es 100% reproducible.
-- `package.json`:
-  ```json
-  "seed": "ts-node scripts/seed/financial-seed.ts",
-  "db:reset": "ts-node scripts/seed/financial-seed.ts --reset"   // drop+sync+seed
-  ```
-  (o `node --loader ts-node ...` según ESM del proyecto).
+- Conecta a la misma BD que la app usando `Sequelize` + `dotenv`.
+- `clear()`: `destroy({ truncate: true, cascade: true })` en **orden inverso a FK**.
+- `seed()`: `Model.create` en **orden de FK** con IDs deterministas.
+- `--reset`: hace `sync({ force: true })` (drop + create) antes de seed.
 
----
-
-## 2. Sub-fases por dominio (`f2.1`…`f2.8`)
-
-Cada sub-fase crea el JSON de datos y el `bulkCreate` correspondiente:
-
-- [`f2.1-company.md`](f2.1-company.md) — 1 sociedad (`1000`).
-- [`f2.2-customer.md`](f2.2-customer.md) — ~8 clientes (`C00001`…).
-- [`f2.3-supplier.md`](f2.3-supplier.md) — ~6 proveedores (`S00001`…).
-- [`f2.4-glaccount.md`](f2.4-glaccount.md) — ~10 cuentas mayor (`0000xxxxxx`).
-- [`f2.5-invoice.md`](f2.5-invoice.md) — ~50 facturas cliente (`I00001`…) con importes/net/tax/gross coherentes.
-- [`f2.6-supplierinvoice.md`](f2.6-supplierinvoice.md) — ~20 facturas proveedor (`SI0001`…).
-- [`f2.7-invoiceitem.md`](f2.7-invoiceitem.md) — ~1-4 líneas por factura (`II00001`…) enlazadas a glaccounts.
-- [`f2.8-payment.md`](f2.8-payment.md) — ~30 pagos (`P00001`…) con clearing parcial/total a facturas.
+Volumen generado:
+- 1 Company (`1000`)
+- 8 Customers (`C0001`…`C0008`)
+- 6 Suppliers (`S0001`…`S0006`)
+- 10 GlAccounts (`000100`…`001000`)
+- 50 Invoices (`I00001`…`I00050`) con ~60% PAGADA, ~25% PENDIENTE, ~15% VENCIDA
+- 20 SupplierInvoices (`SI00001`…`SI00020`)
+- ~100 InvoiceItems (1-4 por factura)
+- Payments para todas las facturas PAGADAS
 
 ---
 
-## 3. Coherencia de datos (reglas)
+## 2. Scripts `package.json`
 
-- `grossAmount = netAmount + taxAmount` (IVA 21% típico, algunos 10%/0%).
-- `dueDate = date + 30d` (paymentTerms 30D) o 60d.
-- Estados: ~60% PAGADA (con pago en `f2.8`), ~25% PENDIENTE, ~15% VENCIDA (dueDate < hoy sin pago).
-- `clearedInvoice` apunta a facturas PAGADAS; el importe del pago ≈ `grossAmount`.
-- Fechas repartidas en los últimos ~6 meses para que haya vencidas reales.
-
----
-
-## 4. Criterios de aceptación (F2 global)
-
-- [ ] `pnpm seed` reproduce datos idénticos (IDs fijos).
-- [ ] `pnpm db:reset` = drop + sync + seed, sin error.
-- [ ] Tras borrar la BD y reseedar, los `$expand`/`$filter` dan los mismos resultados.
-- [ ] `pnpm test` en verde (los tests de F4 dependen de estos datos).
+```json
+"seed": "node --loader ts-node --loader ts-node/esm --no-warnings scripts/seed/financial-seed.ts",
+"db:reset": "node --loader ts-node --loader ts-node/esm --no-warnings scripts/seed/financial-seed.ts --reset"
+```
 
 ---
 
-## 5. Siguiente fase
+## 3. Criterios de aceptación (F2 global)
+
+- [x] `pnpm seed` reproduce datos idénticos (IDs fijos).
+- [x] `pnpm db:reset` = drop + sync + seed, sin error.
+- [x] `pnpm test` en verde (143 tests).
+
+---
+
+## 4. Siguiente fase
 
 ➡️ [`f3-relaciones-y-estados.md`](f3-relaciones-y-estados.md)
