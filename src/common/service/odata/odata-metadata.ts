@@ -84,10 +84,11 @@ export function transformToCsdl(raw: RawMetadata, namespace: string = DEFAULT_NA
 
     // 2) Contenedor con EntitySets + NavigationPropertyBindings (para que SAPUI5
     //    resuelva las rutas de navegación desde el modelo).
+    // G3: EntitySet name se deriva del nombre de modelo (kebab), NO del endpoint,
+    // para que el contrato de API sea estable independientemente del prefijo de ruta.
     const container: Record<string, unknown> = { $kind: "EntityContainer" };
     for (const [modelName, et] of Object.entries(entities)) {
-        const endpoint = et.$Endpoint ?? `/${modelName.toLowerCase()}`;
-        const setName = endpoint.replace(/^\//, "");
+        const setName = toKebabCase(modelName);
         const entitySet: Record<string, unknown> = {
             $kind: "EntitySet",
             $Type: `${namespace}.${modelName}`,
@@ -99,8 +100,7 @@ export function transformToCsdl(raw: RawMetadata, namespace: string = DEFAULT_NA
             const def = prop as Record<string, unknown>;
             if (def?.$Kind === "NavigationProperty") {
                 const targetModel = String(def.$Type).replace(/^Collection\((.*)\)$/, "$1").replace(`${namespace}.`, "");
-                const targetEndpoint = entities[targetModel]?.$Endpoint ?? `/${targetModel.toLowerCase()}`;
-                navBindings[propName] = targetEndpoint.replace(/^\//, "");
+                navBindings[propName] = toKebabCase(targetModel);
             }
         }
         if (Object.keys(navBindings).length > 0) {
@@ -116,6 +116,11 @@ export function transformToCsdl(raw: RawMetadata, namespace: string = DEFAULT_NA
 // Fase R/F6: serializa el CSDL JSON 4.01 (arriba) a **EDMX XML** estándar.
 // SAPUI5/OpenUI5 ODataModel v4 (runtime 1.150) consume EDMX XML en `$metadata`
 // (no CSDL JSON), así que para bootstrappear SIN shim el server debe emitir XML.
+// G3: convierte "ProductOData" → "product-odata" (kebab-case sin depender del endpoint).
+function toKebabCase(name: string): string {
+    return name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+}
+
 function xmlEscape(s: string): string {
     return String(s)
         .replace(/&/g, "&amp;")
