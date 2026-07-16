@@ -1,9 +1,24 @@
 # 05 — OData Module Pattern with @phrasecode/odata
 
+## 5.0 Domain-agnostic principle (important)
+
+The **domain is the single source of truth of the business and is agnostic to every peripheral
+artifact** — exposure protocols, persistence layers, data engines, and middleware alike. It lives in
+`src/core/<dominio>/` with its `interface` / `model` / `dto` / `service` / `controller`.
+
+The **server architecture defines the organization** (domain layer + shared kernel + adapters); any
+combination of those peripheral artifacts must adapt to that architecture, not the other way around.
+Adapters are interchangeable without rewriting the domain. So a domain is never "an X domain" — X is
+merely one possible adapter plugged into the architecture.
+
+Domains are grouped by semantic namespace in the exposed surface to keep it organized:
+- `/odata/demo/<entidad>` — demonstration / sample domains (e.g. `product`, `category`).
+- `/odata/finance/<entidad>` — financial domains simulating an S/4HANA-like ERP.
+
 ## 5.1 Module Structure
 
-OData is the **single domain** of this server (refactor cycle "OData as Domain"). The codebase is
-split into a **domain layer** (`src/core/<dominio>/`) and a **shared kernel** (`src/common/service/odata/`).
+The codebase is split into a **domain layer** (`src/core/<dominio>/`, protocol-agnostic) and a
+**shared kernel** (`src/common/service/odata/`, OData exposure infra only).
 
 ### Domain layer — `src/core/<dominio>/`
 
@@ -20,12 +35,14 @@ src/core/product/
 ```
 
 - **model/**: ORM mapping using `@Table` and `@Column` decorators from `@phrasecode/odata`. These are
-  read/write projections of the database tables.
+  read/write projections of the database tables. The domain model is technology-facing, not
+  protocol-facing: it describes the business entity, and OData is one possible way to expose it.
 - **dto/**: `ProductCreateDTO` / `ProductUpdateDTO` (and category equivalents) validated with
   `class-validator`. **Validation lives in the domain service** — the write path rejects invalid
   bodies with a 400 OData v4 error *before* touching the database.
 - **controller/**: Endpoint logic extending `ODataControler`. Overrides `get` for custom query
-  behavior (e.g. max `$top`).
+  behavior (e.g. max `$top`). The OData controller is the *adapter* from the domain to the OData
+  contract; the domain logic itself stays in `service/`.
 - **service/**: The only orchestration layer. Reads delegate to the `ODataControler`; writes
   delegate to `odataWriteService` (shared kernel) **after** DTO validation.
 
