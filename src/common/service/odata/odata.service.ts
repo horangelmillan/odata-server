@@ -2,8 +2,16 @@ import { Router } from "express";
 import { ExpressRouter, ODataControler } from "@phrasecode/odata";
 import { env } from "../../config/env.config.js";
 import { dataSource } from "./datasource.js";
-import { ProductODataController } from "../../../core/product/controller/product.odata.controller.js";
-import { CategoryODataController } from "../../../core/category/controller/category.odata.controller.js";
+import { ProductODataController } from "../../../core/demo/product/controller/product.odata.controller.js";
+import { CategoryODataController } from "../../../core/demo/category/controller/category.odata.controller.js";
+import { CompanyODataController } from "../../../core/finance/company/controller/company.odata.controller.js";
+import { CustomerODataController } from "../../../core/finance/customer/controller/customer.odata.controller.js";
+import { SupplierODataController } from "../../../core/finance/supplier/controller/supplier.odata.controller.js";
+import { GlAccountODataController } from "../../../core/finance/glaccount/controller/glaccount.odata.controller.js";
+import { InvoiceODataController } from "../../../core/finance/invoice/controller/invoice.odata.controller.js";
+import { SupplierInvoiceODataController } from "../../../core/finance/supplierinvoice/controller/supplierinvoice.odata.controller.js";
+import { InvoiceItemODataController } from "../../../core/finance/invoiceitem/controller/invoiceitem.odata.controller.js";
+import { PaymentODataController } from "../../../core/finance/payment/controller/payment.odata.controller.js";
 import { BatchMiddleware } from "../../middleware/batch.middleware.js";
 import { registerWriteRoutes } from "./odata-write.routes.js";
 import { stripFormat } from "./odata-format.js";
@@ -13,7 +21,7 @@ import { normalizeErrorBody, type ODataErrorShape } from "./odata-error.js";
 
 const oDataExpressApp: Router = Router();
 
-const odataControllers: ODataControler[] = [new ProductODataController(), new CategoryODataController()];
+const odataControllers: ODataControler[] = [new ProductODataController(), new CategoryODataController(), new CompanyODataController(), new CustomerODataController(), new SupplierODataController(), new GlAccountODataController(), new InvoiceODataController(), new SupplierInvoiceODataController(), new InvoiceItemODataController(), new PaymentODataController()];
 
 // Normaliza el path OData: Express NO decodifica `%24`->`$` antes del route
 // matching, así que `/%24count` (u `%24metadata`/`%24batch`) no matchea la ruta

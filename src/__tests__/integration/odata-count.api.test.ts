@@ -82,9 +82,9 @@ import expressApp from "../../main.js";
 describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => {
     const app = () => expressApp();
 
-    describe("GET /odata/product-odata/$count", () => {
+    describe("GET /odata/demo/product-odata/$count", () => {
         it("returns the plain total count (text/plain, no $filter)", async () => {
-            const res = await request(app()).get("/odata/product-odata/$count");
+            const res = await request(app()).get("/odata/demo/product-odata/$count");
 
             expect(res.status).toBe(200);
             expect(res.headers["content-type"]).toContain("text/plain");
@@ -93,7 +93,7 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
 
         it("applies $filter and returns the filtered count", async () => {
             const res = await request(app()).get(
-                "/odata/product-odata/$count?$filter=precio gt 100",
+                "/odata/demo/product-odata/$count?$filter=precio gt 100",
             );
 
             expect(res.status).toBe(200);
@@ -103,7 +103,7 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
 
         it("returns 0 when $filter matches nothing", async () => {
             const res = await request(app()).get(
-                "/odata/product-odata/$count?$filter=precio gt 9999",
+                "/odata/demo/product-odata/$count?$filter=precio gt 9999",
             );
 
             expect(res.status).toBe(200);
@@ -112,7 +112,7 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
 
         it("ignores $top/$skip so the count is never paginated", async () => {
             const res = await request(app()).get(
-                "/odata/product-odata/$count?$filter=precio gt 100&$top=1&$skip=1",
+                "/odata/demo/product-odata/$count?$filter=precio gt 100&$top=1&$skip=1",
             );
 
             expect(res.status).toBe(200);
@@ -121,7 +121,7 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
 
         it("decodes a percent-encoded query string (curl/CMD scenario with %26/%20)", async () => {
             const res = await request(app()).get(
-                "/odata/product-odata/$count?%24filter=precio%20gt%20100%26%24top=1%26%24skip=1",
+                "/odata/demo/product-odata/$count?%24filter=precio%20gt%20100%26%24top=1%26%24skip=1",
             );
 
             expect(res.status).toBe(200);
@@ -132,7 +132,7 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
         // Mock de 3 productos: Laptop(1500,Electrónica), Mouse(50,Periféricos), Monitor(300,Electrónica)
         it("applies the 'le' operator", async () => {
             const res = await request(app()).get(
-                "/odata/product-odata/$count?$filter=precio le 200",
+                "/odata/demo/product-odata/$count?$filter=precio le 200",
             );
 
             expect(res.status).toBe(200);
@@ -141,7 +141,7 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
 
         it("applies 'gt' with a higher threshold", async () => {
             const res = await request(app()).get(
-                "/odata/product-odata/$count?$filter=precio gt 500",
+                "/odata/demo/product-odata/$count?$filter=precio gt 500",
             );
 
             expect(res.status).toBe(200);
@@ -150,7 +150,7 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
 
         it("applies a string 'eq' on categoria", async () => {
             const res = await request(app()).get(
-                "/odata/product-odata/$count?$filter=categoria eq 'Electrónica'",
+                "/odata/demo/product-odata/$count?$filter=categoria eq 'Electrónica'",
             );
 
             expect(res.status).toBe(200);
@@ -159,7 +159,7 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
 
         it("combines conditions with 'and'", async () => {
             const res = await request(app()).get(
-                "/odata/product-odata/$count?$filter=precio gt 100 and categoria eq 'Periféricos'",
+                "/odata/demo/product-odata/$count?$filter=precio gt 100 and categoria eq 'Periféricos'",
             );
 
             expect(res.status).toBe(200);
@@ -168,7 +168,7 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
 
         it("combines conditions with 'or'", async () => {
             const res = await request(app()).get(
-                "/odata/product-odata/$count?$filter=precio gt 100 or categoria eq 'Periféricos'",
+                "/odata/demo/product-odata/$count?$filter=precio gt 100 or categoria eq 'Periféricos'",
             );
 
             expect(res.status).toBe(200);
@@ -177,7 +177,7 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
 
         it("applies numeric 'eq'", async () => {
             const res = await request(app()).get(
-                "/odata/product-odata/$count?$filter=precio eq 50",
+                "/odata/demo/product-odata/$count?$filter=precio eq 50",
             );
 
             expect(res.status).toBe(200);
@@ -187,7 +187,7 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
         // --- Errores del parche: el router debe responder con error, no colgarse/crashear ---
         it("returns an error (not a crash) for a malformed $filter", async () => {
             const res = await request(app()).get(
-                "/odata/product-odata/$count?$filter=precio gt",
+                "/odata/demo/product-odata/$count?$filter=precio gt",
             );
 
             expect(res.status).toBeGreaterThanOrEqual(400);
@@ -200,35 +200,35 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
         });
     });
 
-    describe("GET /odata/product-odata/:id (Fase A)", () => {
+    describe("GET /odata/demo/product-odata/:id (Fase A)", () => {
         it("returns the entity matching the key", async () => {
-            const res = await request(app()).get("/odata/product-odata/2");
+            const res = await request(app()).get("/odata/demo/product-odata/2");
 
             expect(res.status).toBe(200);
             expect(res.body).toMatchObject({ id: 2, nombre: "Mouse", precio: 50 });
         });
 
         it("returns 404 for an unknown key", async () => {
-            const res = await request(app()).get("/odata/product-odata/999");
+            const res = await request(app()).get("/odata/demo/product-odata/999");
 
             expect(res.status).toBe(404);
         });
 
         it("does not treat $count as a key (precedence check)", async () => {
-            const res = await request(app()).get("/odata/product-odata/$count");
+            const res = await request(app()).get("/odata/demo/product-odata/$count");
 
             expect(res.status).toBe(200);
             expect(res.text).toBe("3");
         });
     });
 
-    describe("GET /odata/product-odata (collection)", () => {
+    describe("GET /odata/demo/product-odata (collection)", () => {
         // Este test MOCKEA dataSource, así que valida el parseo/filtrado a nivel de
         // controlador, NO contra la BD real. El crash de `$filter` con Sequelize real
         // (docs/pruebas-odata-product.md §5) NO se detecta aquí.
         it("returns the full collection with @odata.count when $count=true", async () => {
             const res = await request(app()).get(
-                "/odata/product-odata?$filter=precio gt 100&$count=true",
+                "/odata/demo/product-odata?$filter=precio gt 100&$count=true",
             );
 
             expect(res.status).toBe(200);

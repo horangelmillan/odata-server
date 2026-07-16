@@ -10,7 +10,7 @@ Este ejemplo implementa el módulo `product` como **OData-first**:
 
 - **OData v4** en `/odata/product-odata` (lectura + escritura directa), con `$metadata`,
   `$expand=category`, etag y validación de body vía `class-validator`.
-- El dominio vive íntegramente en `src/core/product/` con la estructura de carpetas del
+- El dominio vive íntegramente en `src/core/demo/product/` con la estructura de carpetas del
   patrón node-modular-monolith (model / controller / service / dto / interface).
 - No hay REST (`/api/core/products` fue retirado en F1; la eliminación total de `/api`
   queda en F3).
@@ -19,7 +19,7 @@ Este ejemplo implementa el módulo `product` como **OData-first**:
 
 ```
 src/
-└── core/product/
+└── core/demo/product/               # namespace semántico demo/
     ├── main.ts                                # Exporta ProductOData + ProductODataController
     ├── controller/product.odata.controller.ts # Controlador OData (extiende ODataControler)
     ├── service/product.service.ts             # Orquesta lectura+escritura (DTO-validado)
@@ -28,7 +28,7 @@ src/
     └── interface/product.interface.ts       # Interface IProduct
 ```
 
-El registro del dominio en el servidor OData se hace importando desde `core/product/`:
+El registro del dominio en el servidor OData se hace importando desde `core/demo/product/`:
 
 - `src/common/service/odata/datasource.ts` → `ProductOData` (models: [...]).
 - `src/common/service/odata/odata.service.ts` → `ProductODataController` (odataControllers).
@@ -36,7 +36,7 @@ El registro del dominio en el servidor OData se hace importando desde `core/prod
 ## 11.3 Interface IProduct
 
 ```typescript
-// src/core/product/interface/product.interface.ts
+// src/core/demo/product/interface/product.interface.ts
 export interface IProduct {
     id?: number;
     nombre: string;
@@ -49,9 +49,9 @@ export interface IProduct {
 ## 11.4 Modelo OData (`@phrasecode/odata`) — única fuente de verdad
 
 ```typescript
-// src/core/product/model/product.odata.model.ts
+// src/core/demo/product/model/product.odata.model.ts
 import { Model, Table, Column, DataTypes, BelongsTo } from "@phrasecode/odata";
-import { CategoryOData } from "../../../core/category/model/category.odata.model.js";
+import { CategoryOData } from "../../../core/demo/category/model/category.odata.model.js";
 
 @Table({ tableName: "products" })
 export class ProductOData extends Model<ProductOData> {
@@ -82,13 +82,13 @@ export class ProductOData extends Model<ProductOData> {
 }
 ```
 
-> El `db.define("Product", ...)` de Sequelize (antes en `core/product/model/product.model.ts`)
+> El `db.define("Product", ...)` de Sequelize (antes en `core/demo/product/model/product.model.ts`)
 > fue **eliminado** en F1. No hay modelo duplicado.
 
 ## 11.5 DTOs (Create/Update)
 
 ```typescript
-// src/core/product/dto/product.dto.ts
+// src/core/demo/product/dto/product.dto.ts
 import { IsString, IsNumber, IsOptional, Min, IsInt } from "class-validator";
 import { OmitType } from "../../../common/helper/nestjs/omit-type.helper.js";
 import { IProduct } from "../interface/product.interface.js";
@@ -118,7 +118,7 @@ export class ProductUpdateDTO extends OmitType(ProductCreateDTO, ["id"] as const
 ## 11.6 Controlador OData
 
 ```typescript
-// src/core/product/controller/product.odata.controller.ts
+// src/core/demo/product/controller/product.odata.controller.ts
 import { ODataControler, QueryParser } from "@phrasecode/odata";
 import { ProductOData } from "../model/product.odata.model.js";
 
@@ -149,7 +149,7 @@ El servicio es un singleton que delega la lectura en el `ODataControler` (mismo
 se valida con los DTOs antes de tocar la BD.
 
 ```typescript
-// src/core/product/service/product.service.ts
+// src/core/demo/product/service/product.service.ts
 import { transformAndValidate, ClassType } from "class-transformer-validator";
 import { ValidationError } from "class-validator";
 import { ProductCreateDTO, ProductUpdateDTO } from "../dto/product.dto.js";
@@ -218,7 +218,7 @@ router.post(base, json, async (req, res) => {
 ## 11.9 Router del Dominio (exporta model + controller)
 
 ```typescript
-// src/core/product/main.ts
+// src/core/demo/product/main.ts
 import { ProductOData } from "./model/product.odata.model.js";
 import { ProductODataController } from "./controller/product.odata.controller.js";
 

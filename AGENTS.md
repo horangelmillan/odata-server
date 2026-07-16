@@ -14,11 +14,26 @@ Usa la skill **node-modular-monolith** para crear nuevos módulos/dominios OData
 
 ## Convenciones
 
-- **OData es el dominio único**: no hay capa REST. El servidor expone solo `/odata`.
-- Los dominios OData viven en `src/core/<dominio>/` con su propia carpeta de `interface`, `model` (`@Table`/`@Column`), `dto` (validación `class-validator`), `service`, `controller` (`ODataControler`).
-- `src/common/service/odata/` es **shared kernel** (infraestructura OData transversal: `DataSource`, `ExpressRouter`, escritura base, `odata-error`, `odata-etag`, `odata-format`, `odata-metadata`, parches). No es un dominio: no contiene modelos ni controladores de dominio.
-- Los endpoints OData van en `/odata/<entidad>` (kebab-case del nombre de clase).
+- **El dominio es agnóstico a todo artefacto periférico**: el dominio es la fuente de verdad del
+  negocio y no depende de ningún protocolo de exposición, capa de persistencia, motor de datos ni
+  middleware. La **arquitectura del servidor define la organización** (domain layer + shared kernel +
+  adapters); cualquier combinación de esos artefactos debe adaptarse a esa arquitectura, no al
+  revés. Los adapters son intercambiables sin reescribir el dominio. "OData como dominio único"
+  significa que hoy OData es el único protocolo de exposición activo, no que el dominio esté
+  acoplado a él.
+- Los dominios viven en `src/core/<namespace>/<dominio>/` con su propia carpeta de `interface`,
+  `model`, `dto`, `service`, `controller`. El namespace (`demo/`, `finance/`) agrupa dominios
+  con prefijo semántico en la ruta OData y se refleja en la carpeta física. El controlador es
+  el *adaptador* del dominio al contrato de exposición.
+- `src/common/service/odata/` es **shared kernel** (infraestructura OData transversal: `DataSource`,
+  `ExpressRouter`, escritura base, `odata-error`, `odata-etag`, `odata-format`, `odata-metadata`,
+  parches). No es un dominio: no contiene modelos ni controladores de dominio.
+- Los endpoints se agrupan por namespace semántico: `/odata/demo/<entidad>` (dominios de
+  demostración, ej. `product`, `category`) y `/odata/finance/<entidad>` (ecosistema financiero
+  simulado). El `getEndpoint()` del controlador define el prefijo. La carpeta física
+  `src/core/demo/` y `src/core/finance/` refleja el mismo namespace.
 - El controlador OData se registra en `src/common/service/odata/odata.service.ts`.
+- El seed financiero idempotente vive en `scripts/seed/financial-seed.ts` y se ejecuta con `pnpm seed` o `pnpm db:reset`.
 - Usar `env.config.ts` para toda lectura de variables de entorno — nunca `process.env` directamente
 
 ## Parche conocido

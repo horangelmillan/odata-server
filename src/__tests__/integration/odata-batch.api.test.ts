@@ -118,7 +118,7 @@ function postBatch(body: string, boundary: string = BATCH_BOUNDARY) {
 describe("OData SAPUI5 compat — Fase C.2 ($batch)", () => {
     describe("POST /odata/$batch — single GET request", () => {
         it("returns a multipart/mixed response with the entity collection", async () => {
-            const res = await postBatch(buildBatch([requestPart("/product-odata")]));
+            const res = await postBatch(buildBatch([requestPart("/demo/product-odata")]));
 
             expect(res.status).toBe(200);
             expect(res.headers["content-type"]).toContain("multipart/mixed");
@@ -128,7 +128,7 @@ describe("OData SAPUI5 compat — Fase C.2 ($batch)", () => {
         });
 
         it("applies $filter from the batched request", async () => {
-            const res = await postBatch(buildBatch([requestPart("/product-odata?$filter=precio%20gt%20100")]));
+            const res = await postBatch(buildBatch([requestPart("/demo/product-odata?$filter=precio%20gt%20100")]));
 
             expect(res.status).toBe(200);
             expect(res.body).toContain(`"id":1`);
@@ -137,7 +137,7 @@ describe("OData SAPUI5 compat — Fase C.2 ($batch)", () => {
         });
 
         it("supports key-access syntax inside the batch", async () => {
-            const res = await postBatch(buildBatch([requestPart("/product-odata(1)")]));
+            const res = await postBatch(buildBatch([requestPart("/demo/product-odata(1)")]));
 
             expect(res.status).toBe(200);
             expect(res.body).toContain(`"id":1`);
@@ -147,7 +147,7 @@ describe("OData SAPUI5 compat — Fase C.2 ($batch)", () => {
 
     describe("POST /odata/$batch — changeset with nested GET", () => {
         it("returns a nested multipart/mixed response", async () => {
-            const inner = buildChangeset([requestPart("/product-odata(2)")]);
+            const inner = buildChangeset([requestPart("/demo/product-odata(2)")]);
             const res = await postBatch(buildBatch([changesetPart(inner)]));
 
             expect(res.status).toBe(200);
@@ -178,7 +178,7 @@ describe("OData SAPUI5 compat — Fase C.2 ($batch)", () => {
                 "Content-Type: application/http",
                 "Content-Transfer-Encoding: binary",
                 "",
-                "POST /product-odata HTTP/1.1",
+                "POST /demo/product-odata HTTP/1.1",
                 "Accept: application/json",
                 "Content-Type: application/json",
                 "",

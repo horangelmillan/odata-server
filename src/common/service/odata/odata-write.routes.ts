@@ -4,8 +4,8 @@ import { odataWriteService, type ODataBaseModel, type WriteResult } from "./odat
 import { injectEtag, etagMatches } from "./odata-etag.js";
 import { oDataError } from "./odata-error.js";
 import { JSONValidatorException } from "../../exception/json-validator.exception.js";
-import { productService } from "../../../core/product/service/product.service.js";
-import { categoryService } from "../../../core/category/service/category.service.js";
+import { productService } from "../../../core/demo/product/service/product.service.js";
+import { categoryService } from "../../../core/demo/category/service/category.service.js";
 
 // F4: la escritura directa OData delega en el SERVICIO DE DOMINIO, donde vive la
 // validación DTO (ProductCreateDTO/ProductUpdateDTO, CategoryCreateDTO/

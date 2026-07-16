@@ -51,3 +51,22 @@ convirtiendo `common/service/odata/` en shared kernel. Ver detalle y ejecución 
 > **Cómo leer este ciclo:** cada fase en `fases/` es autónoma y ejecutable en una sesión
 > distinta. Cada una contiene: objetivo, pasos detallados, comandos, criterios de aceptación
 > y la documentación a actualizar al cerrar. El `00-plan-maestro.md` es el contrato global.
+
+## 06 — Ciclo de Ecosistema Financiero Simulado (tipo S/4HANA Cloud)
+**Ciclo actual.** Estado global: ✅ **F0 completada** — [issue #3](https://github.com/horangelmillan/odata-server/issues/3) resuelto via [PR #4](https://github.com/horangelmillan/odata-server/pull/4), prefijo `demo/` aplicado a product/category. Añade al
+servidor un ecosistema financiero coherente (sociedades, clientes, proveedores, cuentas
+mayor, facturas de venta/proveedor, líneas y pagos con clearing) y un **seed idempotente
+re-montable** (`pnpm seed` / `pnpm db:reset` recrea los mismos datos). El dominio es
+**agnóstico al protocolo**; el servidor lo expone solo vía OData v4. Namespaces simétricos:
+`/odata/demo/*` (product, category) y `/odata/finance/*` (ecosistema). Rama dedicada:
+`feature/financial-eco`.
+- [`00-plan-maestro.md`](06-financial-eco/00-plan-maestro.md) — Plan maestro y decisión de arquitectura.
+- [`fases/f0-ramificacion-baseline.md`](06-financial-eco/fases/f0-ramificacion-baseline.md) — F0.0 ✅ (rama + baseline 143 pass).
+- [`fases/f0.1-prefijo-demo-bloqueado.md`](06-financial-eco/fases/f0.1-prefijo-demo-bloqueado.md) — 🚧 F0.1 en pausa por issue #3.
+- [`fases/f1-modelos-financieros.md`](06-financial-eco/fases/f1-modelos-financieros.md) — 8 dominios (sub-fases `f1.1`–`f1.8`)
+- [`fases/f2-seed-remontable.md`](06-financial-eco/fases/f2-seed-remontable.md) — Seed idempotente (sub-fases `f2.0`–`f2.8`)
+- [`fases/f3-relaciones-y-estados.md`](06-financial-eco/fases/f3-relaciones-y-estados.md) ✅
+- [`fases/f4-tests-ecosistema.md`](06-financial-eco/fases/f4-tests-ecosistema.md) ✅
+- [`fases/f5-documentacion.md`](06-financial-eco/fases/f5-documentacion.md) ✅
+- [`../02-patrones/16-financial-module.md`](02-patrones/16-financial-module.md) — Patrón de módulo financiero con entidades, navegaciones, seed y ejemplos `$expand`/`$filter`.
+- [`fases/f6-merge-a-master.md`](06-financial-eco/fases/f6-merge-a-master.md)

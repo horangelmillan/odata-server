@@ -1,4 +1,4 @@
-import { IProduct } from "../../core/product/interface/product.interface.js";
+import { IProduct } from "../../core/demo/product/interface/product.interface.js";
 
 export function createProductPayload(overrides?: Partial<IProduct>): Record<string, unknown> {
     return {

@@ -17,6 +17,8 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
+        "seed": "node --loader ts-node --loader ts-node/esm --no-warnings scripts/seed/financial-seed.ts",
+        "db:reset": "node --loader ts-node --loader ts-node/esm --no-warnings scripts/seed/financial-seed.ts --reset",
         "postinstall": "node scripts/patch-odata.mjs"
     },
     "dependencies": {

@@ -104,6 +104,8 @@ El servidor arranca en `http://localhost:3000`.
 | Comando | Descripción |
 |---|---|
 | `pnpm dev` | Desarrollo con hot-reload (`ts-node --watch`) |
+| `pnpm seed` | Seed idempotente del ecosistema financiero |
+| `pnpm db:reset` | DROP + CREATE + sync + seed financiero |
 | `pnpm build` | Compila TypeScript a `dist/` |
 | `pnpm start` | Ejecuta la compilación de producción |
 | `pnpm test` | Ejecuta todos los tests |
@@ -185,6 +187,29 @@ curl "http://localhost:3000/odata/product-odata?\$expand=category"
 # Escritura OData: changeset atómico vía $batch, o escritura directa por entidad (groupId "$direct")
 curl -X POST "http://localhost:3000/odata/category-odata" -H "Content-Type: application/json" -d '{"nombre":"Nueva"}'
 ```
+
+---
+
+---
+
+## Ecosistema financiero simulado (S/4HANA)
+
+El proyecto incluye 8 dominios financieros en `src/core/finance/` expuestos bajo `/odata/finance/`:
+
+| Entidad | Endpoint OData | Navegaciones `$expand` |
+|---------|---------------|----------------------|
+| Company | `/odata/finance/company-odata` | customers, invoices |
+| Customer | `/odata/finance/customer-odata` | company, invoices |
+| Supplier | `/odata/finance/supplier-odata` | supplierInvoices |
+| GlAccount | `/odata/finance/glaccount-odata` | items |
+| Invoice | `/odata/finance/invoice-odata` | customer, company, items |
+| SupplierInvoice | `/odata/finance/supplierinvoice-odata` | supplier |
+| InvoiceItem | `/odata/finance/invoiceitem-odata` | invoice, glAccount |
+| Payment | `/odata/finance/payment-odata` | invoice |
+
+Estados de factura: `PENDIENTE`, `PAGADA`, `VENCIDA`.
+
+Seed idempotente: `pnpm seed` o `pnpm db:reset` recrea los mismos datos siempre.
 
 ---
 
