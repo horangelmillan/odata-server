@@ -182,49 +182,33 @@ function primaryKeyOf(controller: ODataControler): string {
 }
 
 function resolveTarget(url: string, registry: Map<string, ODataControler>): ResolvedTarget | null {
-    // G1: la ruta interna de un $batch es relativa a la raíz del servicio OData,
-    // pero SAPUI5 (y otros clientes) la envían como ruta ABSOLUTA incluyendo el
-    // prefijo del service root (`/odata`). Lo normalizamos.
-    let normalizedUrl = url.replace(/^\//, "");
-    normalizedUrl = normalizedUrl.replace(/^odata\//i, "");
+    const queryIndex = url.indexOf("?");
+    const pathSegment = (queryIndex >= 0 ? url.substring(0, queryIndex) : url).replace(/^\//, "");
+    const queryPart = queryIndex >= 0 ? url.substring(queryIndex + 1) : "";
 
-    const queryIndex = normalizedUrl.indexOf("?");
-    const pathSegment = (queryIndex >= 0 ? normalizedUrl.substring(0, queryIndex) : normalizedUrl);
-    const queryPart = queryIndex >= 0 ? normalizedUrl.substring(queryIndex + 1) : "";
+    const keyMatch = pathSegment.match(/^([^/?(]+)\(([^)]+)\)$/);
+    const slashMatch = pathSegment.match(/^([^/?(]+)\/([^/?]+)$/);
 
-    // G3: el path puede incluir prefijo de namespace (p.ej. `demo/product-odata(1)`).
-    // Buscamos el controller por prefijo mas largo en el registry.
-    // Compatibilidad: los controladores ya no usan prefijo `demo/`; normalizamos.
-    const normalizedSegment = pathSegment.replace(/^demo\//, "");
-    const sortedKeys = [...registry.keys()].sort((a, b) => b.length - a.length);
-    let matchedKey: string | null = null;
-    let rest: string = normalizedSegment;
-    for (const key of sortedKeys) {
-        if (normalizedSegment === key || normalizedSegment.startsWith(key + "(") || normalizedSegment.startsWith(key + "/") || normalizedSegment.startsWith(key + "?")) {
-            matchedKey = key;
-            rest = normalizedSegment.slice(key.length);
-            break;
-        }
+    let entitySet: string;
+    let key: string | null = null;
+    if (keyMatch) {
+        entitySet = keyMatch[1];
+        key = keyMatch[2].trim();
+    } else if (slashMatch) {
+        entitySet = slashMatch[1];
+        key = slashMatch[2].trim();
+    } else {
+        entitySet = pathSegment.split("/")[0];
     }
 
-    if (!matchedKey) return null;
+    const controller = registry.get(entitySet);
+    if (!controller) return null;
 
-    const controller = registry.get(matchedKey)!;
-    let entityKey: string | null = null;
-
-    const keyParenMatch = rest.match(/^\(([^)]+)\)$/);
-    const keySlashMatch = rest.match(/^\/([^/?]+)$/);
-    if (keyParenMatch) {
-        entityKey = keyParenMatch[1].trim();
-    } else if (keySlashMatch) {
-        entityKey = keySlashMatch[1].trim();
+    if (key && (key.startsWith("'") || key.startsWith('"'))) {
+        key = key.slice(1, -1);
     }
 
-    if (entityKey && (entityKey.startsWith("'") || entityKey.startsWith('"'))) {
-        entityKey = entityKey.slice(1, -1);
-    }
-
-    return { entitySet: matchedKey, controller, key: entityKey, queryPart, primaryKey: primaryKeyOf(controller) };
+    return { entitySet, controller, key, queryPart, primaryKey: primaryKeyOf(controller) };
 }
 
 function resolveContentIdReference(key: string | null, contentIdKeys: ContentIdKeys): unknown {

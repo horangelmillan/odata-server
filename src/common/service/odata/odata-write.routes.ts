@@ -29,7 +29,6 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
                     odataWriteService.create(model, req.body ?? {}, tx),
                 );
                 injectEtag(result.entity);
-                result.entity["@odata.context"] = `/$metadata#${modelName}/$entity`;
                 res.set("Location", `/odata/${endpoint}(${result.key})`);
                 res.status(201).json(result.entity);
             } catch (error) {
@@ -62,7 +61,6 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
                     return;
                 }
                 injectEtag(result.entity);
-                result.entity["@odata.context"] = `/$metadata#${modelName}/$entity`;
                 res.status(200).json(result.entity);
             } catch (error) {
                 res.status(500).json(oDataError(500, "Error updating entity", (error as Error).message));
