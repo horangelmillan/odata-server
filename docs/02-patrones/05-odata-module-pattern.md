@@ -2,33 +2,71 @@
 
 ## 5.1 Module Structure
 
-Each entity exposed via OData follows a three-artifact structure under `src/common/service/odata/`:
+OData is the **single domain** of this server (refactor cycle "OData as Domain"). The codebase is
+split into a **domain layer** (`src/core/<dominio>/`) and a **shared kernel** (`src/common/service/odata/`).
+
+### Domain layer — `src/core/<dominio>/`
+
+Each entity owns its full module under `core/<dominio>/` with the standard folders:
+
+```
+src/core/product/
+├── interface/product.interface.ts
+├── model/product.odata.model.ts        # @phrasecode/odata decorated model (@Table/@Column)
+├── dto/product.dto.ts                  # Create/Update DTOs (class-validator)
+├── controller/product.odata.controller.ts  # OData controller (extends ODataControler)
+├── service/product.service.ts          # Domain service: read via controller, write via shared kernel
+└── main.ts                             # Barrel export (model + controller)
+```
+
+- **model/**: ORM mapping using `@Table` and `@Column` decorators from `@phrasecode/odata`. These are
+  read/write projections of the database tables.
+- **dto/**: `ProductCreateDTO` / `ProductUpdateDTO` (and category equivalents) validated with
+  `class-validator`. **Validation lives in the domain service** — the write path rejects invalid
+  bodies with a 400 OData v4 error *before* touching the database.
+- **controller/**: Endpoint logic extending `ODataControler`. Overrides `get` for custom query
+  behavior (e.g. max `$top`).
+- **service/**: The only orchestration layer. Reads delegate to the `ODataControler`; writes
+  delegate to `odataWriteService` (shared kernel) **after** DTO validation.
+
+### Shared kernel — `src/common/service/odata/` (infra only)
 
 ```
 src/common/service/odata/
-├── models/
-│   └── product.odata.model.ts          # Decorated model (@Table/@Column)
-├── controllers/
-│   └── product.odata.controller.ts     # OData controller
-├── datasource.ts                       # Shared DataSource config
-└── odata.service.ts                    # Controller registration + ExpressRouter
+├── datasource.ts          # Shared DataSource config (singleton)
+├── odata.service.ts       # Controller registration + ExpressRouter at /odata
+├── odata-write.service.ts # Base write service (transactions, etag, column whitelist)
+├── odata-write.routes.ts  # Direct-write routes delegating to domain services
+├── odata-error.ts         # OData v4 error shape
+├── odata-etag.ts          # @odata.etag helpers (optimistic concurrency)
+├── odata-format.ts        # $format negotiation
+└── odata-metadata.ts      # $metadata CSDL 4.01 builder
 ```
 
-- **models/**: ORM mapping using `@Table` and `@Column` decorators from `@phrasecode/odata`. These are read-only projections of the database tables, optimized for OData querying.
-- **controllers/**: Endpoint logic extending `ODataControler`. Can override `get`, `create`, `update`, `delete` methods for custom behavior.
-- **datasource.ts**: Singleton `DataSource` that connects to PostgreSQL with its own connection pool.
-- **odata.service.ts**: Central registration point. Receives the controller array and `dataSource`, builds the `ExpressRouter` mounted at `/odata` in `src/main.ts`.
+- **datasource.ts**: Singleton `DataSource` connecting to PostgreSQL (reuses the SequelizerAdaptor
+  connection pool; the write service reuses the *same* Sequelize instance — no second pool).
+- **odata.service.ts**: Central registration point. Receives the controller array (imported from
+  `core/<dominio>/controller/`) and `dataSource`, builds the `ExpressRouter` mounted at `/odata`
+  in `src/main.ts`.
+- **odata-write.service.ts**: Internal utility — atomic transactions, optimistic-concurrency etag,
+  and column whitelist. It resolves the real Sequelize `ModelStatic` from the domain model's
+  `tableIdentifier`; it does **not** own domain validation or DTOs.
+- **odata-write.routes.ts**: Direct-write routes for SAPUI5 `$direct` mode (POST/PATCH/PUT/DELETE per
+  entity). They **delegate to the domain service** (`productService` / `categoryService`) so that
+  DTO validation stays in the domain; on `JSONValidatorException` they respond 400 in OData v4
+  standard form `{ error: { code, message, target?, details[] } }`.
 
-This separation keeps OData models lightweight compared to Sequelize write models, focusing purely on the projection and filtering the client needs.
+This separation keeps `common/service/odata/` purely infrastructural (no per-domain models or
+controllers), while each domain owns its models, DTOs, controllers, and write/validation logic.
 
 ---
 
 ## 5.2 Step-by-Step: Creating an OData Endpoint
 
-### Step 1: Define the OData Model
+### Step 1: Define the OData Model (in the domain)
 
 ```typescript
-// src/common/service/odata/models/product.odata.model.ts
+// src/core/product/model/product.odata.model.ts
 import { Model, Table, Column, DataTypes } from "@phrasecode/odata";
 
 @Table({ tableName: "products" })
@@ -49,12 +87,12 @@ export class ProductOData extends Model<ProductOData> {
 
 Each column uses the `@Column` decorator with its data type and options (primary key, auto-increment, default value). The `@Table` decorator specifies the target SQL table or view.
 
-### Step 2: Create the OData Controller
+### Step 2: Create the OData Controller (in the domain)
 
 ```typescript
-// src/common/service/odata/controllers/product.odata.controller.ts
+// src/core/product/controller/product.odata.controller.ts
 import { ODataControler, QueryParser } from "@phrasecode/odata";
-import { ProductOData } from "../models/product.odata.model.js";
+import { ProductOData } from "../model/product.odata.model.js";
 
 export class ProductODataController extends ODataControler {
     constructor() {
@@ -78,14 +116,14 @@ export class ProductODataController extends ODataControler {
 
 The controller extends `ODataControler` and receives model config and allowed HTTP methods. The `get` method receives a `QueryParser` to inspect and modify query parameters before execution.
 
-### Step 3: Register in odata.service.ts
+### Step 3: Register in odata.service.ts (shared kernel)
 
 ```typescript
 // src/common/service/odata/odata.service.ts
 import { Router } from "express";
 import { ExpressRouter } from "@phrasecode/odata";
 import { dataSource } from "./datasource.js";
-import { ProductODataController } from "./controllers/product.odata.controller.js";
+import { ProductODataController } from "../../core/product/controller/product.odata.controller.js";
 
 const oDataExpressApp: Router = Router();
 

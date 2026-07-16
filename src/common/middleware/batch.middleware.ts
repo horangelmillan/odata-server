@@ -182,9 +182,16 @@ function primaryKeyOf(controller: ODataControler): string {
 }
 
 function resolveTarget(url: string, registry: Map<string, ODataControler>): ResolvedTarget | null {
-    const queryIndex = url.indexOf("?");
-    const pathSegment = (queryIndex >= 0 ? url.substring(0, queryIndex) : url).replace(/^\//, "");
-    const queryPart = queryIndex >= 0 ? url.substring(queryIndex + 1) : "";
+    // G1: la ruta interna de un $batch es relativa a la ra��z del servicio OData,
+    // pero SAPUI5 (y otros clientes) la env��an como ruta ABSOLUTA incluyendo el
+    // prefijo del service root (`/odata`). Lo normalizamos para que el
+    // `entitySet` resuelva contra el registro (p.ej. `product-odata`).
+    let normalizedUrl = url.replace(/^\//, "");
+    normalizedUrl = normalizedUrl.replace(/^odata\//i, "");
+
+    const queryIndex = normalizedUrl.indexOf("?");
+    const pathSegment = (queryIndex >= 0 ? normalizedUrl.substring(0, queryIndex) : normalizedUrl);
+    const queryPart = queryIndex >= 0 ? normalizedUrl.substring(queryIndex + 1) : "";
 
     const keyMatch = pathSegment.match(/^([^/?(]+)\(([^)]+)\)$/);
     const slashMatch = pathSegment.match(/^([^/?(]+)\/([^/?]+)$/);
@@ -406,21 +413,54 @@ async function processTopLevelRequest(
     raw: string,
     registry: Map<string, ODataControler>,
 ): Promise<string> {
-    const { method, url } = parseHttpPart(raw);
-    if (method !== "GET") {
-        // Fuera de un changeset solo se admiten lecturas; las escrituras deben
-        // ir en un multipart/mixed (spec OData $batch).
-        return httpResponseBlock({
-            status: 405,
-            body: oDataError(405, "Write operations must be sent inside a changeset (multipart/mixed)"),
-        });
-    }
+    const { method, url, body, headers } = parseHttpPart(raw);
     const target = resolveTarget(url, registry);
     if (!target) {
         return httpResponseBlock({ status: 404, body: oDataError(404, `Entity set not found for '${url}'`) });
     }
-    const response = await dispatchRead(target, target.controller);
-    return httpResponseBlock(response);
+    // G1 (F6): SAPUI5 `ODataModel` v4 envía escrituras individuales diferidas
+    // (p.ej. un solo `create` vía `submitBatch("changes")`) como una parte
+    // `application/http` de NIVEL SUPERIOR del `$batch`, SIN envolverlas en un
+    // `multipart/mixed` changeset. Para integrar fielmente con UI5, aceptamos
+    // escrituras top-level en $batch (la atomicidad del changeset solo es
+    // obligatoria cuando hay varias operaciones que deben ser atómicas).
+    if (method === "GET") {
+        const response = await dispatchRead(target, target.controller);
+        return httpResponseBlock(response);
+    }
+    if (!WRITE_METHODS.has(method)) {
+        return httpResponseBlock({
+            status: 405,
+            body: oDataError(405, `Method '${method}' is not allowed in $batch`),
+        });
+    }
+    try {
+        // G1 (F6): las escrituras top-level (UI5 envía un `create` diferido como
+        // parte `application/http` de nivel superior, sin changeset) necesitan una
+        // transacción como cualquier otra escritura del $batch. `dispatchWrite`
+        // requiere un `tx` real (no null) porque el servicio de escritura lee
+        // `tx.sequelize`; por eso envolvemos en `runInTransaction`.
+        const response = await odataWriteService.runInTransaction((tx) =>
+            dispatchWrite(method, target, body, tx, new Map(), headers["if-match"]),
+        );
+        // G1 (F6): para escrituras top-level (UI5 reemplaza un changeset de una
+        // sola petici��n por una petici��n top-level al enviar el $batch), la
+        // respuesta debe ser tambi��n top-level y SIN `Content-ID` (UI5 correlaciona
+        // la respuesta con la petici��n pendiente por posici��n, no por Content-ID).
+        return httpResponseBlock(response);
+    } catch (error) {
+        if (error instanceof ChangesetError) {
+            const message = STATUS_TEXT[error.status] || "Batch write failed";
+            return httpResponseBlock({
+                status: error.status,
+                body: oDataError(error.status, message, typeof error.detail === "string" ? error.detail : undefined),
+            });
+        }
+        return httpResponseBlock({
+            status: 500,
+            body: oDataError(500, "Batch write failed", (error as Error).message),
+        });
+    }
 }
 
 async function buildBlocks(
@@ -464,8 +504,17 @@ export class BatchMiddleware {
                 const rawBody = await readBody(req);
                 const blocks = await buildBlocks(rawBody, boundary, registry, 0);
                 const body = assemble(blocks, boundary);
+                // G1 (F6): el `Content-Type` de la respuesta $batch NO debe llevar
+                // `; charset=utf-8` (Express lo añade en `res.send(string)`). SAPUI5
+                // parsea el `boundary` con una regex que captura hasta el primer
+                // `;`, por lo que `boundary=X; charset=utf-8` hace que UI5 busque un
+                // delimitador `--X; charset=utf-8` que no existe y el $batch nunca
+                // se parsea (created() cuelga). Usamos `res.end` y fijamos el
+                // header SIN charset. También quitamos el ETag weak que Express
+                // genera para el cuerpo (UI5 no lo necesita en $batch).
+                res.removeHeader("ETag");
                 res.set("Content-Type", `multipart/mixed; boundary=${boundary}`);
-                res.status(200).send(body);
+                res.status(200).end(body);
             } catch (error) {
                 res.status(500).json({
                     error: "Error processing $batch",

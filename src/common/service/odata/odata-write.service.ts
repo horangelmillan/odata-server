@@ -17,6 +17,10 @@ interface ModelMetadata {
     columnMetadata: ColumnMeta[];
 }
 
+// Contrato mínimo del modelo OData del dominio (la clase concreta de
+// @phrasecode/odata expuesta por el controlador vía `getBaseModel()`). NO es un
+// `ModelStatic` de Sequelize: solo expone su metadata. Para obtener el modelo
+// Sequelize real se usa `resolveSequelizeModel` (ver abajo).
 export interface ODataBaseModel {
     getMetadata(): ModelMetadata;
     getModelName(): string;
@@ -45,18 +49,29 @@ class ODataWriteService {
         return this.sequelize().transaction(fn);
     }
 
+    // F4: resuelve el `ModelStatic` de Sequelize real a partir del modelo OData
+    // del dominio. El modelo de @phrasecode/odata NO es un `ModelStatic` de
+    // Sequelize (solo expone `getMetadata()`), así que el SequelizerAdaptor lo
+    // define por separado y lo indexa en `sequelize.models` por su
+    // `tableIdentifier`. Este helper centraliza ese acceso tipado y elimina el
+    // cast frágil esparcido: el `tableIdentifier` siempre coincide con la clave
+    // del mapa porque es el mismo adaptador quien registra el modelo.
+    private resolveSequelizeModel(model: ODataBaseModel): ModelStatic<SequelizeModel> {
+        const { tableIdentifier } = model.getMetadata().tableMetadata;
+        const sqModel = this.sequelize().models[tableIdentifier];
+        if (!sqModel) {
+            throw new Error(`Sequelize model for '${tableIdentifier}' not found`);
+        }
+        return sqModel as ModelStatic<SequelizeModel>;
+    }
+
     private resolve(model: ODataBaseModel): {
         meta: ModelMetadata;
         sqModel: ModelStatic<SequelizeModel>;
         pk: ColumnMeta;
     } {
         const meta = model.getMetadata();
-        const sqModel = this.sequelize().models[meta.tableMetadata.tableIdentifier] as
-            | ModelStatic<SequelizeModel>
-            | undefined;
-        if (!sqModel) {
-            throw new Error(`Sequelize model for '${meta.tableMetadata.tableIdentifier}' not found`);
-        }
+        const sqModel = this.resolveSequelizeModel(model);
         const pk = meta.columnMetadata.find((column) => column.isPrimaryKey) ?? meta.columnMetadata[0];
         return { meta, sqModel, pk };
     }
@@ -79,6 +94,12 @@ class ODataWriteService {
         return payload;
     }
 
+    async findByPk(model: ODataBaseModel, keyValue: unknown, tx: Transaction): Promise<Record<string, unknown> | null> {
+        const { sqModel } = this.resolve(model);
+        const row = await sqModel.findByPk(keyValue as never, { transaction: tx });
+        return row ? (row.toJSON() as Record<string, unknown>) : null;
+    }
+
     async create(
         model: ODataBaseModel,
         data: Record<string, unknown>,
@@ -86,6 +107,15 @@ class ODataWriteService {
     ): Promise<WriteResult> {
         const { meta, sqModel, pk } = this.resolve(model);
         const payload = this.toColumns(meta, data, { includePk: false });
+        // G1: asegura un `@odata.etag` estable en la entidad creada (el modelo
+        // Sequelize real puede no tener timestamps:true), igual que en update.
+        const createdAtCol = meta.columnMetadata.find((column) => column.propertyKey === "createdAt");
+        const updatedAtCol = meta.columnMetadata.find((column) => column.propertyKey === "updatedAt");
+        const now = new Date();
+        if (createdAtCol && payload[createdAtCol.columnIdentifier] === undefined) {
+            payload[createdAtCol.columnIdentifier] = now;
+        }
+        if (updatedAtCol) payload[updatedAtCol.columnIdentifier] = now;
         const created = await sqModel.create(payload, { transaction: tx });
         const json = created.toJSON() as Record<string, unknown>;
         return { primaryKey: pk.propertyKey, key: json[pk.columnIdentifier], entity: json };

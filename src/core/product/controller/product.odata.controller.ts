@@ -1,11 +1,11 @@
 import { ODataControler, QueryParser } from "@phrasecode/odata";
-import { CategoryOData } from "../models/category.odata.model.js";
+import { ProductOData } from "../model/product.odata.model.js";
 
-export class CategoryODataController extends ODataControler {
+export class ProductODataController extends ODataControler {
     constructor() {
         super({
-            model: CategoryOData,
-            allowedMethod: ["get"],
+            model: ProductOData,
+            allowedMethod: ["get", "post", "put", "delete"],
         });
     }
 
@@ -14,7 +14,7 @@ export class CategoryODataController extends ODataControler {
         if (!params.top || params.top > 100) {
             query.setTop(100);
         }
-        const result = await this.queryable<CategoryOData>(query);
+        const result = await this.queryable<ProductOData>(query);
         return result;
     }
 }

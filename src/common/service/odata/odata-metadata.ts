@@ -112,3 +112,92 @@ export function transformToCsdl(raw: RawMetadata, namespace: string = DEFAULT_NA
 
     return csdl;
 }
+
+// Fase R/F6: serializa el CSDL JSON 4.01 (arriba) a **EDMX XML** estándar.
+// SAPUI5/OpenUI5 ODataModel v4 (runtime 1.150) consume EDMX XML en `$metadata`
+// (no CSDL JSON), así que para bootstrappear SIN shim el server debe emitir XML.
+function xmlEscape(s: string): string {
+    return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+}
+
+export function csdlToEdmx(csdl: Record<string, unknown>, namespace: string = DEFAULT_NAMESPACE): string {
+    const containerName = String(csdl.$EntityContainer ?? `${namespace}.Container`);
+    const schemaName = namespace;
+
+    const entityTypes = Object.entries(csdl).filter(
+        ([k, v]) => k !== "$Version" && k !== "$EntityContainer" && k !== containerName &&
+            (v as Record<string, unknown>)?.$kind === "EntityType"
+    );
+
+    const entityTypeXml = entityTypes.map(([typeKey, etRaw]) => {
+        const et = etRaw as Record<string, unknown>;
+        const typeName = typeKey.replace(`${namespace}.`, "");
+        const key = (et.$Key as string[] | undefined) ?? [];
+        const props = Object.entries(et).filter(([k]) => k !== "$kind" && k !== "$Key");
+
+        const keyXml = key.length
+            ? `      <Key>${key.map((k) => `<PropertyRef Name="${xmlEscape(k)}" />`).join("")}</Key>\n`
+            : "";
+
+        const propXml = props.map(([name, defRaw]) => {
+            const def = defRaw as Record<string, unknown>;
+            if (def.$kind === "Property") {
+                const nullable = def.$Nullable ? ` Nullable="true"` : "";
+                const defaultValue = def.$DefaultValue !== undefined ? ` DefaultValue="${xmlEscape(String(def.$DefaultValue))}"` : "";
+                return `      <Property Name="${xmlEscape(name)}" Type="${xmlEscape(String(def.$Type))}"${nullable}${defaultValue} />`;
+            }
+            if (def.$kind === "NavigationProperty") {
+                const type = String(def.$Type);
+                const rc = def.$ReferentialConstraint as Record<string, string> | undefined;
+                const rcXml = rc
+                    ? `>\n` + Object.entries(rc)
+                        .map(([src, tgt]) => `        <ReferentialConstraint Property="${xmlEscape(src)}" ReferencedProperty="${xmlEscape(tgt)}" />`)
+                        .join("\n") + `\n      </NavigationProperty>`
+                    : ` />\n      `;
+                const open = `      <NavigationProperty Name="${xmlEscape(name)}" Type="${xmlEscape(type)}"`;
+                return rc ? `${open}${rcXml}` : `${open} />`;
+            }
+            return "";
+        }).filter(Boolean).join("\n");
+
+        return `    <EntityType Name="${xmlEscape(typeName)}">\n${keyXml}${propXml}\n    </EntityType>`;
+    }).join("\n");
+
+    const container = (csdl[containerName] as Record<string, unknown>) ?? {};
+    const entitySets = Object.entries(container).filter(([k, v]) => (v as Record<string, unknown>)?.$kind === "EntitySet");
+    const entitySetXml = entitySets.map(([setName, esRaw]) => {
+        const es = esRaw as Record<string, unknown>;
+        const type = String(es.$Type);
+        const navBindings = es.$NavigationPropertyBinding as Record<string, string> | undefined;
+        if (navBindings && Object.keys(navBindings).length) {
+            const nb = Object.entries(navBindings)
+                .map(([p, t]) => `        <NavigationPropertyBinding Path="${xmlEscape(p)}" Target="${xmlEscape(t)}" />`)
+                .join("\n");
+            return `    <EntitySet Name="${xmlEscape(setName)}" EntityType="${xmlEscape(type)}">\n${nb}\n    </EntitySet>`;
+        }
+        return `    <EntitySet Name="${xmlEscape(setName)}" EntityType="${xmlEscape(type)}" />`;
+    }).join("\n");
+
+    return `<?xml version="1.0" encoding="utf-8"?>
+<edmx:Edmx Version="4.0" xmlns:edmx="http://docs.oasis-open.org/odata/ns/edmx">
+  <edmx:Reference Uri="http://docs.oasis-open.org/odata/odata/v4.0/os/vocabularies/Org.OData.Core.V1.xml">
+    <edmx:Include Namespace="Org.OData.Core.V1" Alias="Core"/>
+  </edmx:Reference>
+  <edmx:Reference Uri="http://docs.oasis-open.org/odata/odata/v4.0/os/vocabularies/Org.OData.Capabilities.V1.xml">
+    <edmx:Include Namespace="Org.OData.Capabilities.V1" Alias="Capabilities"/>
+  </edmx:Reference>
+  <edmx:DataServices>
+    <Schema Namespace="${xmlEscape(schemaName)}" xmlns="http://docs.oasis-open.org/odata/ns/edm">
+${entityTypeXml}
+      <EntityContainer Name="Container">
+${entitySetXml}
+      </EntityContainer>
+    </Schema>
+  </edmx:DataServices>
+</edmx:Edmx>`;
+}

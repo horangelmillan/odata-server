@@ -2,12 +2,12 @@ import { Router } from "express";
 import { ExpressRouter, ODataControler } from "@phrasecode/odata";
 import { env } from "../../config/env.config.js";
 import { dataSource } from "./datasource.js";
-import { ProductODataController } from "./controllers/product.odata.controller.js";
-import { CategoryODataController } from "./controllers/category.odata.controller.js";
+import { ProductODataController } from "../../../core/product/controller/product.odata.controller.js";
+import { CategoryODataController } from "../../../core/category/controller/category.odata.controller.js";
 import { BatchMiddleware } from "../../middleware/batch.middleware.js";
 import { registerWriteRoutes } from "./odata-write.routes.js";
 import { stripFormat } from "./odata-format.js";
-import { transformToCsdl } from "./odata-metadata.js";
+import { transformToCsdl, csdlToEdmx } from "./odata-metadata.js";
 import { injectEtag } from "./odata-etag.js";
 import { normalizeErrorBody, type ODataErrorShape } from "./odata-error.js";
 
@@ -45,23 +45,54 @@ oDataExpressApp.use((req, res, next) => {
     next();
 });
 
-// Fase R: $metadata CSDL JSON 4.01 válido para SAPUI5/OpenUI5 ODataModel v4.
+// Fase R/F6: $metadata. SAPUI5/OpenUI5 ODataModel v4 (runtime 1.150) consume EDMX
+// XML en `$metadata`, así que por defecto servimos EDMX estándar para que el cliente
+// bootstrappee SIN shim. Si el cliente negocia `application/json` (Accept/`-format`),
+// servimos el CSDL JSON 4.01 equivalente.
 // Se registra ANTES del ExpressRouter de la librería para ganar el match de ruta
 // (el de la librería emite un CSDL+JSON custom que UI5 no puede bootstrappear).
 // NOTA: `\\$` para que JS genere `/\$metadata`; path-to-regexp trata `$` sin
 // escapar como ancla de fin de regex (igual que en /$count del parche).
-oDataExpressApp.get("/\\$metadata", (_req, res) => {
+// G1 (F6 / benchmark): el `$metadata` es estático durante la vida del server
+// (los modelos OData no cambian en runtime). Lo cacheamos por formato para no
+// re-calcular la transformación CSDL->EDMX en cada request (la generación de EDMX
+// XML era ~55% más lenta que el CSDL JSON del baseline, regresión medida en Fase P).
+const metadataCache = new Map<string, string>();
+
+oDataExpressApp.get("/\\$metadata", (req, res) => {
     try {
-        const controllerEndpoints = odataControllers.map((controller) => {
-            const endpoint = controller.getEndpoint();
-            return {
-                modelName: controller.getBaseModel().getModelName(),
-                endpoint: endpoint.startsWith("/") ? endpoint : `/${endpoint}`,
-            };
-        });
-        const rawMetadata = dataSource.getMetadata(controllerEndpoints);
-        res.set("X-Metadata-Engine", "csdl-v4");
-        res.send(transformToCsdl(rawMetadata));
+        const accept = String(req.headers["accept"] ?? "");
+        const wantsJson = /application\/json/.test(accept) ||
+            /\$format=json/.test(String(req.url));
+
+        const cacheKey = wantsJson ? "csdl" : "edmx";
+        let body = metadataCache.get(cacheKey);
+        if (body === undefined) {
+            const controllerEndpoints = odataControllers.map((controller) => {
+                const endpoint = controller.getEndpoint();
+                return {
+                    modelName: controller.getBaseModel().getModelName(),
+                    endpoint: endpoint.startsWith("/") ? endpoint : `/${endpoint}`,
+                    isQueryModel: false,
+                };
+            });
+            const rawMetadata = dataSource.getMetadata(controllerEndpoints);
+            const csdl = transformToCsdl(rawMetadata);
+            const rendered: string = wantsJson ? JSON.stringify(csdl) : csdlToEdmx(csdl);
+            body = rendered;
+            metadataCache.set(cacheKey, body);
+        }
+
+        if (wantsJson) {
+            res.set("Content-Type", "application/json; charset=utf-8");
+            res.set("X-Metadata-Engine", "csdl-v4-json");
+            res.send(body);
+            return;
+        }
+        res.set("Content-Type", "application/xml; charset=utf-8");
+        res.set("OData-Version", "4.0");
+        res.set("X-Metadata-Engine", "edmx-v4");
+        res.send(body);
     } catch (error) {
         res.status(500).json({
             error: "Error generating $metadata",
@@ -87,6 +118,14 @@ oDataExpressApp.use((_req, res, next) => {
             typeof normalized === "object" &&
             typeof (normalized as ODataErrorShape).error?.message === "string";
         if (!isError) injectEtag(normalized);
+        // G1 (HTTP ETag): SAPUI5 `ODataModel` v4 usa el header HTTP `ETag` (no el
+        // `@odata.etag` del cuerpo) para la cabecera `If-Match` de concurrencia
+        // optimista. Emitimos un `ETag` fuerte e idéntico al `@odata.etag` para
+        // que la validación `If-Match` del server coincida. Si no lo hacemos,
+        // `compression` genera un `ETag` weak basado en el hash del cuerpo que
+        // no corresponde al etag de la entidad y UI5 recibe 412 en todo update.
+        const etag = (normalized as Record<string, unknown>)?.["@odata.etag"];
+        if (typeof etag === "string") res.set("ETag", etag);
         return originalJson(normalized);
     };
     next();

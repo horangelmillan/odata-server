@@ -2,21 +2,23 @@
 
 Sigue las reglas globales definidas en `~/.config/opencode/AGENTS.md`.
 
-Usa la skill **node-modular-monolith** para crear nuevos módulos/dominios, endpoints REST, modelos ORM, y para revisar que el código nuevo respete las reglas y convenciones descritas.
+Usa la skill **node-modular-monolith** para crear nuevos módulos/dominios OData, modelos ORM y revisar que el código nuevo respete las reglas y convenciones descritas.
 
 ## Stack
 
 - Node 20 + TypeScript (ESM, NodeNext)
-- Express + Sequelize + PostgreSQL
-- OData v4 con `@phrasecode/odata`
+- Express (solo host del router OData + middleware transversal)
+- OData v4 con `@phrasecode/odata` (fuente de verdad del contrato de API **y** del modelo/ORM; usa Sequelize internamente de forma transparente)
+- PostgreSQL
 - Tests: Vitest + supertest
 
 ## Convenciones
 
-- Los módulos de dominio van en `src/core/<dominio>/` con su propia carpeta de interface, model, dto, service, controller, route
-- Los endpoints REST van en `/api/core/<recurso>`
-- Los endpoints OData van en `/odata/<entidad>` (kebab-case del nombre de clase)
-- El controlador OData se registra en `src/common/service/odata/odata.service.ts`
+- **OData es el dominio único**: no hay capa REST. El servidor expone solo `/odata`.
+- Los dominios OData viven en `src/core/<dominio>/` con su propia carpeta de `interface`, `model` (`@Table`/`@Column`), `dto` (validación `class-validator`), `service`, `controller` (`ODataControler`).
+- `src/common/service/odata/` es **shared kernel** (infraestructura OData transversal: `DataSource`, `ExpressRouter`, escritura base, `odata-error`, `odata-etag`, `odata-format`, `odata-metadata`, parches). No es un dominio: no contiene modelos ni controladores de dominio.
+- Los endpoints OData van en `/odata/<entidad>` (kebab-case del nombre de clase).
+- El controlador OData se registra en `src/common/service/odata/odata.service.ts`.
 - Usar `env.config.ts` para toda lectura de variables de entorno — nunca `process.env` directamente
 
 ## Parche conocido

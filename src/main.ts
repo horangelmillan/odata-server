@@ -7,7 +7,6 @@ import cors from "cors";
 import "reflect-metadata";
 
 import { env } from "./common/config/env.config.js";
-import { GlobalRouter } from "./common/router/global.router.js";
 import { GlobalErrorMiddleware } from "./common/middleware/global-error.middleware.js";
 import { oDataExpressApp } from "./common/service/odata/odata.service.js";
 
@@ -32,8 +31,7 @@ export default function () {
         oDataExpressApp,
     );
 
-    app.use(express.json());
-    app.use(compression());
+    app.use(compression({ eTag: false }));
 
     if (env.isDev) {
         app.use(morgan("dev"));
@@ -41,7 +39,6 @@ export default function () {
         app.use(morgan("combined"));
     }
 
-    app.use("/api", GlobalRouter);
     app.use(GlobalErrorMiddleware.globalErrorHandler());
 
     return app;

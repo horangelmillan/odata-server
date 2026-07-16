@@ -1,7 +1,7 @@
 import { Model, Table, Column, DataTypes, HasMany } from "@phrasecode/odata";
-import { ProductOData } from "./product.odata.model.js";
+import { ProductOData } from "../../product/model/product.odata.model.js";
 
-@Table({ tableName: "categories" })
+@Table({ tableName: "categories", timestamps: true })
 export class CategoryOData extends Model<CategoryOData> {
     @Column({ dataType: DataTypes.INTEGER, isPrimaryKey: true, isAutoIncrement: true })
     id!: number;

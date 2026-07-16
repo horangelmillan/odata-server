@@ -1,8 +1,28 @@
 import express, { type Router, type Request, type Response } from "express";
 import { ODataControler } from "@phrasecode/odata";
-import { odataWriteService, type ODataBaseModel } from "./odata-write.service.js";
+import { odataWriteService, type ODataBaseModel, type WriteResult } from "./odata-write.service.js";
 import { injectEtag, etagMatches } from "./odata-etag.js";
 import { oDataError } from "./odata-error.js";
+import { JSONValidatorException } from "../../exception/json-validator.exception.js";
+import { productService } from "../../../core/product/service/product.service.js";
+import { categoryService } from "../../../core/category/service/category.service.js";
+
+// F4: la escritura directa OData delega en el SERVICIO DE DOMINIO, donde vive la
+// validación DTO (ProductCreateDTO/ProductUpdateDTO, CategoryCreateDTO/
+// CategoryUpdateDTO). El `odataWriteService` queda como utilidad interna del
+// shared kernel (transacciones, etag, whitelist de columnas). Un fallo de
+// validación en el dominio se propaga como `JSONValidatorException` y aquí se
+// traduce a 400 OData v4 estándar.
+
+interface DomainWriteService {
+    create(data: unknown): Promise<WriteResult>;
+    update(id: number, data: unknown): Promise<WriteResult>;
+}
+
+const endpointServices: Record<string, DomainWriteService> = {
+    "product-odata": productService,
+    "category-odata": categoryService,
+};
 
 // Escritura directa OData (modo groupId "$direct" de SAPUI5). Reutiliza el
 // mismo write service (y por tanto la misma instancia Sequelize/pool) que el
@@ -15,6 +35,14 @@ function modelOf(controller: ODataControler): ODataBaseModel {
     return controller.getBaseModel() as unknown as ODataBaseModel;
 }
 
+function validationErrorBody(error: JSONValidatorException): ReturnType<typeof oDataError> {
+    const details = error
+        .getErrors()
+        .map((e) => `${Object.keys(e.constraints ?? {}).join(", ")}`)
+        .join("; ");
+    return oDataError(400, "Validation failed", details || "Invalid body");
+}
+
 export function registerWriteRoutes(router: Router, controllers: ODataControler[]): void {
     const json = express.json();
 
@@ -22,21 +50,33 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
         const endpoint = controller.getEndpoint();
         const base = `/${endpoint}`;
         const model = modelOf(controller);
+        const service = endpointServices[endpoint];
 
         router.post(base, json, async (req: Request, res: Response) => {
+            if (!service) {
+                res.status(404).json(oDataError(404, "Write endpoint not found"));
+                return;
+            }
             try {
-                const result = await odataWriteService.runInTransaction((tx) =>
-                    odataWriteService.create(model, req.body ?? {}, tx),
-                );
+                // F4: la validación DTO ocurre en el dominio (service.create).
+                const result = await service.create(req.body ?? {});
                 injectEtag(result.entity);
                 res.set("Location", `/odata/${endpoint}(${result.key})`);
                 res.status(201).json(result.entity);
             } catch (error) {
+                if (error instanceof JSONValidatorException) {
+                    res.status(400).json(validationErrorBody(error));
+                    return;
+                }
                 res.status(500).json(oDataError(500, "Error creating entity", (error as Error).message));
             }
         });
 
         const updateHandler = async (req: Request, res: Response): Promise<void> => {
+            if (!service) {
+                res.status(404).json(oDataError(404, "Write endpoint not found"));
+                return;
+            }
             try {
                 // G1: concurrencia optimista (opt-in). Solo se valida `If-Match`
                 // cuando el cliente lo envía; si no, se comporta como antes
@@ -53,9 +93,9 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
                         return;
                     }
                 }
-                const result = await odataWriteService.runInTransaction((tx) =>
-                    odataWriteService.update(model, req.params.id, req.body ?? {}, tx),
-                );
+                // F4: la validación DTO ocurre en el dominio (service.update).
+                const id = Number(req.params.id);
+                const result = await service.update(id, req.body ?? {});
                 if (!result.entity) {
                     res.status(404).json(oDataError(404, "Entity not found"));
                     return;
@@ -63,6 +103,10 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
                 injectEtag(result.entity);
                 res.status(200).json(result.entity);
             } catch (error) {
+                if (error instanceof JSONValidatorException) {
+                    res.status(400).json(validationErrorBody(error));
+                    return;
+                }
                 res.status(500).json(oDataError(500, "Error updating entity", (error as Error).message));
             }
         };
