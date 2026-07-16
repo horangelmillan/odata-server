@@ -32,7 +32,7 @@ Ciclo previo (`feat/odata-sapui5-compat`, tag `v1.1.0`): compatibilidad 100% con
 - [`pruebas-odata-product.md`](04-sapui5-compat/pruebas-odata-product.md) — Pruebas OData de producto.
 
 ## 05 — Ciclo de Refactorización: OData como Dominio Único
-**Ciclo actual.** Estado global: 🚧 **En progreso (F0 done · F1 done · F2 done · F3 done · F4 done · F5 done · F6 done)**. Elimina REST y promueve OData a dominio de primera clase, con la misma
+**Ciclo actual.** Estado global: ✅ **Completado (v2.0.0-odata-domain)**. Release tag: [`v2.0.0-odata-domain`](https://github.com/horangelmillan/odata-server/releases/tag/v2.0.0-odata-domain). Merge a `master` vía PR #1 (flujo PR: protección de rama + check `test` + merge por GitHub). Elimina REST y promueve OData a dominio de primera clase, con la misma
 estructura de carpetas que usaba REST (interface / model / dto / service / controller), y
 convirtiendo `common/service/odata/` en shared kernel. Ver detalle y ejecución fase a fase:
 - [`00-plan-maestro.md`](05-refactor-odata-as-domain/00-plan-maestro.md) — Plan maestro y decisión de arquitectura.
@@ -46,7 +46,7 @@ convirtiendo `common/service/odata/` en shared kernel. Ver detalle y ejecución 
 - [`fases/f5-documentacion.md`](05-refactor-odata-as-domain/fases/f5-documentacion.md) ✅
 - [`fases/f6-validacion-e2e-benchmark.md`](05-refactor-odata-as-domain/fases/f6-validacion-e2e-benchmark.md) ✅
 - [`fases/f6.1-batch-created-correlation.md`](05-refactor-odata-as-domain/fases/f6.1-batch-created-correlation.md) ✅ — Sub-fase: correlación `created()` en `$batch` de UI5 (check #8 quirk de cliente).
-- [`fases/f7-merge-a-master.md`](05-refactor-odata-as-domain/fases/f7-merge-a-master.md) (pendiente, no iniciada)
+- [`fases/f7-merge-a-master.md`](05-refactor-odata-as-domain/fases/f7-merge-a-master.md) ✅ — Merge a `master` vía PR #1, tag `v2.0.0-odata-domain`.
 
 > **Cómo leer este ciclo:** cada fase en `fases/` es autónoma y ejecutable en una sesión
 > distinta. Cada una contiene: objetivo, pasos detallados, comandos, criterios de aceptación
