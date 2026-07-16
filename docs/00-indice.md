@@ -53,7 +53,7 @@ convirtiendo `common/service/odata/` en shared kernel. Ver detalle y ejecución 
 > y la documentación a actualizar al cerrar. El `00-plan-maestro.md` es el contrato global.
 
 ## 06 — Ciclo de Ecosistema Financiero Simulado (tipo S/4HANA Cloud)
-**Ciclo actual.** Estado global: 🔄 **En revisión — F0 bloqueada hasta merge de [PR #4](https://github.com/horangelmillan/odata-server/pull/4)** (acoplamiento ruta↔modelo resuelto, pendiente de merge a `master`). Descubierto al aplicar el prefijo `demo/`. Añade al
+**Ciclo actual.** Estado global: ✅ **F0 completada** — [issue #3](https://github.com/horangelmillan/odata-server/issues/3) resuelto via [PR #4](https://github.com/horangelmillan/odata-server/pull/4), prefijo `demo/` aplicado a product/category. Añade al
 servidor un ecosistema financiero coherente (sociedades, clientes, proveedores, cuentas
 mayor, facturas de venta/proveedor, líneas y pagos con clearing) y un **seed idempotente
 re-montable** (`pnpm seed` / `pnpm db:reset` recrea los mismos datos). El dominio es
