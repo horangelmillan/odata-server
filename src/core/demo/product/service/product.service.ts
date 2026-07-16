@@ -1,22 +1,22 @@
 import { transformAndValidate, ClassType } from "class-transformer-validator";
 import { ValidationError } from "class-validator";
-import { CategoryCreateDTO, CategoryUpdateDTO } from "../dto/category.dto.js";
-import { CategoryODataController } from "../controller/category.odata.controller.js";
+import { ProductCreateDTO, ProductUpdateDTO } from "../dto/product.dto.js";
+import { ProductODataController } from "../controller/product.odata.controller.js";
 import {
     odataWriteService,
     type ODataBaseModel,
     type WriteResult,
-} from "../../../common/service/odata/odata-write.service.js";
-import { JSONValidatorException } from "../../../common/exception/json-validator.exception.js";
+} from "../../../../common/service/odata/odata-write.service.js";
+import { JSONValidatorException } from "../../../../common/exception/json-validator.exception.js";
 
-// Servicio OData-first del dominio `category`. Es la única capa de orquestación:
-// la lectura delega en el `ODataControler` (mismo query parser que /odata/category-odata)
+// Servicio OData-first del dominio `product`. Es la única capa de orquestación:
+// la lectura delega en el `ODataControler` (mismo query parser que /odata/product-odata)
 // y la escritura en `odataWriteService` (reusa la instancia Sequelize del datasource).
 // Toda escritura se valida con los DTOs `class-validator` (F4: la validación vive
 // en el dominio; `odata-write.routes.ts` delega aquí y convierte el fallo de
 // validación en un 400 OData v4).
 
-function modelOf(controller: CategoryODataController): ODataBaseModel {
+function modelOf(controller: ProductODataController): ODataBaseModel {
     return controller.getBaseModel() as unknown as ODataBaseModel;
 }
 
@@ -37,8 +37,8 @@ async function validate<T extends object>(dto: ClassType<T>, data: unknown): Pro
     }
 }
 
-class CategoryService {
-    private controller = new CategoryODataController();
+class ProductService {
+    private controller = new ProductODataController();
 
     async findAll(query: unknown): Promise<unknown> {
         return await this.controller.get(query as never);
@@ -53,7 +53,7 @@ class CategoryService {
     }
 
     async create(data: unknown): Promise<WriteResult> {
-        const dto = await validate(CategoryCreateDTO, data);
+        const dto = await validate(ProductCreateDTO, data);
         const model = modelOf(this.controller);
         return await odataWriteService.runInTransaction((tx) =>
             odataWriteService.create(model, dto as unknown as Record<string, unknown>, tx),
@@ -61,7 +61,7 @@ class CategoryService {
     }
 
     async update(id: number, data: unknown): Promise<WriteResult> {
-        const dto = await validate(CategoryUpdateDTO, data);
+        const dto = await validate(ProductUpdateDTO, data);
         const model = modelOf(this.controller);
         return await odataWriteService.runInTransaction((tx) =>
             odataWriteService.update(model, id, dto as unknown as Record<string, unknown>, tx),
@@ -76,5 +76,5 @@ class CategoryService {
     }
 }
 
-const categoryService: CategoryService = new CategoryService();
-export { categoryService };
+const productService: ProductService = new ProductService();
+export { productService };

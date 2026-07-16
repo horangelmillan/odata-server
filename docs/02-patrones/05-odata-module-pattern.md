@@ -25,7 +25,7 @@ The codebase is split into a **domain layer** (`src/core/<dominio>/`, protocol-a
 Each entity owns its full module under `core/<dominio>/` with the standard folders:
 
 ```
-src/core/product/
+src/core/demo/product/          # <dominio>/ dentro de un namespace semántico (demo/, finance/, etc.)
 ├── interface/product.interface.ts
 ├── model/product.odata.model.ts        # @phrasecode/odata decorated model (@Table/@Column)
 ├── dto/product.dto.ts                  # Create/Update DTOs (class-validator)
@@ -83,7 +83,7 @@ controllers), while each domain owns its models, DTOs, controllers, and write/va
 ### Step 1: Define the OData Model (in the domain)
 
 ```typescript
-// src/core/product/model/product.odata.model.ts
+// src/core/demo/product/model/product.odata.model.ts
 import { Model, Table, Column, DataTypes } from "@phrasecode/odata";
 
 @Table({ tableName: "products" })
@@ -107,7 +107,7 @@ Each column uses the `@Column` decorator with its data type and options (primary
 ### Step 2: Create the OData Controller (in the domain)
 
 ```typescript
-// src/core/product/controller/product.odata.controller.ts
+// src/core/demo/product/controller/product.odata.controller.ts
 import { ODataControler, QueryParser } from "@phrasecode/odata";
 import { ProductOData } from "../model/product.odata.model.js";
 
@@ -140,7 +140,7 @@ The controller extends `ODataControler` and receives model config and allowed HT
 import { Router } from "express";
 import { ExpressRouter } from "@phrasecode/odata";
 import { dataSource } from "./datasource.js";
-import { ProductODataController } from "../../core/product/controller/product.odata.controller.js";
+import { ProductODataController } from "../../core/demo/product/controller/product.odata.controller.js";
 
 const oDataExpressApp: Router = Router();
 

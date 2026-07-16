@@ -1,6 +1,6 @@
 import { validateSync } from "class-validator";
 import { plainToInstance } from "class-transformer";
-import { ProductCreateDTO, ProductUpdateDTO } from "../../../../core/product/dto/product.dto.js";
+import { ProductCreateDTO, ProductUpdateDTO } from "../../../../core/demo/product/dto/product.dto.js";
 
 describe("Product DTOs", () => {
     describe("ProductCreateDTO", () => {

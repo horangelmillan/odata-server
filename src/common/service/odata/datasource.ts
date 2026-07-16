@@ -1,7 +1,7 @@
 import { DataSource } from "@phrasecode/odata";
 import { env } from "../../config/env.config.js";
-import { ProductOData } from "../../../core/product/model/product.odata.model.js";
-import { CategoryOData } from "../../../core/category/model/category.odata.model.js";
+import { ProductOData } from "../../../core/demo/product/model/product.odata.model.js";
+import { CategoryOData } from "../../../core/demo/category/model/category.odata.model.js";
 import { CompanyOData } from "../../../core/finance/company/model/company.odata.model.js";
 import { CustomerOData } from "../../../core/finance/customer/model/customer.odata.model.js";
 import { SupplierOData } from "../../../core/finance/supplier/model/supplier.odata.model.js";

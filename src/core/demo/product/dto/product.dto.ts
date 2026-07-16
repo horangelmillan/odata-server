@@ -1,6 +1,6 @@
 import { IsString, IsNumber, IsOptional, Min, IsInt } from "class-validator";
 import { Transform } from "class-transformer";
-import { OmitType } from "../../../common/helper/nestjs/omit-type.helper.js";
+import { OmitType } from "../../../../common/helper/nestjs/omit-type.helper.js";
 import { IProduct } from "../interface/product.interface.js";
 
 const toNumber = ({ value }: { value: unknown }) => {
