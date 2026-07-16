@@ -19,9 +19,9 @@ interface DomainWriteService {
     update(id: number, data: unknown): Promise<WriteResult>;
 }
 
-const endpointServices: Record<string, DomainWriteService> = {
-    "product-odata": productService,
-    "category-odata": categoryService,
+const modelServices: Record<string, DomainWriteService> = {
+    ProductOData: productService,
+    CategoryOData: categoryService,
 };
 
 // Escritura directa OData (modo groupId "$direct" de SAPUI5). Reutiliza el
@@ -50,7 +50,8 @@ export function registerWriteRoutes(router: Router, controllers: ODataControler[
         const endpoint = controller.getEndpoint();
         const base = `/${endpoint}`;
         const model = modelOf(controller);
-        const service = endpointServices[endpoint];
+        const modelName = controller.getBaseModel().getModelName();
+        const service = modelServices[modelName];
 
         router.post(base, json, async (req: Request, res: Response) => {
             if (!service) {
