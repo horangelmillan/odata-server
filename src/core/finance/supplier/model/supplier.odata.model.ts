@@ -1,4 +1,5 @@
-import { Model, Table, Column, DataTypes } from "@phrasecode/odata";
+import { Model, Table, Column, DataTypes, HasMany } from "@phrasecode/odata";
+import { SupplierInvoiceOData } from "../../supplierinvoice/model/supplierinvoice.odata.model.js";
 
 @Table({ tableName: "suppliers", timestamps: true })
 export class SupplierOData extends Model<SupplierOData> {
@@ -16,4 +17,7 @@ export class SupplierOData extends Model<SupplierOData> {
 
     @Column({ dataType: DataTypes.DATE })
     updatedAt!: Date;
+
+    @HasMany(() => SupplierInvoiceOData, { relation: [{ foreignKey: "supplierId", sourceKey: "id" }] })
+    supplierInvoices!: SupplierInvoiceOData[];
 }
