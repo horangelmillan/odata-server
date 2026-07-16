@@ -2,7 +2,7 @@
 
 > **Ciclo:** `feature/financial-eco` (rama dedicada; NO se hace merge a `master` hasta cumplir todas las condiciones de aceptación).
 > **Inicio:** 2026-07-16
-> **Estado global:** 📋 Planificado — pendiente ejecución de F0.
+> **Estado global:** 🚧 En pausa — F0 bloqueada por [issue #3](https://github.com/horangelmillan/odata-server/issues/3) (acoplamiento de ruta↔modelo en el shared kernel).
 > **Depende de:** Ciclo 05 (`refactor/odata-as-domain`) — ya en `master` como `v2.0.0-odata-domain`.
 > El dominio es agnóstico a todo artefacto periférico; la arquitectura define la organización
 > (domain layer + shared kernel + adapters). Hoy el servidor expone el dominio vía un único
@@ -104,7 +104,7 @@ Cada dominio sigue el patrón de `docs/02-patrones/05-odata-module-pattern.md`:
 
 | Fase | Alcance | Entregable / Criterio de aceptación | Esfuerzo | Doc detallado |
 |---|---|---|---|---|
-| **F0** | Rama `feature/financial-eco`; baseline de tests (143 pass); plan maestro; **aplicar prefijo `demo/` a `product`/`category`** (getEndpoint → `/odata/demo/...`). | Rama creada; tests verdes; demo UI5 sigue funcionando contra `/odata/demo/product-odata`; docs del ciclo 06 iniciadas. | Bajo | `fases/f0-ramificacion-baseline.md` |
+| **F0** | Rama `feature/financial-eco`; baseline de tests (143 pass); plan maestro; **aplicar prefijo `demo/` a `product`/`category`** (getEndpoint → `/odata/demo/...`). | Rama creada; tests verdes (143 pass baseline); docs del ciclo 06 iniciadas. **🚧 EN PAUSA**: la aplicación del prefijo `demo/` reveló acoplamiento ruta↔modelo en el shared kernel → [issue #3](https://github.com/horangelmillan/odata-server/issues/3). F0.1 no avanza hasta resolverlo. | Bajo | `fases/f0-ramificacion-baseline.md` · `fases/f0.1-prefijo-demo-bloqueado.md` |
 | **F1** | Modelos OData del ecosistema finance (8 dominios, prefijo `/odata/finance/`). Esfuerzo grande → **sub-fases por dominio**. | 8 modelos `@Table/@Column` + controladores (endpoint `finance/...`) + registro en datasource/odata.service; `pnpm test` verde. | Alto | `fases/f1-modelos-financieros.md` + sub-fases `f1.1`…`f1.8` |
 | **F2** | Seed idempotente re-montable. Esfuerzo grande → **sub-fases por dominio**. | `pnpm seed` reproduce datos idénticos (IDs fijos); `pnpm db:reset` drop+sync+seed. | Alto | `fases/f2-seed-remontable.md` + sub-fases `f2.1`…`f2.8` |
 | **F3** | Relaciones, navegaciones y estados coherentes (`$expand`/`$filter`, clearing de pagos). | `$expand` profundo funcional; facturas PENDIENTE/PAGADA/VENCIDA calculadas; tests de navegación. | Medio | `fases/f3-relaciones-y-estados.md` |

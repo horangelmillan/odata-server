@@ -1,5 +1,9 @@
 # F0 — Rama dedicada y baseline del ciclo 06
 
+> **🚧 Estado:** F0.0 ✅ (rama + baseline). F0.1 (prefijo `demo/`) **en pausa** por
+> [issue #3](https://github.com/horangelmillan/odata-server/issues/3) — acoplamiento
+> ruta↔modelo en el shared kernel. Ver [`f0.1-prefijo-demo-bloqueado.md`](f0.1-prefijo-demo-bloqueado.md).
+
 > **Fase:** F0 · **Esfuerzo:** Bajo · **Sesión:** 1/N
 > **Depende de:** Ciclo 05 cerrado en `master` (`v2.0.0-odata-domain`).
 > **Actualiza:** `docs/00-indice.md`, `docs/06-financial-eco/00-plan-maestro.md`, este archivo.
@@ -44,11 +48,16 @@ git push -u origin feature/financial-eco
 
 ## 2. Criterios de aceptación
 
-- [ ] Rama `feature/financial-eco` creada y activa, basada en `master`.
-- [ ] `pnpm install` exitoso (parches OData aplicados).
-- [ ] Tests en verde; número anotado como baseline.
-- [ ] `master` sin cambios (todo el trabajo queda en la rama).
-- [ ] Docs del ciclo 06 iniciadas.
+- [x] Rama `feature/financial-eco` creada y activa, basada en `master`.
+- [x] `pnpm install` exitoso (parches OData aplicados).
+- [x] Tests en verde; baseline anotado: **143 passed, 1 todo** (sin regresión).
+- [x] `master` sin cambios (todo el trabajo queda en la rama).
+- [x] Docs del ciclo 06 iniciadas.
+
+> **Nota (F0.1 en pausa):** la aplicación del prefijo `demo/` reveló acoplamiento
+> ruta↔modelo en el shared kernel → [issue #3](https://github.com/horangelmillan/odata-server/issues/3).
+> F0.1 no avanza hasta resolver el issue. Detalle en
+> [`f0.1-prefijo-demo-bloqueado.md`](f0.1-prefijo-demo-bloqueado.md).
 
 ---
 

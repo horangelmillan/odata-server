@@ -53,7 +53,7 @@ convirtiendo `common/service/odata/` en shared kernel. Ver detalle y ejecución 
 > y la documentación a actualizar al cerrar. El `00-plan-maestro.md` es el contrato global.
 
 ## 06 — Ciclo de Ecosistema Financiero Simulado (tipo S/4HANA Cloud)
-**Ciclo actual (en planificación).** Estado global: 📋 **Planificado (F0 pendiente)**. Añade al
+**Ciclo actual.** Estado global: 🚧 **En pausa — F0 bloqueada por [issue #3](https://github.com/horangelmillan/odata-server/issues/3)** (acoplamiento ruta↔modelo en el shared kernel, descubierto al aplicar el prefijo `demo/`). Añade al
 servidor un ecosistema financiero coherente (sociedades, clientes, proveedores, cuentas
 mayor, facturas de venta/proveedor, líneas y pagos con clearing) y un **seed idempotente
 re-montable** (`pnpm seed` / `pnpm db:reset` recrea los mismos datos). El dominio es
@@ -61,7 +61,8 @@ re-montable** (`pnpm seed` / `pnpm db:reset` recrea los mismos datos). El domini
 `/odata/demo/*` (product, category) y `/odata/finance/*` (ecosistema). Rama dedicada:
 `feature/financial-eco`.
 - [`00-plan-maestro.md`](06-financial-eco/00-plan-maestro.md) — Plan maestro y decisión de arquitectura.
-- [`fases/f0-ramificacion-baseline.md`](06-financial-eco/fases/f0-ramificacion-baseline.md)
+- [`fases/f0-ramificacion-baseline.md`](06-financial-eco/fases/f0-ramificacion-baseline.md) — F0.0 ✅ (rama + baseline 143 pass).
+- [`fases/f0.1-prefijo-demo-bloqueado.md`](06-financial-eco/fases/f0.1-prefijo-demo-bloqueado.md) — 🚧 F0.1 en pausa por issue #3.
 - [`fases/f1-modelos-financieros.md`](06-financial-eco/fases/f1-modelos-financieros.md) — 8 dominios (sub-fases `f1.1`–`f1.8`)
 - [`fases/f2-seed-remontable.md`](06-financial-eco/fases/f2-seed-remontable.md) — Seed idempotente (sub-fases `f2.0`–`f2.8`)
 - [`fases/f3-relaciones-y-estados.md`](06-financial-eco/fases/f3-relaciones-y-estados.md)
