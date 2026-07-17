@@ -4,25 +4,7 @@ import { odataWriteService, type ODataBaseModel, type WriteResult } from "./odat
 import { injectEtag, etagMatches } from "./odata-etag.js";
 import { oDataError } from "./odata-error.js";
 import { JSONValidatorException } from "../../exception/json-validator.exception.js";
-import { productService } from "../../../core/demo/product/service/product.service.js";
-import { categoryService } from "../../../core/demo/category/service/category.service.js";
-
-// F4: la escritura directa OData delega en el SERVICIO DE DOMINIO, donde vive la
-// validación DTO (ProductCreateDTO/ProductUpdateDTO, CategoryCreateDTO/
-// CategoryUpdateDTO). El `odataWriteService` queda como utilidad interna del
-// shared kernel (transacciones, etag, whitelist de columnas). Un fallo de
-// validación en el dominio se propaga como `JSONValidatorException` y aquí se
-// traduce a 400 OData v4 estándar.
-
-interface DomainWriteService {
-    create(data: unknown): Promise<WriteResult>;
-    update(id: number, data: unknown): Promise<WriteResult>;
-}
-
-const modelServices: Record<string, DomainWriteService> = {
-    ProductOData: productService,
-    CategoryOData: categoryService,
-};
+import { type DomainWriteService } from "./odata-registration.interface.js";
 
 // Escritura directa OData (modo groupId "$direct" de SAPUI5). Reutiliza el
 // mismo write service (y por tanto la misma instancia Sequelize/pool) que el
@@ -43,7 +25,11 @@ function validationErrorBody(error: JSONValidatorException): ReturnType<typeof o
     return oDataError(400, "Validation failed", details || "Invalid body");
 }
 
-export function registerWriteRoutes(router: Router, controllers: ODataControler[]): void {
+export function registerWriteRoutes(
+    router: Router,
+    controllers: ODataControler[],
+    modelServices: Record<string, DomainWriteService>
+): void {
     const json = express.json();
 
     for (const controller of controllers) {

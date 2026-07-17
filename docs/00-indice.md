@@ -70,3 +70,18 @@ re-montable** (`pnpm seed` / `pnpm db:reset` recrea los mismos datos). El domini
 - [`fases/f5-documentacion.md`](06-financial-eco/fases/f5-documentacion.md) ✅
 - [`../02-patrones/16-financial-module.md`](02-patrones/16-financial-module.md) — Patrón de módulo financiero con entidades, navegaciones, seed y ejemplos `$expand`/`$filter`.
 - [`fases/f6-merge-a-master.md`](06-financial-eco/fases/f6-merge-a-master.md)
+
+## 07 — Ciclo de Integración SAPUI5 con Dominio Finance
+**Ciclo actual.** Estado global: 📋 **F0 completada** — documentación y análisis arquitectónico.
+Rama dedicada: `docs/finance-ui5-integration-plan`. Define el plan para integrar el dominio
+finance del servidor con la aplicación SAPUI5 de prueba, e incluye el rediseño del mecanismo
+de registro de servicios de dominio (Domain Registration Object) para eliminar el acoplamiento
+entre el Shared Kernel y los dominios.
+
+- [`00-plan-maestro.md`](07-sapui5-finance/00-plan-maestro.md) — Plan maestro y decisiones de arquitectura.
+- [`01-arquitectura-propuesta.md`](07-sapui5-finance/01-arquitectura-propuesta.md) — Diseño del Domain Registration Object.
+- [`fases/f0-documentacion-y-analisis.md`](07-sapui5-finance/fases/f0-documentacion-y-analisis.md) ✅ — F0 completada: investigación, hallazgos, alcance.
+- [`fases/f1-rediseno-write-routes.md`](07-sapui5-finance/fases/f1-rediseno-write-routes.md) 📋 — Refactor del Shared Kernel: write routes genérico.
+- [`fases/f2-exports-core-main.md`](07-sapui5-finance/fases/f2-exports-core-main.md) 📋 — Refactor de barriales y composición en `core/main.ts`.
+- [`fases/f3-vista-finance-base-sapui5.md`](07-sapui5-finance/fases/f3-vista-finance-base-sapui5.md) 📋 — Vista base Finance en SAPUI5 con routing.
+- [`fases/f4-vistas-finance-detalladas.md`](07-sapui5-finance/fases/f4-vistas-finance-detalladas.md) 📋 — Vistas detalladas de entidades finance.

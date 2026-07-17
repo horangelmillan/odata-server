@@ -1,55 +1,248 @@
 # odata-server — Reglas del proyecto
 
-Sigue las reglas globales definidas en `~/.config/opencode/AGENTS.md`.
+## Prioridad de instrucciones
 
-Usa la skill **node-modular-monolith** para crear nuevos módulos/dominios OData, modelos ORM y revisar que el código nuevo respete las reglas y convenciones descritas.
+Este archivo define las reglas específicas de este proyecto.
 
-## Stack
+Además de este archivo, el agente debe respetar:
 
-- Node 20 + TypeScript (ESM, NodeNext)
-- Express (solo host del router OData + middleware transversal)
-- OData v4 con `@phrasecode/odata` (fuente de verdad del contrato de API **y** del modelo/ORM; usa Sequelize internamente de forma transparente)
-- PostgreSQL
-- Tests: Vitest + supertest
+1. `~/.config/opencode/AGENTS.md` (reglas globales)
+2. Este `AGENTS.md` (reglas del proyecto)
+3. La documentación técnica ubicada en `./docs`
+4. El código existente
 
-## Convenciones
+En caso de conflicto:
 
-- **El dominio es agnóstico a todo artefacto periférico**: el dominio es la fuente de verdad del
-  negocio y no depende de ningún protocolo de exposición, capa de persistencia, motor de datos ni
-  middleware. La **arquitectura del servidor define la organización** (domain layer + shared kernel +
-  adapters); cualquier combinación de esos artefactos debe adaptarse a esa arquitectura, no al
-  revés. Los adapters son intercambiables sin reescribir el dominio. "OData como dominio único"
-  significa que hoy OData es el único protocolo de exposición activo, no que el dominio esté
-  acoplado a él.
-- Los dominios viven en `src/core/<namespace>/<dominio>/` con su propia carpeta de `interface`,
-  `model`, `dto`, `service`, `controller`. El namespace (`demo/`, `finance/`) agrupa dominios
-  con prefijo semántico en la ruta OData y se refleja en la carpeta física. El controlador es
-  el *adaptador* del dominio al contrato de exposición.
-- `src/common/service/odata/` es **shared kernel** (infraestructura OData transversal: `DataSource`,
-  `ExpressRouter`, escritura base, `odata-error`, `odata-etag`, `odata-format`, `odata-metadata`,
-  parches). No es un dominio: no contiene modelos ni controladores de dominio.
-- Los endpoints se agrupan por namespace semántico: `/odata/demo/<entidad>` (dominios de
-  demostración, ej. `product`, `category`) y `/odata/finance/<entidad>` (ecosistema financiero
-  simulado). El `getEndpoint()` del controlador define el prefijo. La carpeta física
-  `src/core/demo/` y `src/core/finance/` refleja el mismo namespace.
-- El controlador OData se registra en `src/common/service/odata/odata.service.ts`.
-- El seed financiero idempotente vive en `scripts/seed/financial-seed.ts` y se ejecuta con `pnpm seed` o `pnpm db:reset`.
-- Usar `env.config.ts` para toda lectura de variables de entorno — nunca `process.env` directamente
+**Proyecto > Global > Conocimiento general del modelo**
 
-## Parche conocido
+---
 
-`@phrasecode/odata` v0.3.1 tiene dos parches aplicados por `scripts/patch-odata.mjs` (vía `postinstall` y al inicio de `pnpm dev`):
-- `SequelizerAdaptor`: no fuerza `dialectOptions.ssl` en dev.
-- `ExpressRouter`: añade `GET /$count` (devuelve el total plano `text/plain` respetando `$filter`) y `GET /:id`. El query string se decodifica con `decodeURIComponent` antes de `URLSearchParams` para que `%26` (curl/CMD) se trate como separador de parámetros.
-Los parches son idempotentes y **re-aplicables**: Parche 2 reemplaza el método `setUpODataRouters` completo por firma (marcador `// PATCHED-COUNT-v2`), así que actualizar el parche no requiere reinstalar node_modules desde cero.
+# Objetivo principal
 
-### Docker
-`docker-compose.yml` monta un volumen anónimo en `/app/node_modules` que cachea los node_modules de la primera build y los reutiliza. Por eso, tras cambiar el parche, `docker compose up` (sin `--build`) sirve código viejo. El `dev` script corre el parche en runtime, así que basta `docker compose up --build` para dejar el container al día sin `docker compose down -v` (que borraría la BD Postgres).
+Antes de escribir código, el agente debe comprender cómo está construido el proyecto.
 
-## Comandos
+La prioridad siempre será:
 
-```bash
-pnpm dev       # desarrollo con hot-reload
-pnpm test      # tests unitarios + integración
-pnpm build     # compilar a JS
+* reutilizar
+* mantener consistencia
+* evitar duplicar arquitectura
+* respetar decisiones existentes
+
+Nunca implementar una solución nueva sin verificar primero si ya existe una forma establecida dentro del proyecto.
+
+---
+
+
+
+---
+
+# Flujo obligatorio antes de cualquier cambio
+
+## 0. Flujo de trabajo con Git (Obligatorio)
+
+Todo cambio en el repositorio debe seguir estrictamente el flujo definido en:
+
+`docs\07-workflow\GIT_WORKFLOW.md`
+
+Este documento es la única fuente de verdad sobre el proceso de desarrollo con Git.
+
+Antes de realizar cualquier operación relacionada con ramas, commits, merges, rebases, pull requests o sincronización del repositorio, el agente debe leer y respetar dicho documento.
+
+Está prohibido asumir un flujo de trabajo diferente al definido allí.
+
+Si alguna tarea entra en conflicto con las reglas establecidas en `GIT_WORKFLOW.md`, el agente debe detenerse y solicitar instrucciones al usuario en lugar de improvisar una estrategia alternativa.
+
+El agente nunca debe modificar la estrategia de versionado por iniciativa propia.
+
+Antes de modificar cualquier archivo, SIEMPRE seguir este orden.
+
+## 1. Revisar documentación
+
+La carpeta:
+
 ```
+./docs
+```
+
+es la fuente de verdad sobre la evolución del proyecto.
+
+Contiene:
+
+* arquitectura
+* decisiones técnicas
+* mejoras implementadas
+* cambios importantes
+* convenciones
+* escalabilidad
+* componentes
+* patrones utilizados
+
+Antes de proponer una implementación nueva, buscar primero si ya existe documentación relacionada.
+
+No asumir.
+
+No reinventar.
+
+No ignorar la documentación.
+
+---
+
+## 2. Utilizar Codebase Memory
+
+Si existe un servidor MCP de Codebase Memory disponible:
+
+Su uso es obligatorio antes de:
+
+* proponer arquitectura
+* modificar módulos
+* refactorizar
+* crear nuevas funcionalidades
+* responder preguntas sobre el proyecto
+
+Debe consultarse para recuperar:
+
+* decisiones anteriores
+* patrones utilizados
+* convenciones
+* implementaciones similares
+* contexto histórico
+
+No asumir información cuando pueda recuperarse desde Codebase Memory.
+
+---
+
+## 3. Utilizar Context7
+
+Siempre que se trabaje con:
+
+* librerías
+* frameworks
+* APIs
+* SDKs
+* herramientas externas
+
+Consultar primero Context7 para obtener documentación actualizada.
+
+No depender únicamente del conocimiento interno del modelo.
+
+Especialmente importante para:
+
+* Express
+* TypeScript
+* Vitest
+* PostgreSQL
+* Sequelize
+* OData
+* SAP
+* cualquier dependencia del proyecto
+
+---
+
+## 4. Utilizar Playwright cuando aplique
+
+Cuando una tarea implique:
+
+* verificar comportamiento visual
+* validar interfaces
+* reproducir errores
+* comprobar navegación
+* inspeccionar DOM
+* validar respuestas visibles al usuario
+
+Utilizar Playwright antes de concluir que algo funciona correctamente.
+
+No asumir que una funcionalidad funciona únicamente porque el código compila.
+
+---
+
+# Principio de investigación
+
+Antes de implementar cualquier solución:
+
+1. Revisar ./docs
+2. Consultar Codebase Memory
+3. Consultar Context7 si intervienen librerías externas
+4. Analizar el código existente
+5. Solo entonces proponer cambios
+
+Nunca comenzar implementando directamente.
+
+---
+
+# Principio de mínima modificación
+
+Modificar únicamente el código necesario.
+
+Evitar:
+
+* refactors innecesarios
+* cambios cosméticos
+* renombrados masivos
+* mover archivos sin justificación
+* cambios de estilo no relacionados
+
+---
+
+# Reutilización
+
+Antes de crear:
+
+* servicios
+* helpers
+* utilidades
+* middleware
+* DTOs
+* modelos
+* controladores
+
+Buscar si ya existe una implementación reutilizable.
+
+La duplicación de código debe evitarse siempre que sea posible.
+
+---
+
+# Arquitectura
+
+El proyecto tiene una arquitectura definida.
+
+Las nuevas implementaciones deben adaptarse a ella.
+
+Nunca modificar la arquitectura existente para acomodar una solución puntual.
+
+---
+
+# Validación
+
+Antes de finalizar una tarea comprobar:
+
+* el proyecto compila
+* los tests existentes siguen funcionando
+* no se rompe compatibilidad
+* no se introducen dependencias innecesarias
+* la solución sigue las convenciones del proyecto
+
+---
+
+# Stack
+
+(Node, Express, OData, PostgreSQL, etc...)
+
+(Conservar aquí el resto de la documentación actual.)
+
+---
+
+# Convenciones
+
+(Mantener las convenciones existentes.)
+
+---
+
+# Parches
+
+(Mantener exactamente la información existente.)
+
+---
+
+# Comandos
+
+(Mantener los comandos existentes.)
