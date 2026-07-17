@@ -167,3 +167,33 @@ Si existe cualquier duda sobre el estado del repositorio, las ramas o el histori
 Es preferible interrumpir el flujo que realizar una operación Git incorrecta.
 
 La prioridad absoluta es preservar la integridad del historial del proyecto y evitar cualquier pérdida de trabajo.
+
+## 12. Continuidad de una iniciativa
+
+Una iniciativa puede dividirse en varias fases de implementación.
+
+Mientras exista un Pull Request abierto asociado a dicha iniciativa, las fases posteriores podrán implementarse sobre la misma rama de trabajo.
+
+No es necesario crear una nueva rama para cada fase.
+
+La creación de una nueva rama solo será obligatoria cuando:
+
+- el Pull Request haya sido cerrado o mergeado;
+- se inicie una iniciativa distinta;
+- el usuario solicite explícitamente separar el trabajo.
+
+El agente no debe asumir que cada fase requiere una rama independiente.
+
+## 13. Estado del repositorio
+
+Si existen cambios sin commit que correspondan a la fase actualmente implementada, el agente NO debe detenerse automáticamente.
+
+Debe primero determinar si dichos cambios pertenecen a la misma iniciativa.
+
+Si pertenecen a la misma iniciativa:
+
+- puede continuar trabajando;
+- puede completar la fase;
+- puede incluir los cambios en el mismo commit.
+
+Solo debe detenerse cuando los cambios pertenezcan a otra tarea o exista ambigüedad.

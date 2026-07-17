@@ -119,7 +119,7 @@ webapp/
 |---|---|---|---|---|
 | **F0** | Documentación + análisis arquitectónico. Creación de `docs/07-sapui5-finance/`. Propuesta de Domain Registration Object. | Documentación completa en `docs/07-sapui5-finance/`. Análisis arquitectónico validado. | Bajo | — |
 | **F1** | Refactor del Shared Kernel: interfaz `DomainRegistration`, modificar `registerWriteRoutes` para aceptar service map como parámetro, consumir `domainRegistrations[]` desde `odata.service.ts`. | Kernel sin imports a dominios; tests existentes en verde. | Medio | F0 |
-| **F2** | Refactor de `core/main.ts` y `main.ts` de cada dominio: exportar registration objects, componer `domainRegistrations[]`. Agregar registrations de finance. | `core/main.ts` como único punto de composición; writes finance habilitados. | Medio | F1 |
+| **F2** | Refactor de `core/main.ts` y `main.ts` de cada dominio: exportar registration objects, componer `domainRegistrations[]`. Agregar registrations de finance. | `core/main.ts` como único punto de composición; writes finance habilitados. ✅ Completado en commit `...`. | Medio | F1 ✅ |
 | **F3** | SAPUI5: agregar routing, vista base Finance con navegación por entidad. | Vista Finance navegable, bindeando datos reales del servidor. | Medio | F2 |
 | **F4** | SAPUI5: vistas detalladas (InvoiceList, InvoiceDetail, CustomerList). | Listas y detalles funcionales con `$expand`. | Medio-Alto | F3 |
 

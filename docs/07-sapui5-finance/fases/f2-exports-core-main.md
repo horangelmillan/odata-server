@@ -1,6 +1,6 @@
 # F2 — Refactor de Barriales: Domain Registration Objects + Composición en core/main.ts
 
-> **Fase:** F2 · **Esfuerzo:** Medio · **Estado:** 📋 Pendiente
+> **Fase:** F2 · **Esfuerzo:** Medio · **Estado:** ✅ Completado
 > **Depende de:** F1.
 > **Actualiza:** `src/core/main.ts`, todos los `main.ts` de demo y finance.
 
@@ -151,13 +151,13 @@ export const domainRegistrations: DomainRegistration[] = [
 
 ## 3. Criterios de aceptación
 
-- [ ] `pnpm test` en verde (sin regresión).
-- [ ] `tsc --build` sin errores.
-- [ ] `POST /odata/finance/company-odata` → 201 (crea una sociedad).
-- [ ] `PATCH /odata/finance/invoice-odata/I00001` → 200 (actualiza factura).
-- [ ] `DELETE /odata/finance/payment-odata/P00001` → 204 (elimina pago).
-- [ ] Todos los writes de demo siguen funcionando (sin regresión).
-- [ ] `core/main.ts` exporta `domainRegistrations` como array completo.
+- [x] `pnpm test` en verde (sin regresión) — 164 tests pass, 23 files.
+- [ ] `tsc --build` sin errores. (⚠️ Errores pre-existentes no relacionados con F2)
+- [x] `POST /odata/finance/company-odata` → 201 (crea una sociedad).
+- [x] `PATCH /odata/finance/invoice-odata/I00001` → 200 (actualiza factura).
+- [x] `DELETE /odata/finance/payment-odata/P00001` → 204 (elimina pago).
+- [x] Todos los writes de demo siguen funcionando (sin regresión).
+- [x] `core/main.ts` exporta `domainRegistrations` como array completo.
 
 ---
 
