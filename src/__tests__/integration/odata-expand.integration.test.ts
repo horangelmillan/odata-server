@@ -614,6 +614,108 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     // Reproduce el wire-format realista que emite el cliente SAPUI5/OpenUI5 para
     // un changeset de escritura (cabeceras OData-Version/Accept, Content-ID,
     // changeset anidado). Si pasa, el server maneja el $batch write de UI5 sin 405.
+    // G4: el Content-ID que SAPUI5 emite tiene el formato `{groupId}.{index}` (p.ej.
+    // `0.0`, `1.0`), no enteros simples. El servidor debe correlacionar cualquier
+    // formato de Content-ID (string arbitrario) como eco en la respuesta.
+    describe("G4: $batch changeset con Content-ID formato SAPUI5 (0.0/1.0)", () => {
+        it("G4: changeset POST con Content-ID 0.0/1.0 crea entidades (201 + Location)", async () => {
+            const boundary = "batch_g4";
+            const inner = "cs_g4";
+            const body = [
+                `--${boundary}`,
+                `Content-Type: multipart/mixed; boundary=${inner}`,
+                "",
+                `--${inner}`,
+                "Content-Type: application/http",
+                "Content-Transfer-Encoding: binary",
+                "Content-ID: 0.0",
+                "",
+                "POST category-odata HTTP/1.1",
+                "OData-Version: 4.0",
+                "Accept: application/json;odata.metadata=minimal",
+                "Content-Type: application/json",
+                "",
+                JSON.stringify({ nombre: "G4_Cid_0_0" }),
+                "",
+                `--${inner}`,
+                "Content-Type: application/http",
+                "Content-Transfer-Encoding: binary",
+                "Content-ID: 1.0",
+                "",
+                "POST category-odata HTTP/1.1",
+                "OData-Version: 4.0",
+                "Accept: application/json;odata.metadata=minimal",
+                "Content-Type: application/json",
+                "",
+                JSON.stringify({ nombre: "G4_Cid_1_0" }),
+                "",
+                `--${inner}--`,
+                `--${boundary}--`,
+                "",
+            ].join("\r\n");
+
+            const { status, text } = await postBatch(app, body, boundary);
+
+            expect(status).toBe(200);
+            expect(text).toContain("HTTP/1.1 201 Created");
+            // El servidor debe correlacionar Content-ID 0.0 y 1.0 como eco
+            expect(text).toContain("Content-ID: 0.0");
+            expect(text).toContain("Content-ID: 1.0");
+            expect(text).toMatch(/Location: \/odata\/category-odata\(\d+\)/);
+
+            const row1 = await CategorySeq.findOne({ where: { nombre: "G4_Cid_0_0" } });
+            const row2 = await CategorySeq.findOne({ where: { nombre: "G4_Cid_1_0" } });
+            expect(row1).not.toBeNull();
+            expect(row2).not.toBeNull();
+        });
+
+        it("G4: changeset atomicidad con Content-ID 0.0/1.0 — rollback si falla", async () => {
+            const boundary = "batch_g4_roll";
+            const inner = "cs_g4_roll";
+            const body = [
+                `--${boundary}`,
+                `Content-Type: multipart/mixed; boundary=${inner}`,
+                "",
+                `--${inner}`,
+                "Content-Type: application/http",
+                "Content-Transfer-Encoding: binary",
+                "Content-ID: 0.0",
+                "",
+                "POST category-odata HTTP/1.1",
+                "OData-Version: 4.0",
+                "Accept: application/json;odata.metadata=minimal",
+                "Content-Type: application/json",
+                "",
+                JSON.stringify({ nombre: "G4_Rollback" }),
+                "",
+                `--${inner}`,
+                "Content-Type: application/http",
+                "Content-Transfer-Encoding: binary",
+                "Content-ID: 1.0",
+                "",
+                "PATCH category-odata(99999999) HTTP/1.1",
+                "OData-Version: 4.0",
+                "Accept: application/json;odata.metadata=minimal",
+                "Content-Type: application/json",
+                "",
+                JSON.stringify({ nombre: "G4_ShouldNotExist" }),
+                "",
+                `--${inner}--`,
+                `--${boundary}--`,
+                "",
+            ].join("\r\n");
+
+            const { status, text } = await postBatch(app, body, boundary);
+
+            expect(status).toBe(200);
+            expect(text).toContain("HTTP/1.1 404 Not Found");
+
+            // Atomicidad: el POST no debe persistir tras rollback
+            const row = await CategorySeq.findOne({ where: { nombre: "G4_Rollback" } });
+            expect(row).toBeNull();
+        });
+    });
+
     describe("Fase T: $batch write changeset con envelope de SAPUI5 (Fase H+)", () => {
         it("T: changeset POST con envelope SAPUI5 crea la entidad (201 + Location + Content-ID)", async () => {
             const body = buildSapui5Changeset([

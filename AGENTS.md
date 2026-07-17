@@ -87,6 +87,60 @@ No ignorar la documentación.
 
 ---
 
+# Gestión del Implementation Backlog
+
+Toda iniciativa nueva debe incluir un documento llamado:
+
+`02-implementation-backlog.md`
+
+Este documento forma parte de la documentación obligatoria del proyecto.
+
+## Durante cada fase
+
+Al finalizar una fase el agente debe realizar obligatoriamente las siguientes acciones:
+
+1. Actualizar la documentación de la fase.
+2. Actualizar el Implementation Backlog.
+3. Clasificar todos los nuevos hallazgos detectados.
+4. Asignar un estado inicial a cada elemento registrado.
+
+Una fase no puede considerarse finalizada hasta que ambas documentaciones hayan sido actualizadas.
+
+## Hallazgos
+
+Todo elemento identificado durante la implementación debe clasificarse como una de las siguientes categorías:
+
+* Riesgo
+* Mejora
+* Refactorización
+* Deuda Técnica
+* Investigación Futura
+* Decisión Arquitectónica Pendiente
+
+No está permitido dejar observaciones únicamente dentro del informe final de una fase.
+
+## Antes de comenzar una nueva fase
+
+El agente debe revisar el Implementation Backlog para determinar si existen elementos cuya resolución pertenezca al alcance de la siguiente fase.
+
+Si alguno aplica, deberá incorporarlo explícitamente al plan de trabajo de la fase.
+
+## Antes de cerrar la iniciativa
+
+El agente debe revisar completamente el Implementation Backlog.
+
+Cada elemento deberá terminar clasificado como:
+
+* Implementado
+* Descartado
+* Movido a una iniciativa futura
+
+No puede declararse una iniciativa como finalizada mientras existan elementos en estado "Pendiente" o "En evaluación".
+
+Si durante la revisión final identifica que varios elementos pueden resolverse conjuntamente mediante una única iteración, deberá proponer una **Fase de Consolidación** antes del cierre definitivo de la iniciativa.
+
+---
+
 ## 2. Utilizar Codebase Memory
 
 Si existe un servidor MCP de Codebase Memory disponible:
