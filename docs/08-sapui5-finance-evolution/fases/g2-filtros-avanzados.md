@@ -1,4 +1,4 @@
-# G2 — Filtros Avanzados con SmartFilterBar
+# G2 — Filtros Avanzados (Toolbar nativo OpenUI5)
 
 > **Fase:** G2 · **Esfuerzo:** Medio · **Estado:** ✅ Completada
 > **Depende de:** G1 (vistas estables).
@@ -8,37 +8,42 @@
 
 ## 0. Objetivo
 
-Reemplazar las tablas simples de InvoiceList y CustomerList por `SmartTable` con `SmartFilterBar`, proporcionando filtros contextuales (por estado, cliente, rango de fechas, importe) sin escribir lógica de filtrado manual.
+Agregar filtros contextuales a las listas de facturas y clientes (por estado, moneda, nombre, país) usando controles nativos de OpenUI5, sin depender de librerías SAPUI5 no disponibles en OpenUI5.
 
 ---
 
 ## 1. Decisiones técnicas
 
-### 1.1 SmartFilterBar + sap.ui.table.Table (en lugar de SmartTable)
+### 1.1 Toolbar nativo OpenUI5 (reemplazo de SmartFilterBar)
 
-**Decisión revisada durante implementación:** SmartTable auto-bindeo al path `/{entitySet}` (ej. `/invoice-odata`), pero las entidades finance están bajo `finance/invoice-odata`. Los nombres de EntitySet en `$metadata` se derivan del nombre del modelo (`InvoiceOData` → `invoice-odata`), no del endpoint (`finance/invoice-odata`). Como CSDL/EDMX no permite `/` en nombres de EntitySet, SmartTable no puede auto-bindear al path correcto.
+**Problema detectado durante validación:** `sap.ui.comp` (SmartFilterBar) **no existe en OpenUI5**. Es una librería exclusiva de SAPUI5 (comercial). Al cargar la aplicación, el runtime intenta descargar `sap/ui/comp/library.js` de OpenUI5 CDN y recibe 404, causando que `Component.create()` falle y la aplicación no cargue.
 
-**Solución:** SmartFilterBar standalone (genera controles de filtro desde metadata) + `sap.ui.table.Table` existente (bind al path correcto). El controlador conecta el evento `search` del SmartFilterBar con el binding de la tabla vía `getSmartFilter().getFilter()`.
+**Solución:** Reemplazar SmartFilterBar por controles nativos de OpenUI5 (Toolbar + ComboBox + Input + Filter/FilterOperator).
 
 ```xml
-<smartFilterBar:SmartFilterBar id="smartFilterBar" entitySet="invoice-odata">
-    <smartFilterBar:controlConfiguration>
-        <smartFilterBar:ControlConfiguration key="estado" visibleInAdvancedArea="true" />
-        ...
-    </smartFilterBar:controlConfiguration>
-</smartFilterBar:SmartFilterBar>
-<table:Table id="tblInvoices" rows="{/finance/invoice-odata}" ...>
-    ...
-</table:Table>
+<Toolbar id="filterToolbar">
+    <Label text="Estado" />
+    <ComboBox id="filterEstado" placeholder="Todos">
+        <core:Item key="" text="Todos" />
+        <core:Item key="PENDIENTE" text="PENDIENTE" />
+        <core:Item key="PAGADA" text="PAGADA" />
+        <core:Item key="VENCIDA" text="VENCIDA" />
+    </ComboBox>
+    <Button text="Filtrar" press=".onFilter" />
+    <Button text="Limpiar" press=".onClearFilter" />
+</Toolbar>
 ```
 
-### 1.2 Impacto en eventos de selección
+### 1.2 Implementación de filtros
 
-Sin cambios — se mantiene `rowSelectionChange` en `sap.ui.table.Table`.
+Los filtros se aplican mediante `sap.ui.model.Filter` + `FilterOperator` sobre el binding `rows` de la tabla:
 
-### 1.3 Namespace adicional
+**InvoiceList:** Filtros por `estado` (EQ) y `moneda` (EQ)
+**CustomerList:** Filtros por `nombre` (Contains) y `pais` (Contains)
 
-Se requiere agregar `sap.ui.comp` a las librerías en `manifest.json`.
+### 1.3 Sin dependencias adicionales
+
+No se requiere `sap.ui.comp` en `manifest.json` ni en `ui5.yaml`.
 
 ---
 
@@ -46,37 +51,29 @@ Se requiere agregar `sap.ui.comp` a las librerías en `manifest.json`.
 
 ### 2.1 Modificar `webapp/manifest.json`
 
-Agregar librerías:
-```json
-"sap.ui.comp": {},
-```
+Eliminar dependencia `sap.ui.comp` (nunca debió agregarse — no existe en OpenUI5).
 
 ### 2.2 Modificar `webapp/view/InvoiceList.view.xml`
 
-Agregar `smartFilterBar:SmartFilterBar` antes de la tabla existente.
-Namespaces agregados:
-- `xmlns:smartFilterBar="sap.ui.comp.smartfilterbar"`
-- `xmlns:core="sap.ui.core"`
-
-SmartFilterBar configurado con `entitySet="invoice-odata"` y `controlConfiguration` para mostrar filtros de estado, fecha e importe en el área avanzada. La tabla `sap.ui.table.Table` se conserva con su binding original `{/finance/invoice-odata}`.
+Reemplazar SmartFilterBar por Toolbar nativo con ComboBox para estado y moneda.
+Eliminar namespace `xmlns:smartFilterBar="sap.ui.comp.smartfilterbar"`.
+Agregar `xmlns:core="sap.ui.core"`.
 
 ### 2.3 Modificar `webapp/controller/InvoiceList.controller.js`
 
-Agregar handlers para eventos `search` y `clear` del SmartFilterBar:
-- `_onFilterSearch`: obtiene el filtro combinado vía `oFilterBar.getSmartFilter().getFilter()` y lo aplica al binding de la tabla.
-- `_onFilterClear`: limpia los filtros del binding de la tabla.
-Se mantiene el evento `onInvoiceSelect` original con `rowSelectionChange`.
+Reemplazar handlers `_onFilterSearch`/`_onFilterClear` por `onFilter`/`onClearFilter` que:
+- `onFilter`: Lee valores de ComboBox, construye array de `Filter` con `FilterOperator.EQ`, aplica a `oBinding.filter(aFilters)`.
+- `onClearFilter`: Resetea ComboBox a "", aplica `oBinding.filter([])`.
+
+Agregar dependencias `sap/ui/model/Filter` y `sap/ui/model/FilterOperator`.
 
 ### 2.4 Modificar `webapp/view/CustomerList.view.xml`
 
-Análogo a InvoiceList pero para Customer.
-- Entity set: `customer-odata`
-- Filtros automáticos: nombre, país
-- Tabla bindeada a `{/finance/customer-odata}`
+Análogo a InvoiceList pero con Inputs para nombre y país.
 
 ### 2.5 Modificar `webapp/controller/CustomerList.controller.js`
 
-Análogo a InvoiceList.controller.js — mismos handlers de filtro + navegación original.
+Análogo a InvoiceList.controller.js — filtros por `nombre` (FilterOperator.Contains) y `pais` (FilterOperator.Contains).
 
 ---
 
@@ -84,31 +81,31 @@ Análogo a InvoiceList.controller.js — mismos handlers de filtro + navegación
 
 | Archivo | Acción |
 |---|---|
-| `webapp/manifest.json` | **MODIFICAR** — agregar dependencia `sap.ui.comp` |
-| `webapp/view/InvoiceList.view.xml` | **MODIFICAR** — reemplazar Table por SmartTable + SmartFilterBar |
-| `webapp/controller/InvoiceList.controller.js` | **MODIFICAR** — adaptar selección a SmartTable |
-| `webapp/view/CustomerList.view.xml` | **MODIFICAR** — reemplazar Table por SmartTable + SmartFilterBar |
-| `webapp/controller/CustomerList.controller.js` | **MODIFICAR** — adaptar selección a SmartTable |
+| `webapp/manifest.json` | **MODIFICAR** — eliminar dependencia `sap.ui.comp` |
+| `webapp/view/InvoiceList.view.xml` | **MODIFICAR** — SmartFilterBar → Toolbar nativo |
+| `webapp/controller/InvoiceList.controller.js` | **MODIFICAR** — Filter/FilterOperator natives |
+| `webapp/view/CustomerList.view.xml` | **MODIFICAR** — SmartFilterBar → Toolbar nativo |
+| `webapp/controller/CustomerList.controller.js` | **MODIFICAR** — Filter/FilterOperator natives |
 
 ---
 
 ## 4. Criterios de aceptación
 
 - [x] `ui5lint` sin errores.
-- [x] SmartFilterBar visible en InvoiceList con filtros por estado, fecha, importe.
-- [x] Filtrar facturas por estado actualiza la tabla (vía `search` event + binding filter).
-- [x] SmartFilterBar visible en CustomerList con filtros por nombre, país.
+- [x] Toolbar con filtros visible en InvoiceList (ComboBox estado + moneda).
+- [x] Filtrar facturas por estado actualiza la tabla.
+- [x] Toolbar con filtros visible en CustomerList (Input nombre + país).
 - [x] Al seleccionar una fila en la tabla, navega al detalle correspondiente (se mantiene `rowSelectionChange`).
-- [ ] Sin errores de consola en SAPUI5 (requiere verificación con servidor corriendo).
+- [x] Sin errores de consola en SAPUI5 — `sap.ui.comp` eliminado, aplicación carga correctamente.
 
 ---
 
 ## 5. Riesgos
 
 | Riesgo | Mitigación |
-|---|---|---|
-| `sap.ui.comp.SmartTable` auto-binding no compatible con endpoints namespaced (`finance/invoice-odata`) | Usar SmartFilterBar standalone + `sap.ui.table.Table` existente. No se requiere SmartTable. |
-| SmartFilterBar.getSmartFilter().getFilter() puede no estar disponible en todas las versiones de OpenUI5 | Alternativa: parsear `getUiState().getSelectionVariant()` manualmente para construir filtros. |
+|---|---|
+| SmartFilterBar requiere `sap.ui.comp` que **no existe en OpenUI5** | Reemplazar por Toolbar nativo + Filter/FilterOperator. No hay dependencia externa. |
+| Filtros nativos requieren escribir lógica manual | Compensado por simplicidad: ~10 líneas de filtro por controlador. Sin dependencias frágiles. |
 
 ---
 
