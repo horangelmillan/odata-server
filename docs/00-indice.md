@@ -86,15 +86,15 @@ Merge a `master` pendiente.
 - [`fases/f4-vistas-finance-detalladas.md`](07-sapui5-finance/fases/f4-vistas-finance-detalladas.md) ✅ — Vistas detalladas de entidades finance.
 
 ## 08 — Ciclo de Evolución de la Integración SAPUI5 con Dominio Finance
-**Ciclo actual.** Estado global: 📋 **Documentación aprobada** — roadmap, arquitectura y fases
-definidas. Rama dedicada: `feature/sapui5-finance-evolution`. Evoluciona la integración base
-añadiendo vistas priorizadas, filtros avanzados, internacionalización, corrección de `$batch`
-y CRUD desde vistas.
+**Ciclo completado.** Estado global: ✅ **G1–G5 implementadas** — vistas priorizadas, filtros
+nativos OpenUI5, internacionalización, `$batch` validado, CRUD desde vistas. Rama:
+`docs/finance-ui5-integration-plan`. Merge a `master` vía PR #11 completado.
+Proyecto SAPUI5 externo en `C:/Users/Horan/Desktop/ui5-odata-demo/`.
 
 - [`00-plan-maestro.md`](08-sapui5-finance-evolution/00-plan-maestro.md) — Plan maestro: roadmap G1–G5, dependencias, condiciones de aceptación.
 - [`01-arquitectura-propuesta.md`](08-sapui5-finance-evolution/01-arquitectura-propuesta.md) — Análisis arquitectónico de cada mejora.
-- [`fases/g1-vistas-priorizadas.md`](08-sapui5-finance-evolution/fases/g1-vistas-priorizadas.md) 📋 — CustomerDetail, PaymentList, navegación completa.
-- [`fases/g2-filtros-avanzados.md`](08-sapui5-finance-evolution/fases/g2-filtros-avanzados.md) ✅ — SmartFilterBar en listas de facturas y clientes. (Proyecto SAPUI5 en `C:/Users/Horan/Desktop/ui5-odata-demo/`)
-- [`fases/g3-internacionalizacion.md`](08-sapui5-finance-evolution/fases/g3-internacionalizacion.md) 📋 — i18n: externalización de textos visibles.
-- [`fases/g4-batch-changeset.md`](08-sapui5-finance-evolution/fases/g4-batch-changeset.md) 📋 — Corrección de `$batch` changeset en el servidor.
-- [`fases/g5-crud-vistas.md`](08-sapui5-finance-evolution/fases/g5-crud-vistas.md) 📋 — CRUD desde vistas SAPUI5 (diálogos, validación, writes).
+- [`fases/g1-vistas-priorizadas.md`](08-sapui5-finance-evolution/fases/g1-vistas-priorizadas.md) ✅ — CustomerDetail, PaymentList, navegación completa.
+- [`fases/g2-filtros-avanzados.md`](08-sapui5-finance-evolution/fases/g2-filtros-avanzados.md) ✅ — Toolbar nativo OpenUI5 (reemplaza SmartFilterBar no disponible en OpenUI5).
+- [`fases/g3-internacionalizacion.md`](08-sapui5-finance-evolution/fases/g3-internacionalizacion.md) ✅ — i18n: 47 claves, modelo ResourceModel en manifest.json.
+- [`fases/g4-batch-changeset.md`](08-sapui5-finance-evolution/fases/g4-batch-changeset.md) ✅ — Tests Content-ID formato SAPUI5 (0.0/1.0), atomicidad.
+- [`fases/g5-crud-vistas.md`](08-sapui5-finance-evolution/fases/g5-crud-vistas.md) ✅ — Diálogos CRUD: InvoiceCreate, InvoiceEdit, CustomerCreate.

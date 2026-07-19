@@ -34,6 +34,7 @@ Estados válidos:
 | -- | ------------ | ----------- | ------- | ------ | ---------- |
 | R01 | G2 (implementación) | SmartTable auto-binding no compatible con endpoints namespaced (`finance/invoice-odata`). EntitySet names no pueden contener `/` en EDMX XML, por lo que SmartTable no puede auto-bindear al path correcto. | Medio — impide usar SmartTable estándar | Implementado | Se usó SmartFilterBar standalone + `sap.ui.table.Table` existente. El controlador conecta eventos de filtro manualmente vía `getSmartFilter().getFilter()`. |
 | R02 | G4 (documentación) | Documentación de G4 obsoleta: describía un problema de servidor que ya fue resuelto en F6.1. El servidor es 100% OData v4 $batch-compliant. El `created()` timeout es un quirk de cliente UI5. | Bajo — no hay cambio de código requerido | Implementado | Documentación actualizada. Tests agregados para Content-ID formato SAPUI5 (0.0/1.0). |
+| R03 | G5 (validación) | `sap.ui.comp` (SmartFilterBar) **no existe en OpenUI5**. Es librería exclusiva de SAPUI5 (comercial). Causa 404 y bloquea carga de la aplicación. | Alto — app no carga | Implementado | Reemplazar SmartFilterBar por Toolbar nativo OpenUI5 (ComboBox/Input + Filter/FilterOperator). Eliminar `sap.ui.comp` de manifest.json. |
 
 ---
 
@@ -81,6 +82,7 @@ Cada vez que un elemento cambie de estado debe registrarse aquí.
 | 2026-07-17 | — | G3 completada. i18n.properties creado con 47 claves. Modelo i18n agregado a manifest.json. Strings reemplazados en App, Finance, InvoiceList, InvoiceDetail, CustomerList, CustomerDetail, PaymentList. ui5lint sin errores. |
 | 2026-07-17 | R02 | G4 (documentación): detectada documentación obsoleta. El servidor ya es $batch-compliant desde F6.1. Se actualiza G4 para reflejar estado real, se agregan tests de integración para Content-ID formato SAPUI5 (0.0/1.0). |
 | 2026-07-17 | — | G5 completada. Fragmentos InvoiceCreate, InvoiceEdit, CustomerCreate creados como diálogos modulares. InvoiceList.controller.js extendido con onCreateInvoice, onEditInvoice, onDeleteInvoice. CustomerList.controller.js extendido con onCreateCustomer. i18n.properties actualizado con 21 nuevas claves CRUD. Botones agregados en headerContent de ambas vistas. ui5lint sin errores (0/0). Server tests 166/166 sin regresión. |
+| 2026-07-17 | R03 | G5 validación: detectado que `sap.ui.comp` no existe en OpenUI5. SmartFilterBar reemplazado por Toolbar nativo (ComboBox/Input + Filter/FilterOperator). Eliminado `sap.ui.comp` de manifest.json. G2 documentación actualizada para reflejar implementación real. ui5lint 0 errores. |
 
 ---
 
