@@ -2,7 +2,7 @@
 
 > **Ciclo:** `feature/sapui5-finance-evolution` (rama dedicada; sin merge a `master` hasta cumplir todas las condiciones de aceptación).
 > **Inicio:** 2026-07-17
-> **Estado global:** 📋 Pendiente — documentación aprobada.
+> **Estado global:** ✅ Completado — G1–G5 implementadas y mergeadas a `master` (PRs #11 y #12).
 > **Depende de:** Ciclo 07 (`docs/finance-ui5-integration-plan`) — F0–F4 completadas: vistas Finance, InvoiceList, InvoiceDetail, CustomerList; Domain Registration Object implementado; writes finance habilitados.
 
 ---
@@ -84,15 +84,15 @@ G4 ($batch) ────→ G5 (CRUD) — G5 requiere changesets funcionales
 
 ## 4. Condiciones de aceptación globales
 
-- [ ] G1–G5 documentadas y validadas.
-- [ ] `pnpm test` en verde tras cada fase (sin regresión).
-- [ ] `ui5lint` sin errores tras cada fase.
-- [ ] Navegación completa Demo ↔ Finance ↔ listas ↔ detalles funcional.
-- [ ] `$expand` funcional en todas las vistas nuevas.
+- [x] G1–G5 documentadas y validadas.
+- [x] `pnpm test` en verde tras cada fase (sin regresión; 166/166 tras G5).
+- [x] `ui5lint` sin errores tras cada fase (0 errores).
+- [x] Navegación completa Demo ↔ Finance ↔ listas ↔ detalles funcional.
+- [x] `$expand` funcional en todas las vistas nuevas.
 - [x] `$batch` con changeset funcional en el servidor (G4). Quirk `created()` en UI5 documentado.
-- [ ] Strings visibles externalizados a i18n (G3).
+- [x] Strings visibles externalizados a i18n (G3).
 - [x] CRUD básico operativo: crear, editar, eliminar facturas y clientes (G5). *(Requiere servidor corriendo para validación visual completa)*
-- [ ] Documentación alineada (`docs/00-indice.md`).
+- [x] Documentación alineada (`docs/00-indice.md`).
 
 ---
 
@@ -100,7 +100,7 @@ G4 ($batch) ────→ G5 (CRUD) — G5 requiere changesets funcionales
 
 - **Context7**: G2 (SmartTable/SmartFilterBar API), G3 (i18n en SAPUI5), G5 (diálogos modales, MessageManager).
 - **Codebase Memory**: G4 (rastrear `CALLS` en el pipeline de batch del servidor), G5 (trazar flujo de writes desde `odata-write.routes.ts`).
-- **Playwright**: G1, G2, G5 (validación visual y funcional de las nuevas vistas).
+- **Playwright** (`skill playwright-testing`): G1, G2, G5 (validación visual y funcional de las nuevas vistas). La skill `playwright-testing` contiene patrones, comandos y estrategias específicas para este proyecto. Debe cargarse explícitamente (`skill` tool) antes de cualquier validación visual.
 
 ---
 

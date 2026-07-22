@@ -163,7 +163,7 @@ Una vez completada G5, se debe:
 
 1. Ejecutar `pnpm test` completo en servidor.
 2. Ejecutar `ui5lint` en SAPUI5.
-3. Validar con Playwright (flujo completo: crear factura → ver en lista → editar → eliminar).
+3. Validar con Playwright (cargar skill `playwright-testing` primero, luego ejecutar flujo completo: crear factura → ver en lista → editar → eliminar).
 4. Ejecutar validación completa de navegación Demo ↔ Finance ↔ listas ↔ detalles.
 5. Documentar cualquier ajuste necesario.
 6. Proceder con PR a `master`.

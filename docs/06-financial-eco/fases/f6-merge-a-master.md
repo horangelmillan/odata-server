@@ -16,12 +16,12 @@ aceptación globales. El merge usa el **flujo PR** cerrado en el ciclo 05 (F7): 
 
 ## 1. Checklist de condiciones de aceptación (gate)
 
-- [ ] F0–F5 ejecutadas y verificadas.
-- [ ] `pnpm test` en verde (sin regresión; nuevos tests de ecosistema en verde).
-- [ ] `GET /api/*` no expuesto; solo `/odata` (intacto).
-- [ ] `pnpm db:reset` reproduce el ecosistema idéntico (re-montable verificado).
-- [ ] `$expand`/`$filter` financieros funcionan.
-- [ ] Documentación alineada.
+- [x] F0–F5 ejecutadas y verificadas.
+- [x] `pnpm test` en verde (sin regresión; nuevos tests de ecosistema en verde).
+- [x] `GET /api/*` no expuesto; solo `/odata` (intacto).
+- [x] `pnpm db:reset` reproduce el ecosistema idéntico (re-montable verificado).
+- [x] `$expand`/`$filter` financieros funcionan.
+- [x] Documentación alineada.
 
 ---
 
@@ -54,15 +54,18 @@ git push origin v2.1.0-financial-eco
 
 ## 3. Criterios de aceptación
 
-- [ ] Todas las condiciones de aceptación cumplidas.
-- [ ] PR # abierto, check `test` verde, merge por GitHub.
-- [ ] Tag `v2.1.0-financial-eco` aplicado.
-- [ ] `docs/00-indice.md` marca el ciclo 06 como completado.
+- [x] Todas las condiciones de aceptación cumplidas.
+- [x] PR #5 abierto, check `test` verde, merge por GitHub (2026-07-16).
+- [x] Tag `v2.1.0-financial-eco` aplicado (sobre el merge de PR #5, `2021b61`).
+- [x] `docs/00-indice.md` marca el ciclo 06 como completado.
 
 ---
 
 ## 4. Cierre del ciclo
 
-Al terminar, actualizar `docs/00-indice.md`:
-- Estado global: de "🚧 En progreso" a "✅ Completado (v2.1.0-financial-eco)".
-- Enlazar el tag en la entrada de `06-financial-eco`.
+✅ **Ciclo 06 completado.** Merge de `feature/financial-eco` a `master` realizado vía
+[PR #5](https://github.com/horangelmillan/odata-server/pull/5) el 2026-07-16 con el check
+`test` en verde (CI con servicio Postgres). `docs/00-indice.md` actualizado: el ciclo 06
+figura como completado (F0–F6) y se documenta que el prefijo `demo/` fue posteriormente
+eliminado en PR #8 (endpoints planos). Tag de release `v2.1.0-financial-eco` aplicado
+sobre el commit de merge (`2021b61`) durante el cierre documental posterior.
