@@ -6,7 +6,6 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": false,
     "module": "NodeNext",
-    "baseUrl": "./",
     "paths": {
       "../": ["./src/*"]
     },
