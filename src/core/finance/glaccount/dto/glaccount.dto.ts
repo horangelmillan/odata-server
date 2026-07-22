@@ -1,5 +1,6 @@
 import { IsString, IsOptional } from "class-validator";
 import { OmitType } from "../../../../common/helper/nestjs/omit-type.helper.js";
+import { PartialType } from "../../../../common/helper/nestjs/partial-type.helper.js";
 import { IGlAccount } from "../interface/glaccount.interface.js";
 
 export class GlAccountCreateDTO implements IGlAccount {
@@ -18,7 +19,7 @@ export class GlAccountCreateDTO implements IGlAccount {
     updatedAt?: Date;
 }
 
-export class GlAccountUpdateDTO extends OmitType(GlAccountCreateDTO, ["id"] as const) {
+export class GlAccountUpdateDTO extends PartialType(OmitType(GlAccountCreateDTO, ["id"] as const)) {
     @IsOptional()
     @IsString()
     nombre?: string;

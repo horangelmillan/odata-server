@@ -1,6 +1,7 @@
 import { IsString, IsNumber, IsOptional, Min, IsInt } from "class-validator";
 import { Transform } from "class-transformer";
 import { OmitType } from "../../../../common/helper/nestjs/omit-type.helper.js";
+import { PartialType } from "../../../../common/helper/nestjs/partial-type.helper.js";
 import { IProduct } from "../interface/product.interface.js";
 
 const toNumber = ({ value }: { value: unknown }) => {
@@ -30,7 +31,7 @@ export class ProductCreateDTO implements IProduct {
     id?: number;
 }
 
-export class ProductUpdateDTO extends OmitType(ProductCreateDTO, ["id"] as const) {
+export class ProductUpdateDTO extends PartialType(OmitType(ProductCreateDTO, ["id"] as const)) {
     @IsOptional()
     @IsString()
     nombre?: string;

@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Express } from "express";
 import { ExpressRouter, ODataControler } from "@phrasecode/odata";
 import { env } from "../../config/env.config.js";
 import { dataSource } from "./datasource.js";
@@ -138,7 +138,7 @@ oDataExpressApp.use((_req, res, next) => {
     next();
 });
 
-new ExpressRouter(oDataExpressApp, {
+new ExpressRouter(oDataExpressApp as unknown as Express, {
     controllers: controllers,
     dataSource,
     logger: {

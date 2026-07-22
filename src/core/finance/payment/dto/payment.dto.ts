@@ -1,5 +1,6 @@
 import { IsString, IsNumber, IsOptional, Min } from "class-validator";
 import { OmitType } from "../../../../common/helper/nestjs/omit-type.helper.js";
+import { PartialType } from "../../../../common/helper/nestjs/partial-type.helper.js";
 import { IPayment } from "../interface/payment.interface.js";
 
 export class PaymentCreateDTO implements IPayment {
@@ -28,7 +29,7 @@ export class PaymentCreateDTO implements IPayment {
     updatedAt?: Date;
 }
 
-export class PaymentUpdateDTO extends OmitType(PaymentCreateDTO, ["id"] as const) {
+export class PaymentUpdateDTO extends PartialType(OmitType(PaymentCreateDTO, ["id"] as const)) {
     @IsOptional()
     @IsString()
     invoiceId?: string;
