@@ -272,6 +272,17 @@ Agregar `ActionListItem` para `Payment` con `customData` `entityName="payment"`.
 | F4 | CustomerList, InvoiceList, InvoiceDetail existentes y funcionales |
 | Servidor corriendo | `pnpm dev` en `servidor-odata` |
 | UI5 server | `pnpm serve` en `ui5-odata-demo` |
+| Playwright skill | Cargar `skill playwright-testing` antes de validación visual |
+
+### Validación con Playwright
+
+Antes de declarar G1 como completada, cargar la skill `playwright-testing` y
+ejecutar las validaciones de navegación:
+
+- CustomerList → CustomerDetail con `$expand=invoices`
+- PaymentList con `$expand=invoice`
+- Finance → PaymentList
+- Navegación inversa (botón "Atrás") desde CustomerDetail
 
 ---
 

@@ -32,7 +32,7 @@ Ciclo previo (`feat/odata-sapui5-compat`, tag `v1.1.0`): compatibilidad 100% con
 - [`pruebas-odata-product.md`](04-sapui5-compat/pruebas-odata-product.md) — Pruebas OData de producto.
 
 ## 05 — Ciclo de Refactorización: OData como Dominio Único
-**Ciclo actual.** Estado global: ✅ **Completado (v2.0.0-odata-domain)**. Release tag: [`v2.0.0-odata-domain`](https://github.com/horangelmillan/odata-server/releases/tag/v2.0.0-odata-domain). Merge a `master` vía PR #1 (flujo PR: protección de rama + check `test` + merge por GitHub). Elimina REST y promueve OData a dominio de primera clase, con la misma
+**Ciclo completado.** Estado global: ✅ **Completado (v2.0.0-odata-domain)**. Release tag: [`v2.0.0-odata-domain`](https://github.com/horangelmillan/odata-server/releases/tag/v2.0.0-odata-domain). Merge a `master` vía PR #1 (flujo PR: protección de rama + check `test` + merge por GitHub). Elimina REST y promueve OData a dominio de primera clase, con la misma
 estructura de carpetas que usaba REST (interface / model / dto / service / controller), y
 convirtiendo `common/service/odata/` en shared kernel. Ver detalle y ejecución fase a fase:
 - [`00-plan-maestro.md`](05-refactor-odata-as-domain/00-plan-maestro.md) — Plan maestro y decisión de arquitectura.
@@ -53,29 +53,30 @@ convirtiendo `common/service/odata/` en shared kernel. Ver detalle y ejecución 
 > y la documentación a actualizar al cerrar. El `00-plan-maestro.md` es el contrato global.
 
 ## 06 — Ciclo de Ecosistema Financiero Simulado (tipo S/4HANA Cloud)
-**Ciclo actual.** Estado global: ✅ **F0 completada** — [issue #3](https://github.com/horangelmillan/odata-server/issues/3) resuelto via [PR #4](https://github.com/horangelmillan/odata-server/pull/4), prefijo `demo/` aplicado a product/category. Añade al
+**Ciclo completado.** Estado global: ✅ **F0–F6 completadas** — merge a `master` vía [PR #5](https://github.com/horangelmillan/odata-server/pull/5) (2026-07-16). [Issue #3](https://github.com/horangelmillan/odata-server/issues/3) resuelto vía [PR #4](https://github.com/horangelmillan/odata-server/pull/4). Añade al
 servidor un ecosistema financiero coherente (sociedades, clientes, proveedores, cuentas
 mayor, facturas de venta/proveedor, líneas y pagos con clearing) y un **seed idempotente
 re-montable** (`pnpm seed` / `pnpm db:reset` recrea los mismos datos). El dominio es
-**agnóstico al protocolo**; el servidor lo expone solo vía OData v4. Namespaces simétricos:
-`/odata/demo/*` (product, category) y `/odata/finance/*` (ecosistema). Rama dedicada:
+**agnóstico al protocolo**; el servidor lo expone solo vía OData v4. Namespaces:
+`/odata/*` plano para demo (product, category — prefijo `demo/` eliminado en PR #8) y
+`/odata/finance/*` (ecosistema). Rama dedicada:
 `feature/financial-eco`.
 - [`00-plan-maestro.md`](06-financial-eco/00-plan-maestro.md) — Plan maestro y decisión de arquitectura.
 - [`fases/f0-ramificacion-baseline.md`](06-financial-eco/fases/f0-ramificacion-baseline.md) — F0.0 ✅ (rama + baseline 143 pass).
-- [`fases/f0.1-prefijo-demo-bloqueado.md`](06-financial-eco/fases/f0.1-prefijo-demo-bloqueado.md) — 🚧 F0.1 en pausa por issue #3.
+- [`fases/f0.1-prefijo-demo-bloqueado.md`](06-financial-eco/fases/f0.1-prefijo-demo-bloqueado.md) — ✅ F0.1 resuelta (issue #3 cerrado vía PR #4).
 - [`fases/f1-modelos-financieros.md`](06-financial-eco/fases/f1-modelos-financieros.md) — 8 dominios (sub-fases `f1.1`–`f1.8`)
 - [`fases/f2-seed-remontable.md`](06-financial-eco/fases/f2-seed-remontable.md) — Seed idempotente (sub-fases `f2.0`–`f2.8`)
 - [`fases/f3-relaciones-y-estados.md`](06-financial-eco/fases/f3-relaciones-y-estados.md) ✅
 - [`fases/f4-tests-ecosistema.md`](06-financial-eco/fases/f4-tests-ecosistema.md) ✅
 - [`fases/f5-documentacion.md`](06-financial-eco/fases/f5-documentacion.md) ✅
 - [`../02-patrones/16-financial-module.md`](02-patrones/16-financial-module.md) — Patrón de módulo financiero con entidades, navegaciones, seed y ejemplos `$expand`/`$filter`.
-- [`fases/f6-merge-a-master.md`](06-financial-eco/fases/f6-merge-a-master.md)
+- [`fases/f6-merge-a-master.md`](06-financial-eco/fases/f6-merge-a-master.md) ✅ — Merge a `master` vía PR #5 (2026-07-16). Tag `v2.1.0-financial-eco` pendiente (decisión del usuario).
 
 ## 07 — Ciclo de Integración SAPUI5 con Dominio Finance
 **Ciclo completado.** Estado global: ✅ **F0–F4 implementadas** — integración completa del dominio
 finance en SAPUI5 incluyendo rediseño del Domain Registration Object, vistas detalladas con
 `$expand`, y navegación Demo ↔ Finance. Rama: `docs/finance-ui5-integration-plan`.
-Merge a `master` pendiente.
+Merge a `master` completado (PRs #10–#12).
 
 - [`00-plan-maestro.md`](07-sapui5-finance/00-plan-maestro.md) — Plan maestro y decisiones de arquitectura.
 - [`01-arquitectura-propuesta.md`](07-sapui5-finance/01-arquitectura-propuesta.md) — Diseño del Domain Registration Object.
@@ -88,7 +89,7 @@ Merge a `master` pendiente.
 ## 08 — Ciclo de Evolución de la Integración SAPUI5 con Dominio Finance
 **Ciclo completado.** Estado global: ✅ **G1–G5 implementadas** — vistas priorizadas, filtros
 nativos OpenUI5, internacionalización, `$batch` validado, CRUD desde vistas. Rama:
-`docs/finance-ui5-integration-plan`. Merge a `master` vía PR #11 completado.
+`docs/finance-ui5-integration-plan`. Merge a `master` vía PRs #11 y #12 completado.
 Proyecto SAPUI5 externo en `C:/Users/Horan/Desktop/ui5-odata-demo/`.
 
 - [`00-plan-maestro.md`](08-sapui5-finance-evolution/00-plan-maestro.md) — Plan maestro: roadmap G1–G5, dependencias, condiciones de aceptación.

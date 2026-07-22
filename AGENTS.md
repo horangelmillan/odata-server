@@ -192,20 +192,36 @@ Especialmente importante para:
 
 ---
 
-## 4. Utilizar Playwright cuando aplique
+## 4. Utilizar Playwright Testing Skill (Obligatorio)
+
+Existe una skill dedicada para validación visual y funcional:
+
+`playwright-testing` — disponible en `~/.config/opencode/skills/playwright-testing/SKILL.md`
+
+Esta skill debe **cargarse explícitamente** usando la herramienta `skill` antes de
+realizar cualquier validación visual con Playwright MCP. Contiene patrones,
+comandos y estrategias específicas para este proyecto.
+
+### Cuándo usarla
 
 Cuando una tarea implique:
 
 * verificar comportamiento visual
-* validar interfaces
-* reproducir errores
-* comprobar navegación
-* inspeccionar DOM
-* validar respuestas visibles al usuario
+* validar interfaces (botones, tablas, diálogos, formularios)
+* reproducir errores que solo aparecen en el navegador
+* comprobar navegación entre rutas (Demo ↔ Finance ↔ listas ↔ detalles)
+* inspeccionar DOM para verificar estados de controles
+* validar respuestas visibles al usuario (MessageToast, MessageStrip, MessageBox)
+* probar flujos CRUD completos (crear → ver en lista → editar → eliminar)
+* capturar tráfico de red OData para depurar peticiones/respuestas
+
+### Regla
 
 Utilizar Playwright antes de concluir que algo funciona correctamente.
 
-No asumir que una funcionalidad funciona únicamente porque el código compila.
+No asumir que una funcionalidad funciona únicamente porque el código compila
+o los tests unitarios pasan. La validación visual con Playwright es obligatoria
+antes de declarar una tarea como completada.
 
 ---
 

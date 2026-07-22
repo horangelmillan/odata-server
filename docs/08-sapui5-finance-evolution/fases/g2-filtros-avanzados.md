@@ -109,6 +109,20 @@ Análogo a InvoiceList.controller.js — filtros por `nombre` (FilterOperator.Co
 
 ---
 
-## 6. Siguiente fase
+## 6. Validación con Playwright
+
+Antes de declarar G2 como completada, cargar la skill `playwright-testing` y
+ejecutar las validaciones de filtros:
+
+- Filtrar facturas por estado PENDIENTE/PAGADA/VENCIDA — verificar tabla actualizada
+- Filtrar facturas por moneda EUR/USD — verificar tabla actualizada
+- Limpiar filtros — verificar que la tabla muestra todos los registros
+- Filtrar clientes por nombre (contains) — verificar tabla actualizada
+- Filtrar clientes por país (contains) — verificar tabla actualizada
+- Verificar que no hay errores de consola durante las operaciones de filtro
+
+---
+
+## 7. Siguiente fase
 
 ➡️ [`g3-internacionalizacion.md`](g3-internacionalizacion.md) — Internacionalización de textos visibles.
