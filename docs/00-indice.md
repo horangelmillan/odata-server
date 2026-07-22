@@ -70,7 +70,7 @@ re-montable** (`pnpm seed` / `pnpm db:reset` recrea los mismos datos). El domini
 - [`fases/f4-tests-ecosistema.md`](06-financial-eco/fases/f4-tests-ecosistema.md) ✅
 - [`fases/f5-documentacion.md`](06-financial-eco/fases/f5-documentacion.md) ✅
 - [`../02-patrones/16-financial-module.md`](02-patrones/16-financial-module.md) — Patrón de módulo financiero con entidades, navegaciones, seed y ejemplos `$expand`/`$filter`.
-- [`fases/f6-merge-a-master.md`](06-financial-eco/fases/f6-merge-a-master.md) ✅ — Merge a `master` vía PR #5 (2026-07-16). Tag `v2.1.0-financial-eco` pendiente (decisión del usuario).
+- [`fases/f6-merge-a-master.md`](06-financial-eco/fases/f6-merge-a-master.md) ✅ — Merge a `master` vía PR #5 (2026-07-16). Tag `v2.1.0-financial-eco` aplicado.
 
 ## 07 — Ciclo de Integración SAPUI5 con Dominio Finance
 **Ciclo completado.** Estado global: ✅ **F0–F4 implementadas** — integración completa del dominio

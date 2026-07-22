@@ -56,7 +56,7 @@ git push origin v2.1.0-financial-eco
 
 - [x] Todas las condiciones de aceptación cumplidas.
 - [x] PR #5 abierto, check `test` verde, merge por GitHub (2026-07-16).
-- [ ] Tag `v2.1.0-financial-eco` aplicado. ⚠️ **Pendiente** — nunca se aplicó tras el merge; requiere decisión consciente del usuario.
+- [x] Tag `v2.1.0-financial-eco` aplicado (sobre el merge de PR #5, `2021b61`).
 - [x] `docs/00-indice.md` marca el ciclo 06 como completado.
 
 ---
@@ -67,7 +67,5 @@ git push origin v2.1.0-financial-eco
 [PR #5](https://github.com/horangelmillan/odata-server/pull/5) el 2026-07-16 con el check
 `test` en verde (CI con servicio Postgres). `docs/00-indice.md` actualizado: el ciclo 06
 figura como completado (F0–F6) y se documenta que el prefijo `demo/` fue posteriormente
-eliminado en PR #8 (endpoints planos).
-
-**Único cabo suelto:** el tag de release `v2.1.0-financial-eco` (paso 2.3) no llegó a
-aplicarse. Queda como acción manual pendiente del usuario.
+eliminado en PR #8 (endpoints planos). Tag de release `v2.1.0-financial-eco` aplicado
+sobre el commit de merge (`2021b61`) durante el cierre documental posterior.
