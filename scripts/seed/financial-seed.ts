@@ -1,24 +1,9 @@
 import "reflect-metadata";
 import { config } from "dotenv";
 import { Sequelize, DataTypes } from "sequelize";
+import { generateFinancialData, validateSeedData, REFERENCE_DATE, type SeedData } from "./financial-seed-data.js";
 
 config();
-
-function pad(n: number, width: number): string {
-    return String(n).padStart(width, "0");
-}
-
-function dateStr(daysAgo: number): string {
-    const d = new Date();
-    d.setDate(d.getDate() - daysAgo);
-    return d.toISOString().split("T")[0];
-}
-
-function randomChoice<T>(arr: T[]): T {
-    return arr[Math.floor(Math.random() * arr.length)];
-}
-
-const METODOS = ["TRANSFER", "CARD", "CHECK"];
 
 const dbConfig = {
     dialect: "postgres" as const,
@@ -33,6 +18,15 @@ async function main() {
     const args = process.argv.slice(2);
     const reset = args.includes("--reset");
 
+    // 1. Generar y validar ANTES de tocar la BD (fail fast: no se vacía si el dataset es inválido).
+    const data: SeedData = generateFinancialData();
+    const violations = validateSeedData(data);
+    if (violations.length > 0) {
+        console.error(`Seed data inválido (${violations.length} violaciones de invariantes):`);
+        for (const v of violations.slice(0, 20)) console.error(`  - ${v}`);
+        process.exit(1);
+    }
+
     const seq = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.password, {
         host: dbConfig.host,
         port: dbConfig.port,
@@ -43,6 +37,9 @@ async function main() {
     await seq.authenticate();
     console.log("Connected to database.");
 
+    // Fuente de verdad de columnas: src/core/finance/<dominio>/model/*.odata.model.ts.
+    // Estas definiciones locales deben mantenerse alineadas con los modelos de dominio
+    // (el seed es standalone: no importa el dataSource de la app).
     const Company = seq.define("companies", {
         id: { type: DataTypes.STRING, primaryKey: true },
         nombre: DataTypes.STRING,
@@ -80,7 +77,7 @@ async function main() {
         id: { type: DataTypes.STRING, primaryKey: true },
         companyId: DataTypes.STRING,
         customerId: DataTypes.STRING,
-        fecha: DataTypes.DATEONLY,
+        fecha: DataTypes.DATE,
         importe: DataTypes.DECIMAL,
         moneda: DataTypes.STRING,
         estado: DataTypes.STRING,
@@ -91,7 +88,7 @@ async function main() {
     const SupplierInvoice = seq.define("supplierinvoices", {
         id: { type: DataTypes.STRING, primaryKey: true },
         supplierId: DataTypes.STRING,
-        fecha: DataTypes.DATEONLY,
+        fecha: DataTypes.DATE,
         importe: DataTypes.DECIMAL,
         moneda: DataTypes.STRING,
         estado: DataTypes.STRING,
@@ -113,7 +110,7 @@ async function main() {
     const Payment = seq.define("payments", {
         id: { type: DataTypes.STRING, primaryKey: true },
         invoiceId: DataTypes.STRING,
-        fecha: DataTypes.DATEONLY,
+        fecha: DataTypes.DATE,
         importe: DataTypes.DECIMAL,
         metodo: DataTypes.STRING,
         createdAt: DataTypes.DATE,
@@ -130,124 +127,47 @@ async function main() {
         await model.destroy({ where: {}, truncate: true, cascade: true });
     }
 
-    console.log("Seeding financial data...");
-    const company = await Company.create({
-        id: "1000", nombre: "Servicios TI Horizonte S.A.", moneda: "EUR", pais: "ES",
-    });
+    console.log(`Seeding financial data (referencia temporal: ${REFERENCE_DATE})...`);
+    await Company.bulkCreate(data.companies);
+    await Customer.bulkCreate(data.customers);
+    await Supplier.bulkCreate(data.suppliers);
+    await GlAccount.bulkCreate(data.glAccounts);
+    await Invoice.bulkCreate(data.invoices);
+    await SupplierInvoice.bulkCreate(data.supplierInvoices);
+    await InvoiceItem.bulkCreate(data.invoiceItems);
+    await Payment.bulkCreate(data.payments);
 
-    const customers: any[] = [];
-    const customerNames = [
-        "Tecnología Avanzada SL", "Distribuciones del Sur SA", "Consultora Estratégica XXI",
-        "Comercial del Norte SL", "Industrias Reunidas SA", "Servicios Logísticos Global SL",
-        "Desarrollos Inmobiliarios MG SA", "Alimentación y Bebidas SL",
-    ];
-    for (let i = 0; i < customerNames.length; i++) {
-        const c = await Customer.create({
-            id: `C${pad(i + 1, 4)}`, nombre: customerNames[i],
-            companyId: company.id, pais: randomChoice(["ES", "FR", "PT", "DE", "IT"]),
-        });
-        customers.push(c);
-    }
-
-    const suppliers: any[] = [];
-    const supplierNames = [
-        "Proveedora Industrial del Mediterráneo SA", "Suministros Técnicos SL",
-        "Materias Primas Europa SA", "Servicios Auxiliares de Producción SL",
-        "Logística Integral del Transporte SA", "Equipos y Maquinaria Pesada SL",
-    ];
-    const supplierPaises = ["ES", "DE", "IT", "ES", "PT", "FR"];
-    for (let i = 0; i < supplierNames.length; i++) {
-        const s = await Supplier.create({
-            id: `S${pad(i + 1, 4)}`, nombre: supplierNames[i], pais: supplierPaises[i],
-        });
-        suppliers.push(s);
-    }
-
-    const glAccounts: any[] = [];
-    const glAccountNames = [
-        "Ventas de mercancías", "Prestación de servicios", "Compras de materiales",
-        "Gastos de personal", "Arrendamientos", "Suministros",
-        "Gastos financieros", "Amortizaciones", "Impuesto sobre beneficios", "Resultados extraordinarios",
-    ];
-    for (let i = 0; i < glAccountNames.length; i++) {
-        const g = await GlAccount.create({
-            id: `${pad(i + 1, 4)}00`, nombre: glAccountNames[i],
-        });
-        glAccounts.push(g);
-    }
-
-    const invoiceStatuses = ["PENDIENTE", "PAGADA", "VENCIDA"];
-    const invoiceStatusWeights = [0.25, 0.60, 0.15];
-    function weightedStatus(): string {
-        const r = Math.random();
-        let acc = 0;
-        for (let i = 0; i < invoiceStatuses.length; i++) {
-            acc += invoiceStatusWeights[i];
-            if (r < acc) return invoiceStatuses[i];
-        }
-        return "PENDIENTE";
-    }
-
-    const invoices: any[] = [];
-    const customerIds = customers.map((c: any) => c.id);
-    for (let i = 0; i < 50; i++) {
-        const daysAgo = Math.floor(Math.random() * 180) + 1;
-        const importe = Math.round((Math.random() * 9500 + 500) * 100) / 100;
-        const inv = await Invoice.create({
-            id: `I${pad(i + 1, 5)}`, companyId: company.id,
-            customerId: randomChoice(customerIds),
-            fecha: dateStr(daysAgo),
-            importe, moneda: "EUR", estado: weightedStatus(),
-        });
-        invoices.push(inv);
-    }
-
-    const supplierIds = suppliers.map((s: any) => s.id);
-    for (let i = 0; i < 20; i++) {
-        const daysAgo = Math.floor(Math.random() * 150) + 1;
-        const importe = Math.round((Math.random() * 8000 + 200) * 100) / 100;
-        await SupplierInvoice.create({
-            id: `SI${pad(i + 1, 5)}`, supplierId: randomChoice(supplierIds),
-            fecha: dateStr(daysAgo),
-            importe, moneda: "EUR", estado: weightedStatus(),
-        });
-    }
-
-    const materials = ["MAT-A", "MAT-B", "MAT-C", "MAT-D", "MAT-E"];
-    let itemCounter = 0;
-    for (const inv of invoices) {
-        const numItems = Math.floor(Math.random() * 4) + 1;
-        let remaining = Number(inv.importe);
-        for (let j = 0; j < numItems; j++) {
-            const isLast = j === numItems - 1;
-            const itemImporte = isLast
-                ? Math.round(remaining * 100) / 100
-                : Math.round((remaining / (numItems - j)) * 100) / 100;
-            remaining -= itemImporte;
-            const cantidad = Math.floor(Math.random() * 10) + 1;
-            itemCounter++;
-            await InvoiceItem.create({
-                id: `II${pad(itemCounter, 5)}`,
-                invoiceId: inv.id,
-                glAccountId: randomChoice(glAccounts.map((g: any) => g.id)),
-                material: randomChoice(materials),
-                cantidad, importe: itemImporte,
-            });
+    // 2. Verificación post-inserción: los conteos en BD deben coincidir con lo generado.
+    const counts = {
+        companies: await Company.count(),
+        customers: await Customer.count(),
+        suppliers: await Supplier.count(),
+        glaccounts: await GlAccount.count(),
+        invoices: await Invoice.count(),
+        supplierinvoices: await SupplierInvoice.count(),
+        invoiceitems: await InvoiceItem.count(),
+        payments: await Payment.count(),
+    };
+    const expected = {
+        companies: data.companies.length,
+        customers: data.customers.length,
+        suppliers: data.suppliers.length,
+        glaccounts: data.glAccounts.length,
+        invoices: data.invoices.length,
+        supplierinvoices: data.supplierInvoices.length,
+        invoiceitems: data.invoiceItems.length,
+        payments: data.payments.length,
+    };
+    for (const [table, count] of Object.entries(counts)) {
+        const want = expected[table as keyof typeof expected];
+        if (count !== want) {
+            console.error(`Post-seed check falló: ${table} = ${count}, esperado ${want}`);
+            await seq.close();
+            process.exit(1);
         }
     }
 
-    const paidInvoices = invoices.filter((inv: any) => inv.estado === "PAGADA");
-    for (let i = 0; i < paidInvoices.length; i++) {
-        const inv = paidInvoices[i];
-        const daysAgo = Math.floor(Math.random() * 30) + 1;
-        await Payment.create({
-            id: `P${pad(i + 1, 5)}`, invoiceId: inv.id,
-            fecha: dateStr(daysAgo), importe: inv.importe,
-            metodo: randomChoice(METODOS),
-        });
-    }
-
-    console.log("Seed complete.");
+    console.log("Seed complete:", JSON.stringify(counts));
     await seq.close();
 }
 
