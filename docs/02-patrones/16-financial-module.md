@@ -9,7 +9,8 @@ El ecosistema financiero simula la estructura maestra de SAP S/4HANA Cloud:
 
 - **8 entidades** con relaciones FK lógicas entre ellas.
 - Expuestas vía OData v4 en `/odata/finance/<entidad>-odata`.
-- Seed determinista (`pnpm seed` / `pnpm db:reset`) que recrea los mismos datos siempre.
+- Seed determinista (`pnpm seed` / `pnpm db:reset`): PRNG sembrado + fecha de referencia
+  fija — recrea exactamente el mismo dataset en cada ejecución (ver 16.5).
 - Pensado para que un backend orquestador/LLM pueda consultar mediante `$expand`/`$filter`.
 
 ## 16.2 Dominios
@@ -21,8 +22,8 @@ src/core/finance/
 ├── supplier/          # Proveedor (independiente de sociedad)
 ├── glaccount/         # Cuenta mayor (plan de cuentas)
 ├── invoice/           # Factura de venta (cliente → sociedad)
-├── supplierinvoice/   # Factura de proveedor
-├── invoiceitem/       # Línea de factura (invoice o supplierinvoice)
+├── supplierinvoice/   # Factura de proveedor (sin líneas ni pagos: asimetría SD/MM, ver 16.2)
+├── invoiceitem/       # Línea de factura de venta (solo invoice)
 └── payment/           # Pago / clearing (vinculado a invoice)
 ```
 
@@ -52,9 +53,15 @@ Supplier (1) ──< SupplierInvoice (N)
 
 | Estado | Significado |
 |--------|-------------|
-| `PENDIENTE` | Pendiente de pago |
-| `PAGADA` | Pagada (existe payment que cubre el importe) |
-| `VENCIDA` | Vencida y no pagada |
+| `PENDIENTE` | Pendiente de pago (vencimiento = `fecha + 30 días` aún no alcanzado, Σ pagos < importe) |
+| `PAGADA` | Pagada (Σ pagos = importe; admite pago único o a plazos) |
+| `VENCIDA` | Vencida (`fecha + 30 días` < fecha de referencia) y sin pagos |
+
+> **Convención de vencimiento (ciclo 11):** el modelo no tiene `dueDate`; el vencimiento se
+> define como `fecha + 30 días`. El seed persiste estados coherentes con esta convención;
+> no existe recálculo en la capa de servicio (decisión pendiente DAP1, ciclo 11).
+> `SupplierInvoice` no tiene entidad pago asociada: su estado es coherente con la antigüedad
+> (reciente ⇒ `PENDIENTE`; antigua ⇒ `PAGADA` o `VENCIDA`).
 
 ## 16.3 Navegaciones OData (`$expand` disponibles)
 
@@ -125,23 +132,36 @@ GET /odata/finance/payment-odata?$filter=invoiceId eq 'I00001'&$expand=invoice
 
 ## 16.5 Seed re-montable
 
-El seed vive en `scripts/seed/financial-seed.ts` y es **determinista**: ejecutado N veces produce
-exactamente los mismos IDs, nombres e importes (usa bucles for y pad, no aleatoriedad).
+El seed vive en `scripts/seed/` y es **determinista**: ejecutado N veces produce exactamente
+el mismo dataset (IDs, nombres, importes, fechas y relaciones). Mecanismo (ciclo 11,
+decisión D2 — actualiza D5 del ciclo 06 que preveía JSON estáticos):
+
+- `financial-seed-data.ts` — **generador puro** (sin IO): PRNG mulberry32 con semilla
+  constante + `REFERENCE_DATE = "2026-07-15"` fija (las fechas nunca derivan con el reloj).
+- `financial-seed.ts` — IO: valida invariantes **antes** de tocar la BD (fail fast),
+  borra en orden inverso a FKs, inserta con `bulkCreate` y verifica conteos post-inserción.
 
 ```bash
 pnpm seed        # Ejecuta el seed sin reiniciar la BD
 pnpm db:reset    # DROP + CREATE + sync + seed
 ```
 
-Datos generados:
-- 1 Company (Grupo Demo Corp.)
-- 8 Customers (C0001–C0008)
-- 6 Suppliers (S0001–S0006)
-- 10 GlAccounts (1000–10000)
-- 50 Invoices (distribuidas entre PENDIENTE/PAGADA/VENCIDA)
-- 20 SupplierInvoices
-- ~100 InvoiceItems (2 por Invoice)
-- Payments para las facturas PAGADAS
+Datos generados (volumen ampliado en ciclo 11):
+- 1 Company (`1000`, Servicios TI Horizonte S.A., EUR, ES)
+- 12 Customers (`C0001`–`C0012`; todos con ≥10 facturas — cobertura garantizada)
+- 6 Suppliers (`S0001`–`S0006`)
+- 10 GlAccounts (`000100`–`001000`)
+- 150 Invoices (`I00001`–`I00150`): exactamente 90 `PAGADA` / 37 `PENDIENTE` / 23 `VENCIDA`
+- 20 SupplierInvoices (`SI00001`–`SI00020`)
+- ~387 InvoiceItems (1–4 por factura; solo cuentas de ingreso `000100`/`000200`)
+- ~104 Payments (clearing exacto; ~10 facturas con pago a plazos 60/40 y ~4 `PENDIENTE` con pago parcial)
+
+Reglas de coherencia garantizadas por el generador (y verificadas por
+`validateSeedData` + tests unitarios `src/__tests__/unit/seed/`):
+- `estado` derivado de fecha + pagos (vencimiento = `fecha + 30d`); nunca contradictorio.
+- Todo pago tiene `fecha ≥ fecha` de su factura; Σ líneas = importe al céntimo.
+- `importe` de factura = Σ (precio de catálogo × cantidad) de sus líneas.
+- `createdAt`/`updatedAt` = fecha del documento (maestros: alta fija hace 1 año).
 
 ## 16.6 Tests
 

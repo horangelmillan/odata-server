@@ -208,9 +208,12 @@ El proyecto incluye 8 dominios financieros en `src/core/finance/` expuestos bajo
 | InvoiceItem | `/odata/finance/invoiceitem-odata` | invoice, glAccount |
 | Payment | `/odata/finance/payment-odata` | invoice |
 
-Estados de factura: `PENDIENTE`, `PAGADA`, `VENCIDA`.
+Estados de factura: `PENDIENTE`, `PAGADA`, `VENCIDA` (vencimiento = `fecha + 30 días`).
 
-Seed idempotente: `pnpm seed` o `pnpm db:reset` recrea los mismos datos siempre.
+Seed determinista: `pnpm seed` o `pnpm db:reset` recrea exactamente el mismo dataset
+(PRNG sembrado + fecha de referencia fija `2026-07-15`; ver `docs/02-patrones/16-financial-module.md` §16.5):
+1 sociedad, 12 clientes, 6 proveedores, 10 cuentas, 150 facturas (90/37/23
+PAGADA/PENDIENTE/VENCIDA), 20 facturas de proveedor, ~387 líneas y ~104 pagos.
 
 ---
 
