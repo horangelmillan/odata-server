@@ -48,7 +48,7 @@ export function registerWriteRoutes(
                 // F4: la validación DTO ocurre en el dominio (service.create).
                 const result = await service.create(req.body ?? {});
                 injectEtag(result.entity);
-                result.entity["@odata.context"] = `/$metadata#${modelName}/$entity`;
+                result.entity!["@odata.context"] = `/$metadata#${modelName}/$entity`;
                 res.set("Location", `/odata/${endpoint}(${result.key})`);
                 res.status(201).json(result.entity);
             } catch (error) {

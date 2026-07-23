@@ -1,4 +1,5 @@
 import { DataSource } from "@phrasecode/odata";
+import type { IDbConfig } from "@phrasecode/odata";
 import { env } from "../../config/env.config.js";
 import { ProductOData } from "../../../core/demo/product/model/product.odata.model.js";
 import { CategoryOData } from "../../../core/demo/category/model/category.odata.model.js";
@@ -33,4 +34,4 @@ if (env.isProd) {
     dataSourceConfig.ssl = { require: true, rejectUnauthorized: false };
 }
 
-export const dataSource = new DataSource(dataSourceConfig);
+export const dataSource = new DataSource(dataSourceConfig as unknown as IDbConfig);

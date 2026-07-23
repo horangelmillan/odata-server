@@ -1,5 +1,6 @@
 import { IsString, IsOptional } from "class-validator";
 import { OmitType } from "../../../../common/helper/nestjs/omit-type.helper.js";
+import { PartialType } from "../../../../common/helper/nestjs/partial-type.helper.js";
 import { ISupplier } from "../interface/supplier.interface.js";
 
 export class SupplierCreateDTO implements ISupplier {
@@ -21,7 +22,7 @@ export class SupplierCreateDTO implements ISupplier {
     updatedAt?: Date;
 }
 
-export class SupplierUpdateDTO extends OmitType(SupplierCreateDTO, ["id"] as const) {
+export class SupplierUpdateDTO extends PartialType(OmitType(SupplierCreateDTO, ["id"] as const)) {
     @IsOptional()
     @IsString()
     nombre?: string;

@@ -1,6 +1,6 @@
 {
     "name": "odata-server",
-    "version": "1.0.0",
+    "version": "2.1.0",
     "description": "OData v4 server — Node/TypeScript/Express + Modular Monolith + PostgreSQL",
     "main": "./dist/server.js",
     "type": "module",
@@ -11,13 +11,14 @@
     },
     "scripts": {
         "dev": "node scripts/patch-odata.mjs && node --watch --watch-path ./src --loader ts-node --loader ts-node/esm --no-warnings ./server.ts",
-        "build": "tsc --build",
+        "build": "tsc --build tsconfig.build.json",
         "start": "node ./dist/server.js",
-        "clean": "tsc --build --clean",
+        "clean": "tsc --build tsconfig.build.json --clean",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
         "seed": "node --loader ts-node --loader ts-node/esm --no-warnings scripts/seed/financial-seed.ts",
+        "seed:demo": "node --loader ts-node --loader ts-node/esm --no-warnings scripts/seed/demo-seed.ts",
         "db:reset": "node --loader ts-node --loader ts-node/esm --no-warnings scripts/seed/financial-seed.ts --reset",
         "postinstall": "node scripts/patch-odata.mjs"
     },
@@ -41,6 +42,7 @@
         "sequelize": "^6.37.5"
     },
     "devDependencies": {
+        "@types/bcrypt": "^6.0.0",
         "@types/compression": "^1.7.5",
         "@types/cors": "^2.8.17",
         "@types/express": "^5.0.0",

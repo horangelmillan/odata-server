@@ -9,13 +9,20 @@ const app: Express = expressApp();
 
 const initServer = async () => {
     try {
-        const sequelize = (dataSource as unknown as { sequelizerAdaptor: { sequelize: { authenticate: () => Promise<void>; sync: (opts: { alter: boolean }) => Promise<void> } } }).sequelizerAdaptor.sequelize;
+        const sequelize = (dataSource as unknown as { sequelizerAdaptor: { sequelize: { authenticate: () => Promise<void>; sync: (opts?: { alter: boolean }) => Promise<void> } } }).sequelizerAdaptor.sequelize;
 
         await sequelize.authenticate()
             .then(() => console.log("database is authenticated"));
 
-        await sequelize.sync({ alter: true })
-            .then(() => console.log("database is synced"));
+        // `alter: true` muta el esquema existente: solo seguro en desarrollo.
+        // En producción el esquema se crea si no existe, pero nunca se altera automáticamente.
+        if (env.isDev) {
+            await sequelize.sync({ alter: true })
+                .then(() => console.log("database is synced (alter: dev)"));
+        } else {
+            await sequelize.sync()
+                .then(() => console.log("database is synced"));
+        }
     } catch (err) {
         return console.log(err, "something went wrong with the database connection, the server will not start.");
     }

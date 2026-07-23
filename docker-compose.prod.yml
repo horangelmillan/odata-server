@@ -1,0 +1,43 @@
+# Entorno de PRODUCCIÓN — usar con: docker compose -f docker-compose.prod.yml up -d --build
+# Diferencias vs docker-compose.yml (dev):
+#   - target `production` del Dockerfile (sin ts-node, solo dist/ + deps de producción)
+#   - sin pgAdmin (no exponer herramientas de administración en prod)
+#   - sin montaje del código fuente (la imagen es autocontenida)
+#   - BD de producción (variables DB_* / POSTGRES_DB=odata_prod)
+services:
+  api:
+    build:
+      context: .
+      target: production
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-secret}
+      - DB=${DB:-odata_prod}
+      - SECRET_KEY=${SECRET_KEY:?Define SECRET_KEY en el entorno o en .env antes de desplegar}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+      POSTGRES_DB: ${DB:-odata_prod}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  pgdata_prod:

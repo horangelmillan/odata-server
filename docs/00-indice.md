@@ -99,3 +99,13 @@ Proyecto SAPUI5 externo en `C:/Users/Horan/Desktop/ui5-odata-demo/`.
 - [`fases/g3-internacionalizacion.md`](08-sapui5-finance-evolution/fases/g3-internacionalizacion.md) ✅ — i18n: 47 claves, modelo ResourceModel en manifest.json.
 - [`fases/g4-batch-changeset.md`](08-sapui5-finance-evolution/fases/g4-batch-changeset.md) ✅ — Tests Content-ID formato SAPUI5 (0.0/1.0), atomicidad.
 - [`fases/g5-crud-vistas.md`](08-sapui5-finance-evolution/fases/g5-crud-vistas.md) ✅ — Diálogos CRUD: InvoiceCreate, InvoiceEdit, CustomerCreate.
+
+## 09 — Ciclo de Production Readiness
+**Ciclo completado.** Estado global: ✅ **P0–P3 ejecutadas** — limpieza de archivos innecesarios,
+reubicación de utilidades huérfanas, hardening de producción (`sync({alter})` solo en dev,
+`docker-compose.prod.yml`, gate `pnpm build` en CI), **reparación del build `tsc` de producción**
+(preexistente roto en `master`) y alineación documental (`version: 2.1.0`,
+README sin enlaces rotos). Rama: `chore/production-readiness`.
+
+- [`00-plan-maestro.md`](09-production-readiness/00-plan-maestro.md) — Plan maestro: decisiones D1–D5, fases P0–P3, condiciones de aceptación.
+- [`02-implementation-backlog.md`](09-production-readiness/02-implementation-backlog.md) — Hallazgos R01–R02, M01–M03, RF01–RF02, DT01 implementados; IF01 (migraciones) y DT02 (type-check tests) movidos a iniciativa futura.

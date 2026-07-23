@@ -1,5 +1,6 @@
 import { IsString, IsNumber, IsOptional, Min } from "class-validator";
 import { OmitType } from "../../../../common/helper/nestjs/omit-type.helper.js";
+import { PartialType } from "../../../../common/helper/nestjs/partial-type.helper.js";
 import { IInvoice } from "../interface/invoice.interface.js";
 
 export class InvoiceCreateDTO implements IInvoice {
@@ -34,7 +35,7 @@ export class InvoiceCreateDTO implements IInvoice {
     updatedAt?: Date;
 }
 
-export class InvoiceUpdateDTO extends OmitType(InvoiceCreateDTO, ["id"] as const) {
+export class InvoiceUpdateDTO extends PartialType(OmitType(InvoiceCreateDTO, ["id"] as const)) {
     @IsOptional()
     @IsString()
     companyId?: string;

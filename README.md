@@ -105,6 +105,7 @@ El servidor arranca en `http://localhost:3000`.
 |---|---|
 | `pnpm dev` | Desarrollo con hot-reload (`ts-node --watch`) |
 | `pnpm seed` | Seed idempotente del ecosistema financiero |
+| `pnpm seed:demo` | Seed del dominio demo (5 categorías, 20 productos) |
 | `pnpm db:reset` | DROP + CREATE + sync + seed financiero |
 | `pnpm build` | Compila TypeScript a `dist/` |
 | `pnpm start` | Ejecuta la compilación de producción |
@@ -390,7 +391,12 @@ Esto inicia:
 - **`api`**: El servidor odata-server
 - **`pgadmin`**: Interfaz gráfica para administrar la BD en `http://localhost:5050`
 
-Ver la sección [Docker](docs/14-docker-guide.md) para más detalles.
+> `docker-compose.yml` es el entorno de **desarrollo**. Para producción usa
+> `docker-compose.prod.yml` (stage `production` del Dockerfile, sin pgAdmin ni montaje de código):
+>
+> ```bash
+> docker compose -f docker-compose.prod.yml up -d --build
+> ```
 
 ---
 
@@ -407,7 +413,7 @@ Si actualizas la librería, verifica que los parches sigan siendo necesarios (ma
 
 ### Compatibilidad SAPUI5/OpenUI5 (v1.1.0)
 
-Las fases A–I del plan `docs/14-sapui5-compatibility-plan.md` añaden las features que SAPUI5/OpenUI5 OData v4 espera y que la librería no trae de serie:
+Las fases A–I del plan `docs/04-sapui5-compat/14-sapui5-compatibility-plan.md` añaden las features que SAPUI5/OpenUI5 OData v4 espera y que la librería no trae de serie:
 
 - Acceso por clave, `/$count`, `/$batch` de lectura (Fases A–C).
 - Navigation properties (`$expand`) vía decoradores `@BelongsTo`/`@HasMany` (Fase D).
@@ -416,7 +422,7 @@ Las fases A–I del plan `docs/14-sapui5-compatibility-plan.md` añaden las feat
 - Tipos EDM (`Edm.Decimal`, `Edm.DateTimeOffset` en ISO 8601) y negociación de `$format` (Fase I).
 
 > **Nota:** la Fase P (gate de rendimiento) **superada** — `feat/odata-sapui5-compat` es
-> equivalente a `v1.1.0` (0 regresión >10% en p95/throughput, 0 errores; ver `docs/14` Sesión 13).
+> equivalente a `v1.1.0` (0 regresión >10% en p95/throughput, 0 errores; ver `docs/04-sapui5-compat/14-sapui5-compatibility-plan.md` Sesión 13).
 > El merge a `master` y el tag `v1.1.0` están desbloqueados (acción manual consciente).
 
 **Pendientes investigados antes del merge (resueltos como no-bloqueantes):**
@@ -456,7 +462,7 @@ git config core.hooksPath scripts/git-hooks
 
 `scripts/bench/` mide la regresión de rendimiento vs el release `v1.1.0` con `autocannon`
 (devDependency). El gate de aceptación es **≤10% de regresión en p95 y en throughput, 0 errores**
-(ver `docs/14`, Sesión 13).
+(ver `docs/04-sapui5-compat/14-sapui5-compatibility-plan.md`, Sesión 13).
 
 ```bash
 # 1) Baseline: checkout del tag v1.1.0 en un worktree con su propio node_modules
@@ -480,19 +486,7 @@ Postgres antes del baseline y mide el baseline **primero** (evita sesgo de cache
 
 ## Documentación adicional
 
-La carpeta `docs/` contiene guías detalladas sobre decisiones técnicas y procedimientos:
-
-| Documento | Contenido |
-|---|---|
-| `01-odata-architecture-reference.md` | Arquitectura OData del proyecto |
-| `02-dependency-research.md` | Investigación de librerías OData |
-| `03-orm-analysis.md` | Análisis de ORMs (Sequelize vs otros) |
-| `04-architecture-adaptation.md` | Adaptación Modular Monolith + OData |
-| `05-odata-module-pattern.md` | Patrón para módulos OData |
-| `06-rest-vs-odata-separation.md` | CQRS ligero REST/OData |
-| `07-security-middleware-setup.md` | Configuración de seguridad (Helmet, CORS, JWT) |
-| `08-database-setup.md` | Configuración de Sequelize + PostgreSQL |
-| `10-best-practices-checklist.md` | Checklist de mejores prácticas |
-| `11-example-module-product.md` | Ejemplo completo del módulo Product |
-| `12-example-custom-odata-query.md` | Consultas OData personalizadas |
-| `13-sapui5-integration-guide.md` | Guía de integración con SAPUI5/OpenUI5 |
+La carpeta `docs/` contiene guías detalladas sobre decisiones técnicas y procedimientos,
+organizada semánticamente por ciclos de evolución del proyecto (fundamentos, patrones,
+seguridad, compatibilidad SAPUI5, refactors y ecosistema financiero). El punto de entrada es
+[`docs/00-indice.md`](docs/00-indice.md).
