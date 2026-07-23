@@ -143,7 +143,7 @@ Si durante la revisión final identifica que varios elementos pueden resolverse 
 
 ## 2. Utilizar Codebase Memory
 
-Si existe un servidor MCP de Codebase Memory disponible:
+El servidor MCP de **Codebase Memory está disponible** en el entorno.
 
 Su uso es obligatorio antes de:
 
@@ -222,6 +222,41 @@ Utilizar Playwright antes de concluir que algo funciona correctamente.
 No asumir que una funcionalidad funciona únicamente porque el código compila
 o los tests unitarios pasan. La validación visual con Playwright es obligatoria
 antes de declarar una tarea como completada.
+
+---
+
+## 5. Utilizar GitHub MCP
+
+El servidor MCP de **GitHub está disponible** (autenticado con PAT del usuario).
+
+Úsalo para: crear/listar PRs, revisar checks de CI, gestionar issues, reviews y
+búsqueda de código en GitHub.
+
+Reglas:
+
+* Respetar siempre `docs\07-workflow\GIT_WORKFLOW.md` — el PR es el único
+  mecanismo válido de integración a `master`.
+* Antes de crear un PR, buscar plantilla en el repo.
+* Nunca cerrar issues sin `state_reason`; buscar duplicados antes de crear.
+
+---
+
+## 6. Skills instaladas en el entorno
+
+Además de `playwright-testing`, el entorno dispone de:
+
+| Skill | Cuándo cargarla |
+|---|---|
+| `codebase-memory` | Al usar el MCP codebase-memory (patrones de consulta del grafo). |
+| `context7-mcp` | Al resolver documentación de librerías con Context7. |
+| `vitest` | Al escribir, configurar o depurar tests con Vitest. |
+| `sapui5` | Al trabajar en la app UI5 (`ui5-odata-demo`): vistas XML, controladores, manifest.json, binding OData v4, QUnit/OPA5. |
+| `ponytail` | Solución minimalista / "lazy" / YAGNI. **Límites:** nunca simplificar validación, seguridad, manejo de errores ni el flujo Git. Si contradice este AGENTS.md, gana el proyecto. |
+
+Guía detallada con escenarios: `docs\10-herramientas-mcp-skills\01-guia-de-uso.md`.
+
+No instalar skills o MCP adicionales sin registrar la decisión en el backlog
+de la iniciativa activa.
 
 ---
 

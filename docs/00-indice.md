@@ -109,3 +109,14 @@ README sin enlaces rotos). Rama: `chore/production-readiness`.
 
 - [`00-plan-maestro.md`](09-production-readiness/00-plan-maestro.md) — Plan maestro: decisiones D1–D5, fases P0–P3, condiciones de aceptación.
 - [`02-implementation-backlog.md`](09-production-readiness/02-implementation-backlog.md) — Hallazgos R01–R02, M01–M03, RF01–RF02, DT01 implementados; IF01 (migraciones) y DT02 (type-check tests) movidos a iniciativa futura.
+
+## 10 — Tooling: MCP y Skills del entorno
+**Ciclo completado.** Estado global: ✅ — reglas de uso documentadas para los 4 MCP
+(`github`, `context7`, `codebase-memory`, `playwright`) y las skills instaladas;
+investigación de skills de terceros en skills.sh con decisiones (instaladas `vitest` y
+`sapui5`; 8 rechazadas con motivo). Incluye la creación del `AGENTS.md` global del entorno
+(antes referenciado pero inexistente). Rama: `docs/tooling-mcp-skills`.
+
+- [`00-plan-maestro.md`](10-herramientas-mcp-skills/00-plan-maestro.md) — Plan maestro: decisiones D1–D6, entregables, aceptación.
+- [`01-guia-de-uso.md`](10-herramientas-mcp-skills/01-guia-de-uso.md) — Guía práctica: reglas por MCP/skill y escenarios típicos del proyecto.
+- [`02-implementation-backlog.md`](10-herramientas-mcp-skills/02-implementation-backlog.md) — R01, M01–M02 implementados; IF01–IF03 movidos a iniciativa futura.
