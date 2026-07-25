@@ -2,7 +2,7 @@
 
 > **Ciclo:** `feature/seed-data-quality` (rama dedicada; merge a `master` solo vía PR, flujo `docs/07-workflow/GIT_WORKFLOW.md`).
 > **Inicio:** 2026-07-23
-> **Estado global:** ✅ F0–F4 implementadas; F5 (cierre documental + PR) en curso.
+> **Estado global:** ✅ F0–F5 implementadas; PR #16 hacia master.
 > **Depende de:** Ciclo 06 (`feature/financial-eco`) — ya en `master` como `v2.1.0-financial-eco`.
 
 ---
@@ -86,7 +86,7 @@ El seed mantiene sus comandos: `pnpm seed` (truncate + seed) y `pnpm db:reset` (
 | **F2** | Coherencia de ciclo de vida: estado derivado de fecha+pagos; pagos ≥ fecha; Σ líneas = importe; cuentas de ingreso; createdAt = fecha documento. | Invariantes verificados en tests unitarios y con queries SQL en BD (0 violaciones). | ✅ |
 | **F3** | Ampliación: 150 facturas, 12 clientes, ~375 items, ~100 pagos; pagos a plazos y parciales. | `pnpm seed` inserta el volumen objetivo; conteos validados. | ✅ |
 | **F4** | Validación: chequeo de invariantes post-seed en el propio script; `pnpm test` + `pnpm build` verdes. | Suite completa verde sin regresión (174 pass + 1 todo; baseline 166). | ✅ |
-| **F5** | Cierre: patrón 16 actualizado, backlog resuelto, PR → `master`. | PR abierto con check verde. | 🚧 |
+| **F5** | Cierre: patrón 16 actualizado, backlog resuelto, PR → `master`. | PR #16 abierto con check verde. | ✅ |
 
 ---
 
@@ -98,3 +98,4 @@ El seed mantiene sus comandos: `pnpm seed` (truncate + seed) y `pnpm db:reset` (
 - [x] `pnpm test` verde (baseline 166 + nuevos tests del generador).
 - [x] `pnpm build` verde.
 - [x] Documentación alineada (16.5 describe el mecanismo real; índice y backlog cerrados).
+- [x] PR #16 hacia `master` abierto.

@@ -82,6 +82,7 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 | 2026-07-23 | DT2, DT6 | Tipos `fecha` alineados (`DATE`); decisión D5 registra el modelo simplificado. |
 | 2026-07-23 | F4 | Validación: `validateSeedData` (8 tests unitarios sin BD) + chequeo post-inserción en el seed. Suite: 174 pass + 1 todo (baseline 166, sin regresión). `pnpm build` verde. |
 | 2026-07-23 | DT4, DT5 | F5: patrón 16 actualizado (16.2 asimetría SD/MM, 16.5 mecanismo real), README ampliado. |
+| 2026-07-23 | Apertura PR | F5: commit `2ec03d6`, push a `feature/seed-data-quality`, PR #16 hacia `master`. Rama lista para merge vía GitHub. |
 
 ---
 
