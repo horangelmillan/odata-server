@@ -3,6 +3,7 @@ import { ODataControler } from "@phrasecode/odata";
 import { odataWriteService, type ODataBaseModel, type WriteResult } from "./odata-write.service.js";
 import { injectEtag, etagMatches } from "./odata-etag.js";
 import { oDataError } from "./odata-error.js";
+import { UniqueConstraintError } from "sequelize";
 import { JSONValidatorException } from "../../exception/json-validator.exception.js";
 import { type DomainWriteService } from "./odata-registration.interface.js";
 
@@ -56,6 +57,10 @@ export function registerWriteRoutes(
                     res.status(400).json(validationErrorBody(error));
                     return;
                 }
+                if (error instanceof UniqueConstraintError) {
+                    res.status(409).json(oDataError(409, "Conflict", "Entity with this key already exists"));
+                    return;
+                }
                 res.status(500).json(oDataError(500, "Error creating entity", (error as Error).message));
             }
         });
@@ -82,7 +87,9 @@ export function registerWriteRoutes(
                     }
                 }
                 // F4: la validación DTO ocurre en el dominio (service.update).
-                const id = Number(req.params.id);
+                // Soporta claves numéricas (demo) y alfanuméricas (finance).
+                const rawId = req.params.id;
+                const id = /^\d+$/.test(rawId) ? Number(rawId) : rawId;
                 const result = await service.update(id, req.body ?? {});
                 if (!result.entity) {
                     res.status(404).json(oDataError(404, "Entity not found"));

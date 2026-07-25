@@ -122,13 +122,23 @@ investigación de skills de terceros en skills.sh con decisiones (instaladas `vi
 - [`02-implementation-backlog.md`](10-herramientas-mcp-skills/02-implementation-backlog.md) — R01, M01–M02 implementados; IF01–IF03 movidos a iniciativa futura.
 
 ## 11 — Ciclo de Calidad y Ampliación de Datos Seed Financieros
-**Ciclo en curso.** Estado global: ✅ **F0–F4 implementadas** — evaluación exhaustiva de
+**Ciclo completado.** Estado global: ✅ **F0–F5 implementadas** — evaluación exhaustiva de
 coherencia del seed financiero (4 riesgos, 6 deudas técnicas, 5 mejoras), determinismo
 restaurado (PRNG sembrado + fecha de referencia fija, actualiza D5 del ciclo 06), coherencia
 de ciclo de vida (estado derivado de fecha + pagos) y ampliación de 50 → 150 facturas de
-cliente con líneas y pagos coherentes (+4 clientes). F5 (PR) en curso.
+cliente con líneas y pagos coherentes (+4 clientes). Merge a `master` vía PR #16.
 Rama: `feature/seed-data-quality`.
 
 - [`00-plan-maestro.md`](11-seed-data-quality/00-plan-maestro.md) — Plan maestro: decisiones D1–D5, fases F0–F5, aceptación.
 - [`01-evaluacion-coherencia.md`](11-seed-data-quality/01-evaluacion-coherencia.md) — Evaluación exhaustiva: coherencias confirmadas e incoherencias con evidencia.
 - [`02-implementation-backlog.md`](11-seed-data-quality/02-implementation-backlog.md) — Backlog: R1–R4, M1–M5, RF01, DT1–DT6, IF01, DAP1–DAP2.
+
+## 12 — Ciclo de Validación Financiera UI5 + OData v4
+**Ciclo en ejecución.** Estado global: 🚧 Plan aprobado; pruebas en curso.
+Prueba integral de los 8 dominios financieros del servidor OData a través de la app
+UI5 (`ui5-odata-demo`) usando Playwright como harness de navegador real. Incluye
+navegación completa, filtros, CRUD desde diálogos, `$expand` profundo y edge cases.
+Rama: `docs/financial-ui5-testing`.
+
+- [`00-test-plan.md`](12-financial-ui5-testing/00-test-plan.md) — Plan de pruebas: checklist P0–P3, backlog, fases de ejecución.
+- [`02-implementation-backlog.md`](12-financial-ui5-testing/02-implementation-backlog.md) — Backlog: B1–B10 categorizados (riesgos, mejoras, deuda técnica, decisiones).

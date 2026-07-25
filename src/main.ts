@@ -28,7 +28,10 @@ export default function () {
             // cualquier ruta entrante con `/demo/` se normaliza.
             req.url = req.url.replace(/^\/demo\//, "/");
             if (req.path.includes("$metadata")) req.url = "/$metadata";
-            req.url = req.url.replace(/\((\d+)\)/g, "/$1");
+            // Transforma paréntesis OData → slash para que rutas Express
+            // con /:id (escrituras directas y GET-by-key de ExpressRouter)
+            // puedan matchear tanto claves numéricas como string.
+            req.url = req.url.replace(/\(('[^']*'|\d+)\)/g, (_, k) => "/" + k.replace(/^'|'$/g, ""));
             res.set("OData-Version", "4.0");
             next();
         },
