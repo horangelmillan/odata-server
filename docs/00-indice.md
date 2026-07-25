@@ -120,3 +120,15 @@ investigación de skills de terceros en skills.sh con decisiones (instaladas `vi
 - [`00-plan-maestro.md`](10-herramientas-mcp-skills/00-plan-maestro.md) — Plan maestro: decisiones D1–D6, entregables, aceptación.
 - [`01-guia-de-uso.md`](10-herramientas-mcp-skills/01-guia-de-uso.md) — Guía práctica: reglas por MCP/skill y escenarios típicos del proyecto.
 - [`02-implementation-backlog.md`](10-herramientas-mcp-skills/02-implementation-backlog.md) — R01, M01–M02 implementados; IF01–IF03 movidos a iniciativa futura.
+
+## 11 — Ciclo de Calidad y Ampliación de Datos Seed Financieros
+**Ciclo en curso.** Estado global: ✅ **F0–F4 implementadas** — evaluación exhaustiva de
+coherencia del seed financiero (4 riesgos, 6 deudas técnicas, 5 mejoras), determinismo
+restaurado (PRNG sembrado + fecha de referencia fija, actualiza D5 del ciclo 06), coherencia
+de ciclo de vida (estado derivado de fecha + pagos) y ampliación de 50 → 150 facturas de
+cliente con líneas y pagos coherentes (+4 clientes). F5 (PR) en curso.
+Rama: `feature/seed-data-quality`.
+
+- [`00-plan-maestro.md`](11-seed-data-quality/00-plan-maestro.md) — Plan maestro: decisiones D1–D5, fases F0–F5, aceptación.
+- [`01-evaluacion-coherencia.md`](11-seed-data-quality/01-evaluacion-coherencia.md) — Evaluación exhaustiva: coherencias confirmadas e incoherencias con evidencia.
+- [`02-implementation-backlog.md`](11-seed-data-quality/02-implementation-backlog.md) — Backlog: R1–R4, M1–M5, RF01, DT1–DT6, IF01, DAP1–DAP2.
