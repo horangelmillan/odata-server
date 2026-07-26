@@ -88,7 +88,7 @@ export function registerWriteRoutes(
                 }
                 // F4: la validación DTO ocurre en el dominio (service.update).
                 // Soporta claves numéricas (demo) y alfanuméricas (finance).
-                const rawId = req.params.id;
+                const rawId = req.params.id as string;
                 const id = /^\d+$/.test(rawId) ? Number(rawId) : rawId;
                 const result = await service.update(id, req.body ?? {});
                 if (!result.entity) {

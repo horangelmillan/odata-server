@@ -1,5 +1,6 @@
 import morgan from "morgan";
 import express, { Express } from "express";
+import compression from "compression";
 import helmet from "helmet";
 import cors from "cors";
 
