@@ -25,7 +25,8 @@ export default function () {
         "/odata",
         (req, res, next) => {
             if (req.path.includes("$metadata")) req.url = "/$metadata";
-            req.url = req.url.replace(/\((\d+)\)/g, "/$1");
+            req.url = req.url.replace(/^\/demo\//, "/");
+            req.url = req.url.replace(/\(('[^']*'|\d+)\)/g, (_, k) => "/" + k.replace(/^'|'$/g, ""));
             res.set("OData-Version", "4.0");
             next();
         },
