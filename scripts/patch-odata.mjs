@@ -240,7 +240,7 @@ const patchedMethod = `    setUpODataRouters(router, controller) {
                             return res.status(404).json({ error: 'Entity not found' });
                         }
                         const result = responce.value[0];
-                        result['@odata.context'] = '/$metadata#' + model.getModelName() + '/$entity';
+                        result['@odata.context'] = '$metadata#' + model.getModelName() + '/$entity';
                         result.meta = { totalExecutionTime: executionTime };
                         res.send(result);
                     }
@@ -264,6 +264,16 @@ const patchedMethod = `    setUpODataRouters(router, controller) {
             }
         });
     }`;
+
+// Parche 5: @odata.context leading slash — UI5 OData V4 model resolves the
+// context URL relative to the service root, so "$metadata#" is correct while
+// "/$metadata#" is an absolute path relative to the origin (broken behind proxy).
+patchFile(
+    path.join("@phrasecode", "odata", "dist", "serializers", "responseBuilder.js"),
+    "@odata.context leading slash (responseBuilder)",
+    "'@odata.context': `/$metadata#",
+    "'@odata.context': `$metadata#",
+);
 
 if (fs.existsSync(expressRouterPath)) {
     patchMethod(
