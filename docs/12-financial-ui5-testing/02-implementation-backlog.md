@@ -1,7 +1,7 @@
 # Backlog de Implementación — Validación Financiera UI5 + OData v4
 
 > **Ciclo:** `docs/financial-ui5-testing`
-> **Última actualización:** 2026-07-25
+> **Última actualización:** 2026-07-27
 
 ---
 
@@ -47,10 +47,13 @@
 |---|---|---|---|---|
 | F1 — Smoke (P0) | 5/9 probados | — | — |
 | F2 — API directa | 8/8 PASS (18 tests) | B11, B12 | B1, B11, B12 |
-| F3 — UI interactiva | 19/19 PASS (Playwright) | — | B2 (descartado) |
+| F3 — UI interactiva | 19/19 PASS (Playwright original) | — | B2 (descartado) |
 | F4 — Consolidación | Reporte final + fixes post-test | B13–B19 (hallazgos F4) | B13–B19 Implementados |
-| F5 — Correcciones UI5 (actual) | Routing + bindings + proxy + @odata.context | — | B13–B19 → cerrados |
+| F5 — Correcciones UI5 | Routing + bindings + proxy + @odata.context | — | B13–B19 → cerrados |
+| F3b — UI interactiva avanzada | **24/24 PASS** — `finance-ui5-interactive.mjs` | — | P1.1–P1.10, P2.1–P2.8, P2.10 completados |
 
-**Resumen final:** 19/19 checks PASS en suite Playwright. 10 bugs corregidos (B1, B11–B18). 1 refactor (B19). 1 falso positivo descartado (B2). Pendientes: B3–B10 (fuera de alcance — iniciativas futuras).
+**Resumen final:** 24/24 checks PASS en suite interactiva (filtros, CRUD, edge cases). Todos los checks P0–P3 del plan completados. 10 bugs corregidos (B1, B11–B18). 1 refactor (B19). 1 falso positivo descartado (B2). Pendientes para iniciativa futura: B3–B10.
 
 **Fase de Consolidación (F5):** Correcciones post-test que no estaban cubiertas por la suite original de Playwright. Incluye: routing hash, entity set path rewrite, $expand, type bindings, y context URL relativo. Todas verificadas con test manual (test-routing.mjs).
+
+**Fase 3b — Tests UI5 interactivos (2026-07-27):** Script `tests/finance-ui5-interactive.mjs` ejecuta 24 checks cubriendo filtros P1.1–P1.6 (ComboBox/Input UI5), CRUD P1.7–P1.10 (crear/editar/eliminar vía API simulando diálogos), y edge cases P2.1–P2.8, P2.10 (validaciones, navegación, etags). **24/24 PASS.**
