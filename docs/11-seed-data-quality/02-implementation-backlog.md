@@ -65,7 +65,7 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 
 | ID | Tema | Motivo | Estado |
 | -- | ---- | ------ | ------ |
-| DAP1 | ¿Recalcular `estado` en lectura (`computeStatus` en service) o mantenerlo persistido? | El seed ahora persiste estados coherentes, pero escrituras API posteriores pueden degradarlo | Pendiente |
+| DAP1 | ¿Recalcular `estado` en lectura (`computeStatus` en service) o mantenerlo persistido? | **RESUELTO (2026-07-27):** `computeInvoiceStatus` implementado en `src/core/finance/invoice/service/compute-status.ts` — recalcula estado en escrituras (create/update invoice + create/update/delete payment). Se usa `computeStatus` en escritura (no en lectura), manteniendo reads eficientes y consistencia con pagos. | Implementado |
 | DAP2 | ¿Dotar a `supplierinvoice` de items/pagos (simetría SD/MM)? | Asimetría actual documentada (DT5); implica nuevos modelos | Pendiente |
 
 ---
@@ -83,6 +83,7 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 | 2026-07-23 | F4 | Validación: `validateSeedData` (8 tests unitarios sin BD) + chequeo post-inserción en el seed. Suite: 174 pass + 1 todo (baseline 166, sin regresión). `pnpm build` verde. |
 | 2026-07-23 | DT4, DT5 | F5: patrón 16 actualizado (16.2 asimetría SD/MM, 16.5 mecanismo real), README ampliado. |
 | 2026-07-23 | Apertura PR | F5: commit `2ec03d6`, push a `feature/seed-data-quality`, PR #16 hacia `master`. Rama lista para merge vía GitHub. |
+| 2026-07-27 | DAP1 | `computeInvoiceStatus(fecha, importe, payments)` creado en `src/core/finance/invoice/service/compute-status.ts`. Services de Invoice y Payment lo invocan en cada escritura (create/update/delete). Build verde + 174 tests PASS sin regresión. |
 
 ---
 

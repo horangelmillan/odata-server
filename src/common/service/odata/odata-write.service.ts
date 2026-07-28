@@ -94,6 +94,16 @@ class ODataWriteService {
         return payload;
     }
 
+    async findAll(
+        model: ODataBaseModel,
+        where: Record<string, unknown>,
+        tx: Transaction,
+    ): Promise<Record<string, unknown>[]> {
+        const { sqModel } = this.resolve(model);
+        const rows = await sqModel.findAll({ where, transaction: tx });
+        return rows.map((row) => row.toJSON() as Record<string, unknown>);
+    }
+
     async findByPk(model: ODataBaseModel, keyValue: unknown, tx: Transaction): Promise<Record<string, unknown> | null> {
         const { sqModel } = this.resolve(model);
         const row = await sqModel.findByPk(keyValue as never, { transaction: tx });

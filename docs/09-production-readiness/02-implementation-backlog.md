@@ -50,7 +50,7 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 
 | ID | Detectado en | Tema | Motivo | Estado |
 | -- | ------------ | ---- | ------ | ------ |
-| IF01 | Evaluación P2 | Sistema de migraciones de esquema (Umzug / sequelize-cli) | El gate de `sync` elimina el riesgo inmediato, pero prod carece de versionado de esquema; los cambios de modelo futuros requerirán migraciones controladas | Movido a una iniciativa futura |
+| IF01 | Evaluación P2 | Sistema de migraciones de esquema (Umzug / sequelize-cli) | **IMPLEMENTADO (2026-07-27).** `umzug` 3.8.3 integrado: `src/common/service/odata/migrations/migrator.ts` + baseline `001-baseline.ts` (10 tablas). `server.ts` ejecuta `runMigrations()` antes de `sync()`. Build verde, 174 tests PASS. Próximos cambios de esquema: crear `002-xxx.ts` en migrations/. | Implementado |
 
 ---
 
@@ -77,11 +77,12 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 | 2026-07-21 | RF02 | Script `seed:demo` en `package.json` + README. |
 | 2026-07-21 | DT01 | README: enlaces rotos reparados; referencia única a `docs/00-indice.md`. |
 | 2026-07-21 | — | P0: borrados 8 logs (~738 KB), `.playwright-mcp/` (0.4 MB), `dist/`, `.tsbuildinfo` (ignorados por git, sin commit). |
+| 2026-07-27 | IF01 | Sistema de migraciones Umzug implementado. `umzug@3.8.3` + `SequelizeStorage` + baseline con 10 tablas. `server.ts`: migraciones → `sync({alter})` en dev, migraciones → `sync()` en prod. Build verde, 174 tests PASS. |
 
 ---
 
 # Cierre de la iniciativa
 
-Todos los elementos quedan en estado **Implementado** salvo **IF01** (migraciones de esquema)
-y **DT02** (type-check de tests/scripts), que se mueven a una iniciativa futura.
+Todos los elementos quedan en estado **Implementado** salvo **DT02** (type-check de tests/scripts),
+que se mueve a una iniciativa futura.
 No quedan elementos en "Pendiente" ni "En evaluación".
