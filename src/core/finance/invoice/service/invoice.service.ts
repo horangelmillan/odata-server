@@ -1,7 +1,10 @@
 import { transformAndValidate, ClassType } from "class-transformer-validator";
 import { ValidationError } from "class-validator";
+import type { Transaction } from "sequelize";
 import { InvoiceCreateDTO, InvoiceUpdateDTO } from "../dto/invoice.dto.js";
 import { InvoiceODataController } from "../controller/invoice.odata.controller.js";
+import { PaymentOData } from "../../payment/model/payment.odata.model.js";
+import { computeInvoiceStatus } from "./compute-status.js";
 import {
     odataWriteService,
     type ODataBaseModel,
@@ -30,6 +33,28 @@ async function validate<T extends object>(dto: ClassType<T>, data: unknown): Pro
     }
 }
 
+export async function recalcInvoiceStatus(model: ODataBaseModel, id: string, tx: Transaction): Promise<void> {
+    const invoice = await odataWriteService.findByPk(model, id, tx);
+    if (!invoice) return;
+
+    const paymentModel = new PaymentOData();
+    const payments = await odataWriteService.findAll(
+        paymentModel as unknown as ODataBaseModel,
+        { invoiceId: id },
+        tx,
+    );
+
+    const newEstado = computeInvoiceStatus(
+        invoice["fecha"] as string,
+        Number(invoice["importe"]),
+        payments.map((p) => ({ importe: Number(p["importe"]) })),
+    );
+
+    if (newEstado !== invoice["estado"]) {
+        await odataWriteService.update(model, id, { estado: newEstado } as Record<string, unknown>, tx);
+    }
+}
+
 class InvoiceService {
     private controller = new InvoiceODataController();
 
@@ -48,6 +73,8 @@ class InvoiceService {
     async create(data: unknown): Promise<WriteResult> {
         const dto = await validate(InvoiceCreateDTO, data);
         const model = modelOf(this.controller);
+        const today = new Date().toISOString().split("T")[0];
+        dto.estado = computeInvoiceStatus(dto.fecha, dto.importe, [], today);
         return await odataWriteService.runInTransaction((tx) =>
             odataWriteService.create(model, dto as unknown as Record<string, unknown>, tx),
         );
@@ -56,9 +83,11 @@ class InvoiceService {
     async update(id: string, data: unknown): Promise<WriteResult> {
         const dto = await validate(InvoiceUpdateDTO, data);
         const model = modelOf(this.controller);
-        return await odataWriteService.runInTransaction((tx) =>
-            odataWriteService.update(model, id, dto as unknown as Record<string, unknown>, tx),
-        );
+        return await odataWriteService.runInTransaction(async (tx) => {
+            const result = await odataWriteService.update(model, id, dto as unknown as Record<string, unknown>, tx);
+            await recalcInvoiceStatus(model, id, tx);
+            return result;
+        });
     }
 
     async remove(id: string): Promise<unknown> {
