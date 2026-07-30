@@ -275,11 +275,11 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         const value = (res.body as any).value as Record<string, any>[];
         const electronic = value.find((c) => c.id === electronicId);
         expect(electronic).toBeDefined();
-        expect(Array.isArray(electronic.products)).toBe(true);
+        expect(Array.isArray(electronic!.products)).toBe(true);
         // Riesgo FK: con $select restringido, Sequelize debe seguir incluyendo
         // la FK para agrupar los hijos; si no, products quedaría vacío.
-        expect(electronic.products.length).toBe(3);
-        for (const product of electronic.products) {
+        expect(electronic!.products.length).toBe(3);
+        for (const product of electronic!.products) {
             expect(product).toHaveProperty("nombre");
             expect(product).not.toHaveProperty("precio");
         }
@@ -290,8 +290,8 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
-        const electronic = value.find((c) => c.id === electronicId);
-        const home = value.find((c) => c.id === homeId);
+        const electronic = value.find((c) => c.id === electronicId)!;
+        const home = value.find((c) => c.id === homeId)!;
         expect(electronic.products.length).toBe(1);
         expect(electronic.products[0].nombre).toBe("Laptop");
         expect(home.products.length).toBe(1);
@@ -303,7 +303,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
-        const electronic = value.find((c) => c.id === electronicId);
+        const electronic = value.find((c) => c.id === electronicId)!;
         expect(electronic.products.length).toBe(2);
         expect(electronic.products[0].nombre).toBe("Laptop");
         expect(electronic.products[1].nombre).toBe("Mouse");
@@ -314,7 +314,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
-        const electronic = value.find((c) => c.id === electronicId);
+        const electronic = value.find((c) => c.id === electronicId)!;
         expect(electronic.products.length).toBe(2);
     });
 
@@ -325,7 +325,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
-        const electronic = value.find((c) => c.id === electronicId);
+        const electronic = value.find((c) => c.id === electronicId)!;
         expect(electronic.products.length).toBe(2);
         for (const product of electronic.products) {
             expect(product).not.toHaveProperty("precio");
@@ -338,7 +338,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         expect(res.status).toBe(200);
         const body = res.body as Record<string, any>;
         expect(body["@odata.count"]).toBeGreaterThan(0);
-        const electronic = (body.value as Record<string, any>[]).find((c) => c.id === electronicId);
+        const electronic = (body.value as Record<string, any>[]).find((c) => c.id === electronicId)!;
         expect(electronic.products.length).toBe(3);
     });
 
@@ -396,10 +396,10 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
 
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
-        const electronic = value.find((c) => c.id === electronicId);
+        const electronic = value.find((c) => c.id === electronicId)!;
         expect(electronic).toBeDefined();
         expect(electronic.products.length).toBe(3);
-        for (const product of electronic.products) {
+        for (const product of electronic!.products) {
             expect(product).toHaveProperty("nombre");
             expect(product).not.toHaveProperty("precio");
         }
@@ -444,7 +444,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
         const start = text.indexOf("{", jPos);
         const end = text.lastIndexOf("}");
         const obj = JSON.parse(text.substring(start, end + 1)) as Record<string, any>;
-        const electronic = (obj.value as Record<string, any>[]).find((c) => c.id === electronicId);
+        const electronic = (obj.value as Record<string, any>[]).find((c) => c.id === electronicId)!;
         expect(electronic).toBeDefined();
         expect(electronic.products.length).toBe(3);
         expect(electronic.products[0]).toHaveProperty("nombre");

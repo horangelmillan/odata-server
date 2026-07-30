@@ -42,7 +42,7 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 | ID | Detectado en | Descripción | Impacto | Estado |
 | -- | ------------ | ----------- | ------- | ------ |
 | DT01 | Evaluación P1 | README acumulaba ~15 enlaces rotos tras la reorganización semántica de `docs/` (ciclo 05+). | Documentación poco confiable | Implementado — enlaces reparados; tabla final apunta a `docs/00-indice.md` |
-| DT02 | Implementación P2 | Tests (`*.test.ts`) y `scripts/seed/` quedan **fuera del type-check de build** (`tsconfig.build.json` los excluye): ~170 errores de tipos en tests (globals de Vitest, possibly-undefined) y 2 en `financial-seed.ts` siguen existiendo, enmascarados porque Vitest/esbuild y `ts-node transpileOnly` no type-chequean. | Calidad de tipos incompleta fuera de prod | Movido a una iniciativa futura — requiere `tsconfig` de tests con tipos de Vitest y corrección de los errores uno a uno |
+| DT02 | Implementación P2 | Tests (`*.test.ts`) y `scripts/seed/` quedan **fuera del type-check de build** (`tsconfig.build.json` los excluye): ~170 errores de tipos en tests (globals de Vitest, possibly-undefined) y 2 en `financial-seed.ts` siguen existiendo, enmascarados porque Vitest/esbuild y `ts-node transpileOnly` no type-chequean. | Calidad de tipos incompleta fuera de prod | **IMPLEMENTADO (2026-07-28).** `tsconfig.test.json` creado (extiende base + incluye tests y scripts). `globals.d.ts` con referencia vitest/globals. 196 errores corregidos: 165 Vitest globals (vía types), 21 possibly-undefined (non-null assertions), 8 bulkCreate (casts). `pnpm build` (prod) y `pnpm test` (174/174) sin regresión. |
 
 ---
 
@@ -78,6 +78,7 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 | 2026-07-21 | DT01 | README: enlaces rotos reparados; referencia única a `docs/00-indice.md`. |
 | 2026-07-21 | — | P0: borrados 8 logs (~738 KB), `.playwright-mcp/` (0.4 MB), `dist/`, `.tsbuildinfo` (ignorados por git, sin commit). |
 | 2026-07-27 | IF01 | Sistema de migraciones Umzug implementado. `umzug@3.8.3` + `SequelizeStorage` + baseline con 10 tablas. `server.ts`: migraciones → `sync({alter})` en dev, migraciones → `sync()` en prod. Build verde, 174 tests PASS. |
+| 2026-07-28 | DT02 | Type-check tests/scripts reparado. `tsconfig.test.json` + `globals.d.ts` (vitest/globals). 196 errores → 0. Build prod y 174 tests sin regresión. |
 
 ---
 
