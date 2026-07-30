@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": [
+    "./src/",
+    "./server.ts",
+    "./scripts/"
+  ],
+  "exclude": [
+    "./node_modules",
+    "./dist"
+  ]
+}
+

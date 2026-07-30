@@ -144,9 +144,9 @@ describe("Financial $expand contra Postgres (F3)", () => {
         expect(value.length).toBeGreaterThan(0);
         const c1 = value.find((c: any) => c.id === "C0001");
         expect(c1).toBeTruthy();
-        checkExpand(c1, "invoices");
-        if (c1.invoices.length > 0) {
-            checkExpand(c1.invoices[0], "items");
+        checkExpand(c1!, "invoices");
+        if (c1!.invoices.length > 0) {
+            checkExpand(c1!.invoices[0], "items");
         }
     });
 
