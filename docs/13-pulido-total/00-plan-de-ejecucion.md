@@ -33,10 +33,10 @@ Cada ítem tiene criterio de aceptación explícito.
 
 | ID | Acción | Estado |
 |---|---|---|
-| F0.1 | Crear `docs/13-pulido-total/00-plan-de-ejecucion.md` (este documento) | [ ] |
-| F0.2 | Crear `docs/13-pulido-total/02-implementation-backlog.md` con hallazgos N1–N17 | [ ] |
-| F0.3 | Registrar baseline (build, 174 tests, type-check 0 errores) | [ ] |
-| F0.4 | Rama `feat/pulido-total` desde `master` actualizado | [ ] |
+| F0.1 | Crear `docs/13-pulido-total/00-plan-de-ejecucion.md` (este documento) | [x] ✅ |
+| F0.2 | Crear `docs/13-pulido-total/02-implementation-backlog.md` con hallazgos N1–N17 | [x] ✅ |
+| F0.3 | Registrar baseline (build, 174 tests, type-check 0 errores) | [x] ✅ |
+| F0.4 | Rama `feat/pulido-total` desde `master` actualizado | [x] ✅ (rama creada y mergeada vía PR #22) |
 
 **Aceptación:** Documentos presentes; baseline documentado; rama creada desde master.
 
@@ -51,7 +51,7 @@ Cada ítem tiene criterio de aceptación explícito.
 
 **Hallazgos adicionales de Fase A:**
 - **N18 (CRÍTICO)**: binding por-key tipado de UI5 v4 no procesa respuestas (Raw) — demo y finance. `requestObject()` sí funciona. Tests del ciclo 12 (P0.7/P0.8/P2.5a/P2.6a) eran falsos positivos. → investigación dedicada (ver backlog).
-- **N19**: seed demo no re-ejecutable (IDs auto-increment); test bench by-key con IDs fijos → 404; "Create via $batch" falla.
+- **N19**: seed demo no re-ejecutable (IDs auto-increment); test bench by-key con IDs fijos → 404; "Create via $batch" falla. → **RESUELTO (07-30):** causa raíz del $batch = `assemble()` sin CRLF previo al boundary (RFC 2046) — el "quirk de cliente" de F6.1 era bug del servidor. Fix + test de regresión. Seed re-ejecutado; test bench 8/8 PASS; 0 errores consola. 176/176 tests.
 - **Fix extra**: PaymentList `$expand=invoice` (drill-down `{invoice/id}` fallaba).
 - **Fix extra**: ETag header con comillas (RFC 7232) en `odata.service.ts`.
 - **N20**: `forceSelection` inválido en ComboBox (InvoiceList) → eliminado.
@@ -97,9 +97,9 @@ Cada ítem tiene criterio de aceptación explícito.
 
 | ID | Acción | Estado |
 |---|---|---|
-| F1 | Suite completa: `pnpm build`, `pnpm test`, type-check tests | [ ] |
+| F1 | Suite completa: `pnpm build`, `pnpm test`, type-check tests | [x] ✅ (verificado 07-30: build ✅, 176/176 tests, type-check 0) |
 | F2 | Validación Playwright final de las 8 vistas finance | [ ] |
-| F3 | Actualizar backlog del ciclo 13 (estados finales) | [ ] |
+| F3 | Actualizar backlog del ciclo 13 (estados finales) | [x] ✅ (N19/N4 cerrados en 07-30) |
 | F4 | Commit + push + PR a `master` | [ ] |
 
 **Aceptación:** Checklist completo; PR con check verde; backlog sin pendientes.
