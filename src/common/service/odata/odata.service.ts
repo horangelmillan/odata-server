@@ -132,7 +132,13 @@ oDataExpressApp.use((_req, res, next) => {
         // `compression` genera un `ETag` weak basado en el hash del cuerpo que
         // no corresponde al etag de la entidad y UI5 recibe 412 en todo update.
         const etag = (normalized as Record<string, unknown>)?.["@odata.etag"];
-        if (typeof etag === "string") res.set("ETag", etag);
+        // NOTA (2026-07-31, ciclo 13): el ETag HTTP debe ir ENTRE COMILLAS según
+        // RFC 7232 (`ETag: "valor"`). Setearlo sin comillas produce un header
+        // inválido que UI5 v4 (ODataModel, runtime 1.150) rechaza en respuestas
+        // por-key ($expand), dejando el binding en Raw sin datos. Se emite el
+        // formato correcto con comillas; `normalizeEtagHeader` del servidor ya
+        // las quita al comparar If-Match.
+        if (typeof etag === "string") res.set("ETag", `"${etag}"`);
         return originalJson(normalized);
     };
     next();

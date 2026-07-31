@@ -10,11 +10,9 @@ import {
     type ODataBaseModel,
     type WriteResult,
 } from "../../../../common/service/odata/odata-write.service.js";
+import { modelOf } from "../../../../common/service/odata/odata-model-of.js";
 import { JSONValidatorException } from "../../../../common/exception/json-validator.exception.js";
 
-function modelOf(controller: PaymentODataController): ODataBaseModel {
-    return controller.getBaseModel() as unknown as ODataBaseModel;
-}
 
 function invoiceModelOf(): ODataBaseModel {
     const controller = new InvoiceODataController();

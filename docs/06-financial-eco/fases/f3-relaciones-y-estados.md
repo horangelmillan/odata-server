@@ -42,10 +42,10 @@ Añadir `financial-expand.integration.test.ts` que valide los `$expand` profundo
 
 ## 2. Criterios de aceptación
 
-- [ ] `$expand` profundo funcional en invoice/supplierinvoice/payment.
-- [ ] Estados PENDIENTE/PAGADA/VENCIDA calculados coherentemente.
-- [ ] Queries representativas del chatbot resueltas vía OData.
-- [ ] `pnpm test` en verde.
+- [x] `$expand` profundo funcional en invoice/supplierinvoice/payment. *(Ciclo 12 P1.11 + `financial-expand.integration.test.ts` — verificado)*
+- [x] Estados PENDIENTE/PAGADA/VENCIDA calculados coherentemente. *(Ciclo 11 F2 seed + DAP1 `computeInvoiceStatus` — verificado)*
+- [x] Queries representativas del chatbot resueltas vía OData. *(Ciclo 06 F4 `financial-ecosystem.integration.test.ts` — verificado)*
+- [x] `pnpm test` en verde. *(Suite 174/174 PASS, ciclo 13)*
 
 ---
 

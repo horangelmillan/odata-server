@@ -108,7 +108,7 @@ reubicación de utilidades huérfanas, hardening de producción (`sync({alter})`
 README sin enlaces rotos). Rama: `chore/production-readiness`.
 
 - [`00-plan-maestro.md`](09-production-readiness/00-plan-maestro.md) — Plan maestro: decisiones D1–D5, fases P0–P3, condiciones de aceptación.
-- [`02-implementation-backlog.md`](09-production-readiness/02-implementation-backlog.md) — Hallazgos R01–R02, M01–M03, RF01–RF02, DT01 implementados; IF01 (migraciones) y DT02 (type-check tests) movidos a iniciativa futura.
+- [`02-implementation-backlog.md`](09-production-readiness/02-implementation-backlog.md) — Hallazgos R01–R02, M01–M03, RF01–RF02, DT01, **IF01 (migraciones Umzug)** y **DT02 (type-check tests)** implementados.
 
 ## 10 — Tooling: MCP y Skills del entorno
 **Ciclo completado.** Estado global: ✅ — reglas de uso documentadas para los 4 MCP
@@ -131,14 +131,29 @@ Rama: `feature/seed-data-quality`.
 
 - [`00-plan-maestro.md`](11-seed-data-quality/00-plan-maestro.md) — Plan maestro: decisiones D1–D5, fases F0–F5, aceptación.
 - [`01-evaluacion-coherencia.md`](11-seed-data-quality/01-evaluacion-coherencia.md) — Evaluación exhaustiva: coherencias confirmadas e incoherencias con evidencia.
-- [`02-implementation-backlog.md`](11-seed-data-quality/02-implementation-backlog.md) — Backlog: R1–R4, M1–M5, RF01, DT1–DT6, IF01, DAP1–DAP2.
+- [`02-implementation-backlog.md`](11-seed-data-quality/02-implementation-backlog.md) — Backlog: R1–R4, M1–M5, RF01, DT1–DT6, **IF01 (modelo financiero rico) y DAP1 implementados**; DAP2 diferido.
 
 ## 12 — Ciclo de Validación Financiera UI5 + OData v4
-**Ciclo en ejecución.** Estado global: 🚧 Plan aprobado; pruebas en curso.
-Prueba integral de los 8 dominios financieros del servidor OData a través de la app
-UI5 (`ui5-odata-demo`) usando Playwright como harness de navegador real. Incluye
-navegación completa, filtros, CRUD desde diálogos, `$expand` profundo y edge cases.
-Rama: `docs/financial-ui5-testing`.
+**Ciclo completado.** Estado global: ✅ **P0–P3 + F3b completados** — prueba integral de los
+8 dominios financieros del servidor OData a través de la app UI5 (`ui5-odata-demo`) usando
+Playwright como harness de navegador real: navegación, filtros, CRUD desde diálogos,
+`$expand` profundo y edge cases. **24/24 checks PASS** en la suite interactiva. Merge a
+`master` vía PR #18. Además, en ramas posteriores se resolvieron los backlogs del ciclo
+(B1–B19) y los de ciclos previos: DAP1 (computeStatus), IF01 C09 (migraciones Umzug),
+IF01 C11 (modelo financiero rico: dueDate/netAmount/taxAmount/grossAmount/docNumber),
+DT02 (type-check tests) — PRs #19, #20, #21.
+Rama: `docs/financial-ui5-testing` (cerrada).
 
 - [`00-test-plan.md`](12-financial-ui5-testing/00-test-plan.md) — Plan de pruebas: checklist P0–P3, backlog, fases de ejecución.
-- [`02-implementation-backlog.md`](12-financial-ui5-testing/02-implementation-backlog.md) — Backlog: B1–B10 categorizados (riesgos, mejoras, deuda técnica, decisiones).
+- [`02-implementation-backlog.md`](12-financial-ui5-testing/02-implementation-backlog.md) — Backlog: B1–B19 todos resueltos (implementados/descartado B2).
+
+## 13 — Ciclo de Pulido Total
+**Ciclo en ejecución.** Estado global: 🚧 Plan aprobado (2026-07-31).
+Pulido integral: bugs de consola UI5 (FormatException, i18n_en 404), gate de type-check en CI,
+bump de versión 2.2.0, documentación desalineada (índice, checkboxes f3, backlogs C09/C11),
+higiene de repos (artefactos Playwright, logs, `.tsbuildinfo`), repo remoto para
+`ui5-odata-demo` (main/dev protegidas) y deuda técnica evaluada (helper `modelOf()`, DAP2).
+Rama: `feat/pulido-total`.
+
+- [`00-plan-de-ejecucion.md`](13-pulido-total/00-plan-de-ejecucion.md) — Plan con sistema de checklist (fases 0–F).
+- [`02-implementation-backlog.md`](13-pulido-total/02-implementation-backlog.md) — Hallazgos N1–N17 categorizados.
