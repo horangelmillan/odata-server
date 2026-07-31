@@ -1,164 +1,108 @@
-# 07 — Security Middleware Setup (Helmet, Morgan, Compression, CORS)
+# 07 — Seguridad por entorno (ciclo 16, F2)
 
-## 7.1 Helmet v8
+> Estado real tras F2 del ciclo 16 (Producción Segura). Este documento reemplaza
+> la versión anterior que describía la era REST (rutas `/api` eliminadas en el
+> ciclo 15 y JWT huérfano eliminado en D1 ciclo 15).
 
-**Purpose**: Sets 13 security HTTP headers by default to protect the application against common web vulnerabilities.
+## 7.1 Modelo: modo abierto vs modo estricto (decisión D2)
 
-| Header | Protects against |
-|--------|---------------|
-| Content-Security-Policy | XSS, script injection |
-| Strict-Transport-Security | HTTPS downgrade attacks |
-| X-Content-Type-Options | MIME sniffing |
-| X-Frame-Options | Clickjacking |
-| X-XSS-Protection | XSS (legacy browsers) |
+| Entorno | Modo | Seguridad |
+|---|---|---|
+| `development` / `test` | **Abierto** | Sin auth ni rate-limit; CORS abierto; `SECRET_KEY` con default local |
+| `production` | **Estricto** | Fail-fast de entorno; JWT Bearer obligatorio en `/odata` (salvo `$metadata`); CORS restringido a `CORS_ORIGIN`; rate-limit en escrituras |
 
-**Configuration in `src/main.ts`:**
+La compuerta es `env.isProd` en `src/main.ts` (composition root). Dev/test no
+exigen configuración de seguridad (cero fricción); producción aborta el
+arranque si falta `SECRET_KEY` (≥ 32 chars) o `CORS_ORIGIN`
+(`src/common/config/env.config.ts` → `validateProd()`).
 
-```typescript
-import helmet from "helmet";
+## 7.2 Autenticación (dominio `src/core/auth/`)
 
-app.use(helmet());
-```
+- **Login**: `POST /auth/login` (público, JSON `{ username, password }`) →
+  `{ token }` o 401. Verifica contra la tabla `users` (migración
+  `004-auth-users.ts`) con `bcrypt.compare`; firma JWT con `env.jwtSecret`
+  (expiración: `TOKEN_TTL_HOURS`, default 8h).
+- **Protección**: `AuthMiddleware.requireBearerToken()` (kernel, common) valida
+  `Authorization: Bearer <jwt>`; 401 genérico si falta/es inválido/expirado.
+  Solo se monta en producción y solo sobre `/odata`; `/healthz` y
+  `$metadata` son públicos (decisión DA1).
+- **Usuarios**: `pnpm auth:create-user` (password desde `AUTH_PASSWORD` o
+  `--password=`, nunca versionada; upsert por username) y `pnpm seed:auth`
+  (admin de prueba dev: `admin` / `admin1234`, sobrescribible con
+  `AUTH_DEV_PASSWORD`). `db:reset` encadena el seed de auth.
 
-For environments where frontend resources are served from a different domain (e.g., SAPUI5 from a CDN), adjust the CSP directives:
+## 7.3 Helmet v8
 
-```typescript
-app.use(helmet({
-    contentSecurityPolicy: {
-        useDefaults: true,
-        directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "https://sapui5.hana.ondemand.com"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://sapui5.hana.ondemand.com"],
-            imgSrc: ["'self'", "data:"],
-        },
-    },
-    crossOriginEmbedderPolicy: false,
-}));
-```
+Siempre activo (`app.use(helmet())`): CSP, HSTS, X-Content-Type-Options,
+X-Frame-Options, etc. Para servir SAPUI5 desde CDN, ajustar
+`contentSecurityPolicy.directives` (scriptSrc/styleSrc del CDN) — ver la
+configuración de ejemplo de la versión anterior de este documento si el
+despliegue lo requiere.
 
----
-
-## 7.2 Morgan v1.10
-
-**Purpose**: HTTP request logging for Express.
+## 7.4 CORS v2.8 (por entorno)
 
 ```typescript
-import morgan from "morgan";
-
-if (process.env.NODE_ENV === "development") {
-    app.use(morgan("dev"));
-} else {
-    app.use(morgan("combined"));
+const corsOptions = { exposedHeaders: ["OData-Version"] };
+if (env.isProd) {
+    corsOptions.origin = (origin, callback) => callback(null, origin === env.corsOrigin);
 }
-```
-
-**Available formats:**
-
-| Format | Description | Use case |
-|--------|-------------|---------|
-| `dev` | Colored, method, url, status, response time | Development |
-| `combined` | Apache-style (IP, date, method, url, status, size, referrer, user-agent) | Production |
-| `common` | Apache common log format | Simple production |
-| `short` | Compact with response time | Quick debugging |
-
-In production, `combined` is recommended as it matches the format expected by most log analysis tools (ELK, Splunk, etc.).
-
----
-
-## 7.3 Compression v1.7
-
-**Purpose**: gzip/brotli compression of HTTP responses to reduce bandwidth and improve load times.
-
-```typescript
-import compression from "compression";
-
-app.use(compression());
-```
-
-**Key parameters:**
-
-- **filter**: Disable compression for certain requests (e.g., when the client sends `x-no-compression`).
-- **threshold**: Responses smaller than this value are not compressed. Defaults to 1024 bytes.
-- **level**: Compression level from 1 (fast, minimal) to 9 (slow, maximum). 6 is the zlib default and offers the best balance.
-
-The default configuration in `src/main.ts` uses compression with default settings, placed after `express.json()` to ensure compressed responses from REST endpoints.
-
----
-
-## 7.4 CORS v2.8
-
-**Purpose**: Cross-Origin Resource Sharing — controls which domains can access server resources.
-
-```typescript
-import cors from "cors";
-
-const corsOptions = {
-    origin: process.env.CORS_ORIGIN || "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    exposedHeaders: ["OData-Version"],
-    credentials: true,
-    maxAge: 86400,
-};
-
 app.use(cors(corsOptions));
 ```
 
-**Notable configuration:**
+- **Dev/test**: abierto (sin `origin`).
+- **Prod**: forma **callback** — con un string fijo, el paquete `cors` lo
+  aplicaría a cualquier origen; con callback solo el origen de `CORS_ORIGIN`
+  recibe headers CORS. `OData-Version` expuesto siempre (crítico para
+  clientes OData).
 
-- **exposedHeaders**: `OData-Version` is critical for clients consuming OData services. Without this header exposed, the client cannot read the protocol version and may fail to interpret the response.
-- **credentials**: `true` allows cookies and auth headers cross-origin. Requires `origin` to be a specific domain (not `"*"`).
-- **maxAge**: 86400 seconds (24 hours) caches the preflight OPTIONS response, reducing additional requests.
+## 7.5 Rate-limit (solo prod, escrituras)
 
-For production, set `origin` to the exact frontend domain (e.g., `https://app.miempresa.com`) instead of `"*"`.
+`express-rate-limit` (sin dependencias de runtime — IF2 resuelta) sobre
+`/odata`: POST/PUT/PATCH/DELETE limitados a 100 por IP cada 15 min; lecturas y
+`$metadata` sin límite. Headers `RateLimit-*` estándar.
 
----
+## 7.6 `/healthz` (liveness, D6)
 
-## 7.5 Middleware Order (Critical) — as configured in `src/main.ts`
+`GET /healthz` público: ping a la BD + uptime → 200
+`{ status: "ok", db: "up", uptime }` o 503 si la BD no responde. Lo consume el
+healthcheck del compose prod (F3).
 
-The order in which middleware is mounted determines the request processing pipeline. Incorrect ordering can cause unexpected behavior or security vulnerabilities.
+## 7.7 Middleware order (estado actual en `src/main.ts`)
 
 ```typescript
-// src/main.ts
-const app: Express = express();
+app.use(helmet());                            // 1. Headers de seguridad
+app.use(cors(corsOptions));                   // 2. CORS por entorno
+app.get("/healthz", ...);                     // 3. Liveness público
 
-app.use(helmet());                          // 1. Security headers
-app.use(cors(corsOptions));                 // 2. CORS
-
-app.use(
-    "/odata",
-    contextMiddleware,                       // 3. OData context ($metadata rewrite + header)
-    oDataExpressApp,
-);
-
-app.use(express.json());                    // 4. Body parser (for REST endpoints)
-app.use(compression());                     // 5. Compression
-
-if (process.env.NODE_ENV === "development") {
-    app.use(morgan("dev"));                 // 6. Logging
-} else {
-    app.use(morgan("combined"));
+if (env.isProd) {                             // 4. Modo estricto
+    app.use("/odata", writeLimiter);          //    rate-limit escrituras
+    app.use("/odata", authSkipMetadata);      //    Bearer JWT (salvo $metadata)
 }
 
-app.use("/api", GlobalRouter);              // 7. REST API routes
-app.use(GlobalErrorMiddleware.globalErrorHandler()); // 8. Global error handler (last)
+app.use("/odata", contextMiddleware, oDataExpressApp); // 5. OData
+app.use(express.json());                      // 6. Body parser
+app.use(compression());                       // 7. Compresión
+app.use("/auth", authController);             // 8. Login (público)
+morgan(...);                                  // 9. Logging por entorno
+app.use(GlobalErrorMiddleware.globalErrorHandler()); // 10. Errores (último)
 ```
 
-**Explanation of the order:**
+Notas de orden:
 
-1. **Helmet first**: Security headers must apply to ALL responses without exception, including early error responses.
+- **Limiter y auth ANTES de la cadena OData** (que reescribe `$metadata`):
+  el limiter corre incluso si el request luego da 401.
+- **`$metadata` se salta el auth** por decisión DA1: `req.path.includes("$metadata")`.
+- **OData antes de `express.json()`**: `@phrasecode/odata` parsea su propio body.
+- **Login después de `express.json()`**: necesita el body JSON.
+- **Error handler siempre último.**
 
-2. **CORS**: Immediately after helmet so preflight (OPTIONS) responses include correct CORS headers before other middleware processes the request.
+## 7.8 Entorno productivo (variables)
 
-3. **OData before express.json()**: `@phrasecode/odata` handles its own body and query parameter parsing. If `express.json()` runs first, it could interfere with OData streaming or consume the body before the OData controller processes it. The context middleware rewrites `$metadata` URL paths and sets the `OData-Version` header.
+| Variable | Obligatoria en prod | Descripción |
+|---|---|---|
+| `SECRET_KEY` | Sí (≥ 32 chars) | Firma JWT; aborta el arranque si falta/débil |
+| `CORS_ORIGIN` | Sí | Origen exacto permitido para CORS |
+| `DB_SSL` | No | `"false"` desactiva SSL (compose local); default: SSL requerido |
+| `TOKEN_TTL_HOURS` | No | Expiración del JWT (default 8h) |
 
-4. **Body parser**: Placed right after OData so REST endpoints can access `req.body`.
-
-5. **Compression**: After body parsers, before REST routes. Compressing REST JSON responses reduces payload size significantly.
-
-6. **Morgan**: Logging before routes captures all processed requests. Morgan logs the response after completion, so its position relative to routes does not affect logging.
-
-7. **REST API**: Business endpoints mounted last, after all infrastructure and parsing middleware.
-
-8. **Global error handler**: Always the last middleware. If placed earlier, errors thrown in subsequent middleware would not be caught.
+Ver `.env.example`.

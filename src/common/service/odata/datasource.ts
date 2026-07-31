@@ -19,7 +19,10 @@ const dataSourceConfig: Record<string, unknown> = {
     },
 };
 
-if (env.isProd) {
+// F2 (ciclo 16): SSL exigido en prod por defecto (BD gestionada); `DB_SSL=false`
+// lo desactiva para despliegues locales del compose prod (BD del mismo stack)
+// y para tests de modo estricto contra la BD dev.
+if (env.isProd && process.env.DB_SSL !== "false") {
     dataSourceConfig.ssl = { require: true, rejectUnauthorized: false };
 }
 

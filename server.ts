@@ -7,17 +7,22 @@ import { runMigrations } from "./src/common/service/odata/migrations/migrator.js
 import { domainRegistrations } from "./src/core/main.js";
 import * as baselineMigration from "./src/common/service/odata/migrations/001-baseline.js";
 import { financeMigrations } from "./src/core/finance/migrations/index.js";
+import { AuthUserOData } from "./src/core/auth/main.js";
+import { authMigrations } from "./src/core/auth/migrations/index.js";
 
 // RF1/RF2 (ciclo 16, F1): el bootstrap compone el datasource (modelos desde
 // los registros de dominio) y la lista explícita de migraciones. `001-baseline`
 // es el snapshot histórico congelado. El `name` es la IDENTIDAD en
 // SequelizeMeta: se conserva exactamente el nombre que registraba el resolver
 // glob histórico (con extensión) para que las bases ya migradas no re-ejecuten.
-const dataSource = createDataSource(domainRegistrations.map((r) => r.model));
+// F2: el modelo de usuarios del dominio auth se añade a la composición (tabla
+// sincronizada en dev; migración 004 en prod) — no es un entityset OData.
+const dataSource = createDataSource([...domainRegistrations.map((r) => r.model), AuthUserOData]);
 
 const migrations = [
     { name: "001-baseline.ts", up: baselineMigration.up, down: baselineMigration.down },
     ...financeMigrations,
+    ...authMigrations,
 ];
 
 const server: http.Server = http.createServer();

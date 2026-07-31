@@ -11,6 +11,25 @@ export interface DbConnectionConfig {
     database: string;
 }
 
+// F2 (ciclo 16): producción exige configuración explícita (R4). Fail-fast al
+// importar: sin `SECRET_KEY` (>= 32 chars) o sin `CORS_ORIGIN` el proceso
+// aborta antes de escuchar. Dev/test (modo abierto, D2) conservan defaults.
+function validateProd(): { jwtSecret: string; corsOrigin: string } {
+    const jwtSecret = process.env.SECRET_KEY;
+    const corsOrigin = process.env.CORS_ORIGIN;
+    if (!jwtSecret || jwtSecret.length < 32) {
+        throw new Error(
+            "[PROD] SECRET_KEY requerida con al menos 32 caracteres (arranque abortado)",
+        );
+    }
+    if (!corsOrigin) {
+        throw new Error("[PROD] CORS_ORIGIN requerida (arranque abortado)");
+    }
+    return { jwtSecret, corsOrigin };
+}
+
+const prodEnv = process.env.NODE_ENV === "production" ? validateProd() : null;
+
 function loadDevDb(): DbConnectionConfig {
     return {
         dialect: "postgres",
@@ -36,7 +55,8 @@ function loadProdDb(): DbConnectionConfig {
 export const env = {
     nodeEnv: process.env.NODE_ENV || "development",
     port: Number(process.env.PORT) || 3000,
-    jwtSecret: process.env.SECRET_KEY || "change-me",
+    jwtSecret: prodEnv?.jwtSecret ?? (process.env.SECRET_KEY || "change-me"),
+    corsOrigin: prodEnv?.corsOrigin ?? process.env.CORS_ORIGIN,
     isDev: process.env.NODE_ENV !== "production",
     isProd: process.env.NODE_ENV === "production",
     devDb: loadDevDb(),
