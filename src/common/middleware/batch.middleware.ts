@@ -185,8 +185,8 @@ function primaryKeyOf(controller: ODataControler): string {
 }
 
 function resolveTarget(url: string, registry: Map<string, ODataControler>): ResolvedTarget | null {
-    // G1: la ruta interna de un $batch es relativa a la ra��z del servicio OData,
-    // pero SAPUI5 (y otros clientes) la env��an como ruta ABSOLUTA incluyendo el
+    // G1: la ruta interna de un $batch es relativa a la raíz del servicio OData,
+    // pero SAPUI5 (y otros clientes) la envían como ruta ABSOLUTA incluyendo el
     // prefijo del service root (`/odata`). Lo normalizamos.
     let normalizedUrl = url.replace(/^\//, "");
     normalizedUrl = normalizedUrl.replace(/^odata\//i, "");
@@ -458,9 +458,9 @@ async function processTopLevelRequest(
             dispatchWrite(method, target, body, tx, new Map(), headers["if-match"]),
         );
         // G1 (F6): para escrituras top-level (UI5 reemplaza un changeset de una
-        // sola petici��n por una petici��n top-level al enviar el $batch), la
-        // respuesta debe ser tambi��n top-level y SIN `Content-ID` (UI5 correlaciona
-        // la respuesta con la petici��n pendiente por posici��n, no por Content-ID).
+        // sola petición por una petición top-level al enviar el $batch), la
+        // respuesta debe ser también top-level y SIN `Content-ID` (UI5 correlaciona
+        // la respuesta con la petición pendiente por posición, no por Content-ID).
         return httpResponseBlock(response);
     } catch (error) {
         if (error instanceof ChangesetError) {

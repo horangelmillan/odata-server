@@ -209,9 +209,9 @@ common/service/odata/odata-write.routes.ts
 
 ## 6. Criterios de aceptación del diseño
 
-- [ ] `common/service/odata/odata-write.routes.ts` sin imports a `core/`.
-- [ ] `common/service/odata/odata.service.ts` sin imports directos a dominios individuales (solo `core/main.ts`).
-- [ ] `registerWriteRoutes` acepta `Record<string, DomainWriteService>` como tercer parámetro.
-- [ ] `core/main.ts` exporta `domainRegistrations[]`.
-- [ ] Cada dominio exporta un objeto `DomainRegistration`.
-- [ ] `id: string | number` en la interfaz `DomainWriteService`.
+- [x] `common/service/odata/odata-write.routes.ts` sin imports a `core/`. *(Verificado)*
+- [x] `common/service/odata/odata.service.ts` sin imports directos a dominios individuales (solo `core/main.ts`). *(Verificado)*
+- [x] `registerWriteRoutes` acepta `Record<string, DomainWriteService>` como tercer parámetro. *(Firma vigente)*
+- [x] `core/main.ts` exporta `domainRegistrations[]`. *(Vigente — 12 registros)*
+- [x] Cada dominio exporta un objeto `DomainRegistration`. *(Vigente en los 12 dominios)*
+- [x] `id: string | number` en la interfaz `DomainWriteService`. *(Vigente en `odata-registration.interface.ts`)*

@@ -321,13 +321,13 @@ onEntityPress: function (oEvent) {
 
 ## 4. Criterios de aceptación
 
-- [ ] Lista de facturas visible con datos reales.
-- [ ] Las columnas `customer/nombre` y `company/nombre` se resuelven correctamente (expanden automáticamente).
-- [ ] Al seleccionar una factura, navega al detalle.
-- [ ] Detalle de factura muestra cabecera + líneas con cuenta mayor expandida.
-- [ ] Lista de clientes visible.
-- [ ] Navegación hacia atrás funciona.
-- [ ] `ui5lint` sin errores.
+- [x] Lista de facturas visible con datos reales. *(Validado en ciclos 12–13)*
+- [x] Las columnas `customer/nombre` y `company/nombre` se resuelven correctamente (expanden automáticamente). *(B15: `$expand=customer,company`; validado)*
+- [x] Al seleccionar una factura, navega al detalle. *(Ciclo 12 P1.11 + ciclo 13 F2)*
+- [x] Detalle de factura muestra cabecera + líneas con cuenta mayor expandida. *(Ciclo 12: `$expand` profundo; ciclo 13: fix N18 por-key)*
+- [x] Lista de clientes visible. *(Ciclo 12)*
+- [x] Navegación hacia atrás funciona. *(Ciclos 12–13)*
+- [x] `ui5lint` sin errores. *(CI de `ui5-odata-demo` ejecuta `pnpm lint` — verde)*
 
 ---
 

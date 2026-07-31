@@ -35,9 +35,9 @@ Añadir entrada `06-financial-eco` con enlace al plan maestro y estado de fases.
 
 ## 2. Criterios de aceptación
 
-- [ ] `docs/02-patrones/16-financial-module.md` creado.
-- [ ] `README.md` y `AGENTS.md` mencionan el ecosistema y el seed re-montable.
-- [ ] `docs/00-indice.md` enlista el ciclo 06.
+- [x] `docs/02-patrones/16-financial-module.md` creado. *(Existe; actualizado en ciclos 11 y 14)*
+- [x] `README.md` y `AGENTS.md` mencionan el ecosistema y el seed re-montable. *(README: scripts seed/db:reset + ecosistema financiero; verificado en ciclos 06/11/15)*
+- [x] `docs/00-indice.md` enlista el ciclo 06. *(Índice §06)*
 
 ---
 

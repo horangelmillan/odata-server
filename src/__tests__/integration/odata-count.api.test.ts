@@ -71,13 +71,13 @@ vi.mock("../../common/service/odata/datasource.js", () => ({
 
 import expressApp from "../../main.js";
 
-// NOTA IMPORTANTE (visible en los resultados de `pnpm test`): TODO este archivo
-// MOCKEA `common/service/odata/datasource.js`, así que el controlador OData no
-// toca Sequelize/Postgres. Por eso los tests de la colección pasan aunque, con la
-// BD real, la ruta de colección con `$filter` crashea (KNOWN ISSUE, ver
-// docs/pruebas-odata-product.md §5). Los tests de `/$count` SÍ ejercitan el
-// ExpressRouter parcheado real (QueryParser + decoding del parche), por lo que
-// cubren el comportamiento y los errores introducidos por el parche.
+// NOTA: este archivo MOCKEA `common/service/odata/datasource.js` para testear el
+// ExpressRouter parcheado real (QueryParser + decoding del parche) sin tocar
+// Sequelize/Postgres. El histórico KNOWN ISSUE ("con BD real la ruta de colección
+// con $filter crasheaba", docs/pruebas-odata-product.md §5) quedó resuelto en el
+// ciclo 13 (N6): la colección con $filter responde 200 con datos (verificado
+// contra Postgres real). La cobertura con BD real vive en los tests de integración
+// (financial-ecosystem, odata-expand, supplierinvoice-symmetry).
 
 describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => {
     const app = () => expressApp();

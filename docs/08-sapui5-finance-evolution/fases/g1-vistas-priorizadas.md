@@ -255,13 +255,13 @@ Agregar `ActionListItem` para `Payment` con `customData` `entityName="payment"`.
 
 ## 4. Criterios de aceptación
 
-- [ ] `ui5lint` sin errores.
-- [ ] Al seleccionar un cliente en CustomerList, navega a CustomerDetail.
-- [ ] CustomerDetail muestra datos del cliente + facturas expandidas.
-- [ ] PaymentList visible con datos reales.
-- [ ] PaymentList muestra columna `invoice/id` expandida.
-- [ ] Navegación hacia atrás desde CustomerDetail funciona.
-- [ ] Nuevo item "Pagos (Payment)" en Finance.view.xml navega a PaymentList.
+- [x] `ui5lint` sin errores. *(CI de `ui5-odata-demo` ejecuta `pnpm lint` — verde)*
+- [x] Al seleccionar un cliente en CustomerList, navega a CustomerDetail. *(Validado con Playwright en ciclos 12–13)*
+- [x] CustomerDetail muestra datos del cliente + facturas expandidas. *(Ciclo 12: `$expand` cliente + facturas; validado)*
+- [x] PaymentList visible con datos reales. *(Ciclo 12)*
+- [x] PaymentList muestra columna `invoice/id` expandida. *(B16: `$expand=invoice`; validado)*
+- [x] Navegación hacia atrás desde CustomerDetail funciona. *(Ciclos 12–13)*
+- [x] Nuevo item "Pagos (Payment)" en Finance.view.xml navega a PaymentList. *(8/8 vistas del test bench, ciclos 12–13)*
 
 ---
 

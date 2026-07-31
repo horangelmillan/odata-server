@@ -34,9 +34,9 @@ Al ser el seed idempotente, los asserts de conteo/importes son estables entre ej
 
 ## 2. Criterios de aceptación
 
-- [ ] Tests de ecosistema en verde.
-- [ ] `pnpm test` global en verde (sin regresión vs baseline F0).
-- [ ] Cobertura de las queries del chatbot.
+- [x] Tests de ecosistema en verde. *(`financial-ecosystem.integration.test.ts` en la suite — verde en cada ejecución)*
+- [x] `pnpm test` global en verde (sin regresión vs baseline F0). *(Suite 192/192 PASS, ciclo 14)*
+- [x] Cobertura de las queries del chatbot. *(Queries representativas resueltas vía OData — verificado en F3 y en `financial-ecosystem.integration.test.ts`)*
 
 ---
 

@@ -119,7 +119,7 @@ A pesar de la respuesta correcta del servidor, `ODataContext.created()` de SAPUI
 - [x] `POST /odata/$batch` con cambios multipart/mixed devuelve 200 con resultados.
 - [x] Los `Content-ID` se correlacionan correctamente (el servidor responde con eco).
 - [x] `pnpm test` en verde (164/164, sin regresión).
-- [ ] SAPUI5 test `testBatch` — ❌ `created()` timeout (quirk de cliente UI5 documentado).
+- [~] SAPUI5 test `testBatch` — ❌ `created()` timeout (quirk de cliente UI5 documentado). *(Pendiente real que se conserva: timeout de `created()` del modelo v4 en $batch — quirk del cliente UI5, documentado; en ciclo 15, M1 con estado "no bloqueante, requiere investigación con librería UI5 actualizada")*
 - [x] Se puede migrar a `updateGroupId="changes"` — ✅ ya está configurado.
 
 ---

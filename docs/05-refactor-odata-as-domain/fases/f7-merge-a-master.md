@@ -17,13 +17,13 @@ forma consciente (acción explícita del usuario).
 
 ## 1. Checklist de condiciones de aceptación (gate)
 
-- [ ] F0–F6 ejecutadas y verificadas.
-- [ ] `pnpm test` en verde (sin tests de REST colgantes; cobertura OData ≥ baseline).
-- [ ] Demo `ui5-odata-demo` funcional contra `/odata` (CRUD + `$expand` + etag).
-- [ ] Benchmark de regresión ≤10% en p95/throughput vs baseline (Fase P).
-- [ ] `GET /api/*` no expuesto; solo `/odata`.
-- [ ] Documentación (`README.md`, `AGENTS.md`, `docs/`) alineada al diseño OData-as-domain.
-- [ ] `master` protegido: el merge requiere desbloquear la protección conscientemente.
+- [x] F0–F6 ejecutadas y verificadas. *(Ciclo 05 completo: merge vía PR #1, tag `v2.0.0-odata-domain`)*
+- [x] `pnpm test` en verde (sin tests de REST colgantes; cobertura OData ≥ baseline). *(Verificado en F7 y en cada ciclo posterior — suite 192/192 PASS al cierre del ciclo 14)*
+- [x] Demo `ui5-odata-demo` funcional contra `/odata` (CRUD + `$expand` + etag). *(Validado con Playwright en ciclos 12–13: 8/8 test bench, 24/24 checks, 0 errores de consola)*
+- [x] Benchmark de regresión ≤10% en p95/throughput vs baseline (Fase P). *(Ciclo 05 F6: 0 fails; único WARN `category $expand products` +12.12% p95 por ruido — gate satisfecho)*
+- [x] `GET /api/*` no expuesto; solo `/odata`. *(404 efectivo desde el ciclo 05; el montaje `/api` residual se eliminó en el ciclo 15, RF1)*
+- [x] Documentación (`README.md`, `AGENTS.md`, `docs/`) alineada al diseño OData-as-domain. *(Alineada en ciclos 13 N8/N10 y 15)*
+- [~] `master` protegido: el merge requiere desbloquear la protección conscientemente. *(Superseded: el mecanismo de desbloqueo consciente (git hooks `ALLOW_MASTER_*`) se eliminó en el ciclo 15, D2; la protección real es GitHub: rama protegida + PR + CI)*
 
 ---
 

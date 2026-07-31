@@ -59,11 +59,11 @@ Cada sub-fase sigue el mismo molde:
 
 ## 3. Criterios de aceptación (F1 global)
 
-- [ ] Los 8 modelos `@Table/@Column` existen en `core/<dominio>/model/`.
-- [ ] Los 8 controladores `ODataControler` registrados en `odata.service.ts`.
-- [ ] `datasource.ts` importa los 8 modelos.
-- [ ] `pnpm test` en verde (sin regresión vs baseline F0).
-- [ ] `$metadata` expone las 8 entidades.
+- [x] Los 8 modelos `@Table/@Column` existen en `core/<dominio>/model/`. *(12 dominios registrados hoy en `core/main.ts` — 8 finance + 2 demo + 2 DAP2)*
+- [x] Los 8 controladores `ODataControler` registrados en `odata.service.ts`. *(Mecanismo evolucionado: registro centralizado `core/main.ts` → `domainRegistrations[]` (ciclo 07) + lista única en `odata-models.ts` con test de consistencia (DT1, ciclo 14))*
+- [x] `datasource.ts` importa los 8 modelos. *(Hoy vía lista centralizada `odata-models.ts`)*
+- [x] `pnpm test` en verde (sin regresión vs baseline F0). *(Suite 192/192 PASS, ciclo 14)*
+- [x] `$metadata` expone las 8 entidades. *(12 EntityTypes; verificado en ciclos 12–14)*
 
 ---
 

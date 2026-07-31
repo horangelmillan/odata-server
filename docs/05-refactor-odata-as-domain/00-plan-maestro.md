@@ -156,10 +156,10 @@ cubriendo escritura+lectura de forma validada.
 
 ## 7. Condiciones de aceptación globales (gate de merge a master — F7)
 
-- [ ] F0–F6 ejecutadas y verificadas.
-- [ ] `pnpm test` en verde (sin tests de REST colgantes; cobertura de OData ≥ la actual).
-- [ ] Demo `ui5-odata-demo` funcional contra `/odata` (CRUD + `$expand` + etag).
-- [ ] Benchmark de regresión ≤10% en p95/throughput vs baseline (Fase P).
-- [ ] `GET /api/*` no expuesto; solo `/odata`.
-- [ ] Documentación (`README.md`, `AGENTS.md`, `docs/`) alineada al diseño OData-as-domain.
-- [ ] `master` protegido: el merge requiere desbloquear la protección de forma consciente.
+- [x] F0–F6 ejecutadas y verificadas. *(Ciclo 05 completo: merge vía PR #1, tag `v2.0.0-odata-domain`)*
+- [x] `pnpm test` en verde (sin tests de REST colgantes; cobertura de OData ≥ la actual). *(Suite 192/192 PASS al cierre del ciclo 14)*
+- [x] Demo `ui5-odata-demo` funcional contra `/odata` (CRUD + `$expand` + etag). *(Validado con Playwright en ciclos 12–13)*
+- [x] Benchmark de regresión ≤10% en p95/throughput vs baseline (Fase P). *(Ciclo 05 F6: gate satisfecho, 0 fails)*
+- [x] `GET /api/*` no expuesto; solo `/odata`. *(404 efectivo; montaje residual eliminado en el ciclo 15, RF1)*
+- [x] Documentación (`README.md`, `AGENTS.md`, `docs/`) alineada al diseño OData-as-domain. *(Alineada en ciclos 13 y 15)*
+- [~] `master` protegido: el merge requiere desbloquear la protección de forma consciente. *(Superseded: git hooks de desbloqueo eliminados en el ciclo 15, D2; protección real = GitHub PR + CI)*
