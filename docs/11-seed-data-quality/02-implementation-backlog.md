@@ -66,7 +66,7 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 | ID | Tema | Motivo | Estado |
 | -- | ---- | ------ | ------ |
 | DAP1 | ¿Recalcular `estado` en lectura (`computeStatus` en service) o mantenerlo persistido? | **RESUELTO (2026-07-27):** `computeInvoiceStatus` implementado en `src/core/finance/invoice/service/compute-status.ts` — recalcula estado en escrituras (create/update invoice + create/update/delete payment). Se usa `computeStatus` en escritura (no en lectura), manteniendo reads eficientes y consistencia con pagos. | Implementado |
-| DAP2 | ¿Dotar a `supplierinvoice` de items/pagos (simetría SD/MM)? | **DECIDIDO (2026-07-28):** Se difiere a IF01 (modelo financiero rico). La asimetría actual está documentada y el seed es coherente. Implementar simetría requiere: nuevos modelos, tablas, endpoints, seed, UI5 views y migraciones — cambios mayores que dependen del modelo financiero rico con impuestos/dueDate (IF01). | Movido a iniciativa futura | Pendiente de IF01. |
+| DAP2 | ¿Dotar a `supplierinvoice` de items/pagos (simetría SD/MM)? | **IMPLEMENTADO (2026-07-31, ciclo 14):** simetría completa — tablas `supplierinvoiceitems`/`supplierpayments`, modelos con `@HasMany`, dominios write, seed con líneas de gasto y pagos (estado derivado de fecha + pagos), detalle UI5. Ver `docs/14-dap2/`. | Implementado | Ciclo 14 (`feature/dap2-supplierinvoice-symmetry`). |
 
 ---
 

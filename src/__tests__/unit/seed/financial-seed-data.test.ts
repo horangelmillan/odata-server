@@ -65,6 +65,7 @@ describe("financial-seed-data (generador determinista, ciclo 11)", () => {
         for (const inv of data.invoices) expect(inv.fecha <= REFERENCE_DATE).toBe(true);
         for (const p of data.payments) expect(p.fecha <= REFERENCE_DATE).toBe(true);
         for (const si of data.supplierInvoices) expect(si.fecha <= REFERENCE_DATE).toBe(true);
+        for (const sp of data.supplierPayments) expect(sp.fecha <= REFERENCE_DATE).toBe(true);
     });
 
     it("supplierInvoices recientes son PENDIENTE y antiguas PAGADA/VENCIDA (coherencia sin entidad pago)", () => {
@@ -73,5 +74,50 @@ describe("financial-seed-data (generador determinista, ciclo 11)", () => {
             if (daysAgo <= 30) expect(si.estado).toBe("PENDIENTE");
             else expect(["PAGADA", "VENCIDA"]).toContain(si.estado);
         }
+    });
+
+    // DAP2 (ciclo 14): simetría supplierinvoice — items y pagos de proveedor.
+    it("DAP2: toda supplierInvoice tiene ≥1 línea de gasto y Σ líneas = importe", () => {
+        expect(data.supplierInvoiceItems.length).toBeGreaterThanOrEqual(20);
+        for (const si of data.supplierInvoices) {
+            const items = data.supplierInvoiceItems.filter((it) => it.supplierInvoiceId === si.id);
+            expect(items.length).toBeGreaterThanOrEqual(1);
+            const sum = items.reduce((acc, it) => acc + it.importe, 0);
+            expect(Math.abs(sum - si.importe)).toBeLessThanOrEqual(0.01);
+        }
+    });
+
+    it("DAP2: las líneas de proveedor usan cuentas de GASTO (000300/000600), no de ingreso", () => {
+        for (const item of data.supplierInvoiceItems) {
+            expect(["000300", "000600"]).toContain(item.glAccountId);
+        }
+    });
+
+    it("DAP2: los pagos de proveedor son coherentes con el estado derivado", () => {
+        for (const si of data.supplierInvoices) {
+            const paid = data.supplierPayments.filter((p) => p.supplierInvoiceId === si.id).reduce((acc, p) => acc + p.importe, 0);
+            if (si.estado === "PAGADA") {
+                expect(Math.abs(paid - si.importe)).toBeLessThanOrEqual(0.01);
+            } else if (si.estado === "VENCIDA") {
+                expect(paid).toBe(0);
+            } else {
+                expect(paid).toBeLessThan(si.importe);
+            }
+        }
+    });
+
+    it("DAP2: existen pagos de proveedor a plazos (2 pagos misma factura) y parciales (PENDIENTE con pago)", () => {
+        const paymentsBySi = new Map<string, number>();
+        for (const p of data.supplierPayments) {
+            paymentsBySi.set(p.supplierInvoiceId, (paymentsBySi.get(p.supplierInvoiceId) ?? 0) + 1);
+        }
+        expect([...paymentsBySi.values()].some((n) => n === 2)).toBe(true);
+
+        const pendientesConPago = new Set(
+            data.supplierPayments
+                .filter((p) => data.supplierInvoices.find((si) => si.id === p.supplierInvoiceId)?.estado === "PENDIENTE")
+                .map((p) => p.supplierInvoiceId),
+        );
+        expect(pendientesConPago.size).toBeGreaterThan(0);
     });
 });

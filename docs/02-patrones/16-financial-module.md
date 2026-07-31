@@ -22,9 +22,11 @@ src/core/finance/
 ├── supplier/          # Proveedor (independiente de sociedad)
 ├── glaccount/         # Cuenta mayor (plan de cuentas)
 ├── invoice/           # Factura de venta (cliente → sociedad)
-├── supplierinvoice/   # Factura de proveedor (sin líneas ni pagos: asimetría SD/MM, ver 16.2)
+├── supplierinvoice/   # Factura de proveedor (DAP2: simetría completa — items + pagos)
 ├── invoiceitem/       # Línea de factura de venta (solo invoice)
-└── payment/           # Pago / clearing (vinculado a invoice)
+├── payment/           # Pago / clearing (vinculado a invoice)
+├── supplierinvoiceitem/# Línea de factura de proveedor (DAP2, cuentas de gasto)
+└── supplierpayment/   # Pago de proveedor (DAP2, fiel a S/4HANA F-53)
 ```
 
 ### Modelo de datos
@@ -34,6 +36,8 @@ Company (1) ──< Customer (N)     Company (1) ──< Invoice (N)
 Customer (1) ──< Invoice (N)     Invoice (1) ──< InvoiceItem (N)
 Invoice (1) ──< Payment (N)       GlAccount (1) ──< InvoiceItem (N)
 Supplier (1) ──< SupplierInvoice (N)
+SupplierInvoice (1) ──< SupplierInvoiceItem (N)   GlAccount (1) ──< SupplierInvoiceItem (N)
+SupplierInvoice (1) ──< SupplierPayment (N)
 ```
 
 ### Tabla de entidades
@@ -48,6 +52,8 @@ Supplier (1) ──< SupplierInvoice (N)
 | SupplierInvoice | `/odata/finance/supplierinvoice-odata` | `id` (string) | supplierId → Supplier | fecha, importe, moneda, estado |
 | InvoiceItem | `/odata/finance/invoiceitem-odata` | `id` (string) | invoiceId → Invoice, glAccountId → GlAccount | material, cantidad, importe |
 | Payment | `/odata/finance/payment-odata` | `id` (string) | invoiceId → Invoice | fecha, importe, metodo |
+| SupplierInvoiceItem | `/odata/finance/supplierinvoiceitem-odata` | `id` (string) | supplierInvoiceId → SupplierInvoice, glAccountId → GlAccount | material, cantidad, importe |
+| SupplierPayment | `/odata/finance/supplierpayment-odata` | `id` (string) | supplierInvoiceId → SupplierInvoice | fecha, importe, metodo |
 
 ### Estados de ciclo de vida (Invoice)
 
@@ -57,11 +63,10 @@ Supplier (1) ──< SupplierInvoice (N)
 | `PAGADA` | Pagada (Σ pagos = importe; admite pago único o a plazos) |
 | `VENCIDA` | Vencida (`fecha + 30 días` < fecha de referencia) y sin pagos |
 
-> **Convención de vencimiento (ciclo 11):** el modelo no tiene `dueDate`; el vencimiento se
-> define como `fecha + 30 días`. El seed persiste estados coherentes con esta convención;
-> no existe recálculo en la capa de servicio (decisión pendiente DAP1, ciclo 11).
-> `SupplierInvoice` no tiene entidad pago asociada: su estado es coherente con la antigüedad
-> (reciente ⇒ `PENDIENTE`; antigua ⇒ `PAGADA` o `VENCIDA`).
+> **Convención de vencimiento (ciclo 11):** el modelo tiene `dueDate` explícito (IF01);
+> el estado se deriva de **fecha + pagos** (R3): PAGADA ⇔ Σ pagos = importe, VENCIDA ⇔ vencida
+> sin pagos, PENDIENTE ⇔ resto. Aplica por igual a `Invoice` y `SupplierInvoice` (DAP2, ciclo 14:
+> la simetría eliminó la asimetría SD/MM; `SupplierInvoice` ahora tiene items y pagos propios).
 
 ## 16.3 Navegaciones OData (`$expand` disponibles)
 
@@ -90,10 +95,21 @@ supplier?$expand=supplierInvoices            → Facturas del proveedor
 glaccount?$expand=items                      → Líneas que usan esta cuenta
 ```
 
-### SupplierInvoice / Payment
+### SupplierInvoice (factura de proveedor, DAP2)
 
 ```
-supplierinvoice?$expand=supplier             → Proveedor
+supplierinvoice?$expand=supplier                        → Proveedor
+supplierinvoice?$expand=items                           → Líneas de gasto
+supplierinvoice?$expand=payments                        → Pagos
+supplierinvoice?$expand=items($expand=glAccount)        → Líneas + cuenta mayor
+supplierinvoice?$expand=items,payments                  → Líneas + pagos
+supplierinvoiceitem?$expand=supplierInvoice,glAccount   → Factura + cuenta (navegación inversa)
+supplierpayment?$expand=supplierInvoice                 → Factura pagada (navegación inversa)
+```
+
+### Payment (pago de venta)
+
+```
 payment?$expand=invoice                      → Factura pagada
 ```
 

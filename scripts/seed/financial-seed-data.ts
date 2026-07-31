@@ -49,6 +49,8 @@ export interface InvoiceRow { id: string; companyId: string; customerId: string;
 export interface SupplierInvoiceRow { id: string; supplierId: string; fecha: string; dueDate: string; importe: number; netAmount: number; taxAmount: number; grossAmount: number; docNumber: string; moneda: string; estado: string; createdAt: string; updatedAt: string; }
 export interface InvoiceItemRow { id: string; invoiceId: string; glAccountId: string; material: string; cantidad: number; importe: number; createdAt: string; updatedAt: string; }
 export interface PaymentRow { id: string; invoiceId: string; fecha: string; importe: number; metodo: string; createdAt: string; updatedAt: string; }
+export interface SupplierInvoiceItemRow { id: string; supplierInvoiceId: string; glAccountId: string; material: string; cantidad: number; importe: number; createdAt: string; updatedAt: string; }
+export interface SupplierPaymentRow { id: string; supplierInvoiceId: string; fecha: string; importe: number; metodo: string; createdAt: string; updatedAt: string; }
 
 export interface SeedData {
     companies: CompanyRow[];
@@ -59,6 +61,8 @@ export interface SeedData {
     invoiceItems: InvoiceItemRow[];
     supplierInvoices: SupplierInvoiceRow[];
     payments: PaymentRow[];
+    supplierInvoiceItems: SupplierInvoiceItemRow[];
+    supplierPayments: SupplierPaymentRow[];
 }
 
 // ---------------------------------------------------------------------------
@@ -165,6 +169,18 @@ const LINE_CATALOG = [
     { material: "SRV-CONS", glAccountId: REVENUE_SERVICE_ACCOUNT, precio: 950.0, tipo: "SRV" },
     { material: "SRV-SOP", glAccountId: REVENUE_SERVICE_ACCOUNT, precio: 420.0, tipo: "SRV" },
     { material: "SRV-DEV", glAccountId: REVENUE_SERVICE_ACCOUNT, precio: 780.0, tipo: "SRV" },
+] as const;
+
+/** Catálogo de líneas de compra (DAP2, D4): cuentas de GASTO (inversa de ventas). */
+export const EXPENSE_MATERIAL_ACCOUNT = "000300"; // Compras de materiales
+export const EXPENSE_SUPPLIES_ACCOUNT = "000600"; // Suministros
+const PURCHASE_LINE_CATALOG = [
+    { material: "MAT-F", glAccountId: EXPENSE_MATERIAL_ACCOUNT, precio: 95.0, tipo: "MAT" },
+    { material: "MAT-G", glAccountId: EXPENSE_MATERIAL_ACCOUNT, precio: 240.0, tipo: "MAT" },
+    { material: "MAT-H", glAccountId: EXPENSE_MATERIAL_ACCOUNT, precio: 320.5, tipo: "MAT" },
+    { material: "MAT-I", glAccountId: EXPENSE_MATERIAL_ACCOUNT, precio: 150.0, tipo: "MAT" },
+    { material: "SRV-AUX", glAccountId: EXPENSE_SUPPLIES_ACCOUNT, precio: 480.0, tipo: "SRV" },
+    { material: "SRV-MNT", glAccountId: EXPENSE_SUPPLIES_ACCOUNT, precio: 360.0, tipo: "SRV" },
 ] as const;
 
 /** TRANSFER ponderada ~60% (método habitual B2B). */
@@ -297,29 +313,83 @@ export function generateFinancialData(referenceDate: string = REFERENCE_DATE): S
         }
     }
 
-    // Facturas de proveedor: sin pagos en el modelo → estado coherente con la antigüedad.
+    // Facturas de proveedor (DAP2, D4/D5): simetría completa con invoice —
+    // líneas de gasto (Σ = importe) y pagos coherentes con el estado derivado.
     const supplierInvoices: SupplierInvoiceRow[] = [];
+    const supplierInvoiceItems: SupplierInvoiceItemRow[] = [];
+    const supplierPayments: SupplierPaymentRow[] = [];
+    let siItemCounter = 0;
+    let siPaymentCounter = 0;
     const supplierPool = shuffle(rng, suppliers.flatMap((s, i) => Array<string>(i < 2 ? 4 : 3).fill(s.id)));
     for (let i = 0; i < SUPPLIER_INVOICE_COUNT; i++) {
+        const id = `SI${pad(i + 1, 5)}`;
         const dueDays = i % 7 === 0 ? 60 : 30;
         const daysAgo = randInt(rng, 1, 150);
         const fecha = addDays(referenceDate, -daysAgo);
         const estado = daysAgo <= dueDays ? "PENDIENTE"
             : rng() < 0.75 ? "PAGADA" : "VENCIDA";
         const dueDate = addDays(fecha, dueDays);
-        const grossAmount = round2(rng() * 8000 + 200);
+
+        // Líneas de gasto primero: importe = Σ líneas (M4, simetría).
+        const numItems = randInt(rng, 1, 4);
+        let sum = 0;
+        for (let j = 0; j < numItems; j++) {
+            const line = pick(rng, PURCHASE_LINE_CATALOG);
+            const cantidad = line.tipo === "MAT" ? randInt(rng, 1, 25) : randInt(rng, 1, 8);
+            const importe = round2(line.precio * (0.9 + rng() * 0.2) * cantidad);
+            sum += importe;
+            siItemCounter++;
+            supplierInvoiceItems.push({
+                id: `SII${pad(siItemCounter, 5)}`, supplierInvoiceId: id,
+                glAccountId: line.glAccountId, material: line.material,
+                cantidad, importe, ...docTimestamps(fecha),
+            });
+        }
+        const grossAmount = round2(sum);
+
+        // Modelo financiero rico (IF01): gross = net + tax, IVA 21%/10%/0%.
         const taxRate = i % 17 === 0 ? 0 : i % 9 === 0 ? 0.1 : 0.21;
         const netAmount = round2(grossAmount / (1 + taxRate));
         const taxAmount = round2(grossAmount - netAmount);
         supplierInvoices.push({
-            id: `SI${pad(i + 1, 5)}`, supplierId: supplierPool[i], fecha, dueDate,
+            id, supplierId: supplierPool[i], fecha, dueDate,
             importe: grossAmount, netAmount, taxAmount, grossAmount,
             docNumber: `51${pad(i + 1, 8)}`,
             moneda: "EUR", estado, ...docTimestamps(fecha),
         });
+
+        // Pagos coherentes con el estado (R4, simetría con invoice).
+        if (estado === "PAGADA") {
+            if (i % 9 === 0) {
+                const first = round2(grossAmount * 0.6);
+                const second = round2(grossAmount - first);
+                const f1 = minDate(addDays(fecha, randInt(rng, 5, 15)), referenceDate);
+                const f2 = minDate(addDays(fecha, randInt(rng, 20, 40)), referenceDate);
+                supplierPayments.push(
+                    { id: `SP${pad(siPaymentCounter + 1, 5)}`, supplierInvoiceId: id, fecha: f1, importe: first, metodo: pick(rng, PAYMENT_METHODS), ...docTimestamps(f1) },
+                    { id: `SP${pad(siPaymentCounter + 2, 5)}`, supplierInvoiceId: id, fecha: f2, importe: second, metodo: pick(rng, PAYMENT_METHODS), ...docTimestamps(f2) },
+                );
+                siPaymentCounter += 2;
+            } else {
+                const f = minDate(addDays(fecha, randInt(rng, 3, 40)), referenceDate);
+                siPaymentCounter++;
+                supplierPayments.push({
+                    id: `SP${pad(siPaymentCounter, 5)}`, supplierInvoiceId: id, fecha: f,
+                    importe: grossAmount, metodo: pick(rng, PAYMENT_METHODS), ...docTimestamps(f),
+                });
+            }
+        } else if (estado === "PENDIENTE" && i % 12 === 0) {
+            // Pago parcial: la factura sigue PENDIENTE (Σ pagos < importe).
+            const f = minDate(addDays(fecha, randInt(rng, 2, 10)), referenceDate);
+            siPaymentCounter++;
+            supplierPayments.push({
+                id: `SP${pad(siPaymentCounter, 5)}`, supplierInvoiceId: id, fecha: f,
+                importe: round2(grossAmount / 2), metodo: pick(rng, PAYMENT_METHODS), ...docTimestamps(f),
+            });
+        }
     }
 
-    return { companies, customers, suppliers, glAccounts, invoices, invoiceItems, supplierInvoices, payments };
+    return { companies, customers, suppliers, glAccounts, invoices, invoiceItems, supplierInvoices, payments, supplierInvoiceItems, supplierPayments };
 }
 
 // ---------------------------------------------------------------------------
@@ -351,6 +421,7 @@ export function validateSeedData(data: SeedData, referenceDate: string = REFEREN
     const supplierIds = new Set(data.suppliers.map((s) => s.id));
     const glIds = new Set(data.glAccounts.map((g) => g.id));
     const invoiceById = new Map(data.invoices.map((inv) => [inv.id, inv]));
+    const supplierInvoiceById = new Map(data.supplierInvoices.map((si) => [si.id, si]));
 
     for (const inv of data.invoices) {
         expect(inv.companyId === COMPANY_ID, `${inv.id}: companyId ${inv.companyId} ≠ ${COMPANY_ID}`);
@@ -382,11 +453,27 @@ export function validateSeedData(data: SeedData, referenceDate: string = REFEREN
         expect(inv !== undefined, `${p.id}: invoiceId ${p.invoiceId} inexistente`);
         if (inv) expect(p.fecha >= inv.fecha, `${p.id}: pago ${p.fecha} anterior a factura ${inv.fecha}`);
     }
+    // DAP2: simetría — items y pagos de proveedor con las mismas invariantes.
+    for (const item of data.supplierInvoiceItems) {
+        expect(supplierInvoiceById.has(item.supplierInvoiceId), `${item.id}: supplierInvoiceId ${item.supplierInvoiceId} inexistente`);
+        expect(glIds.has(item.glAccountId), `${item.id}: glAccountId ${item.glAccountId} inexistente`);
+        const expectedGl = item.material.startsWith("SRV-") ? EXPENSE_SUPPLIES_ACCOUNT : EXPENSE_MATERIAL_ACCOUNT;
+        expect(item.glAccountId === expectedGl, `${item.id}: cuenta ${item.glAccountId} ≠ ${expectedGl} para ${item.material}`);
+    }
+    for (const p of data.supplierPayments) {
+        const si = supplierInvoiceById.get(p.supplierInvoiceId);
+        expect(si !== undefined, `${p.id}: supplierInvoiceId ${p.supplierInvoiceId} inexistente`);
+        if (si) expect(p.fecha >= si.fecha, `${p.id}: pago ${p.fecha} anterior a factura ${si.fecha}`);
+    }
 
     // 4. Σ líneas = importe de factura (M4)
     for (const inv of data.invoices) {
         const sum = data.invoiceItems.filter((it) => it.invoiceId === inv.id).reduce((acc, it) => acc + it.importe, 0);
         expect(Math.abs(sum - inv.importe) <= TOL, `${inv.id}: Σ líneas ${sum.toFixed(2)} ≠ importe ${inv.importe.toFixed(2)}`);
+    }
+    for (const si of data.supplierInvoices) {
+        const sum = data.supplierInvoiceItems.filter((it) => it.supplierInvoiceId === si.id).reduce((acc, it) => acc + it.importe, 0);
+        expect(Math.abs(sum - si.importe) <= TOL, `${si.id}: Σ líneas ${sum.toFixed(2)} ≠ importe ${si.importe.toFixed(2)}`);
     }
 
     // 5. Estado derivado de fecha + pagos (R3): vencimiento explícito en dueDate
@@ -401,6 +488,20 @@ export function validateSeedData(data: SeedData, referenceDate: string = REFEREN
         } else {
             expect(paidAmount < inv.importe, `${inv.id}: PENDIENTE pero Σ pagos ${paidAmount.toFixed(2)} ≥ ${inv.importe.toFixed(2)}`);
             expect(due >= referenceDate, `${inv.id}: PENDIENTE pero venció ${due} < ${referenceDate}`);
+        }
+    }
+    // DAP2: mismo ciclo de vida para facturas de proveedor.
+    for (const si of data.supplierInvoices) {
+        const paidAmount = data.supplierPayments.filter((p) => p.supplierInvoiceId === si.id).reduce((acc, p) => acc + p.importe, 0);
+        const due = si.dueDate;
+        if (si.estado === "PAGADA") {
+            expect(Math.abs(paidAmount - si.importe) <= TOL, `${si.id}: PAGADA pero Σ pagos ${paidAmount.toFixed(2)} ≠ ${si.importe.toFixed(2)}`);
+        } else if (si.estado === "VENCIDA") {
+            expect(due < referenceDate, `${si.id}: VENCIDA pero vence ${due} ≥ ${referenceDate}`);
+            expect(paidAmount === 0, `${si.id}: VENCIDA con pagos (${paidAmount.toFixed(2)})`);
+        } else {
+            expect(paidAmount < si.importe, `${si.id}: PENDIENTE pero Σ pagos ${paidAmount.toFixed(2)} ≥ ${si.importe.toFixed(2)}`);
+            expect(due >= referenceDate, `${si.id}: PENDIENTE pero venció ${due} < ${referenceDate}`);
         }
     }
 
