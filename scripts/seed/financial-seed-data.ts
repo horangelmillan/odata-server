@@ -45,8 +45,8 @@ export interface CompanyRow { id: string; nombre: string; moneda: string; pais: 
 export interface CustomerRow { id: string; nombre: string; companyId: string; pais: string; createdAt: string; updatedAt: string; }
 export interface SupplierRow { id: string; nombre: string; pais: string; createdAt: string; updatedAt: string; }
 export interface GlAccountRow { id: string; nombre: string; createdAt: string; updatedAt: string; }
-export interface InvoiceRow { id: string; companyId: string; customerId: string; fecha: string; importe: number; moneda: string; estado: string; createdAt: string; updatedAt: string; }
-export interface SupplierInvoiceRow { id: string; supplierId: string; fecha: string; importe: number; moneda: string; estado: string; createdAt: string; updatedAt: string; }
+export interface InvoiceRow { id: string; companyId: string; customerId: string; fecha: string; dueDate: string; importe: number; netAmount: number; taxAmount: number; grossAmount: number; docNumber: string; moneda: string; estado: string; createdAt: string; updatedAt: string; }
+export interface SupplierInvoiceRow { id: string; supplierId: string; fecha: string; dueDate: string; importe: number; netAmount: number; taxAmount: number; grossAmount: number; docNumber: string; moneda: string; estado: string; createdAt: string; updatedAt: string; }
 export interface InvoiceItemRow { id: string; invoiceId: string; glAccountId: string; material: string; cantidad: number; importe: number; createdAt: string; updatedAt: string; }
 export interface PaymentRow { id: string; invoiceId: string; fecha: string; importe: number; metodo: string; createdAt: string; updatedAt: string; }
 
@@ -224,12 +224,16 @@ export function generateFinancialData(referenceDate: string = REFERENCE_DATE): S
         const estado = lifecyclePool[i];
         const customerId = customerPool[i];
 
-        // Ventana de fecha coherente con el ciclo de vida:
-        // PAGADA: ≥2 días de antigüedad (margen para pagarla) · VENCIDA: >30 días (vencida) · PENDIENTE: ≤30 días.
+        // Modelo financiero rico (IF01, f2.5): términos de pago 30d (o 60d en algunas).
+        const dueDays = invoiceNumber % 7 === 0 ? 60 : 30;
+
+        // Ventana de fecha coherente con el ciclo de vida Y con el dueDate:
+        // PAGADA: ≥2 días (margen para pagarla) · VENCIDA: > dueDays (vencida) · PENDIENTE: ≤ dueDays.
         const daysAgo = estado === "PAGADA" ? randInt(rng, 2, 180)
-            : estado === "VENCIDA" ? randInt(rng, 31, 180)
-            : randInt(rng, 0, PAYMENT_TERM_DAYS);
+            : estado === "VENCIDA" ? randInt(rng, dueDays + 1, 180)
+            : randInt(rng, 0, dueDays);
         const fecha = addDays(referenceDate, -daysAgo);
+        const dueDate = addDays(fecha, dueDays);
 
         // Líneas primero: importe = Σ líneas (M4); cuenta según tipo de línea (M1).
         const numItems = randInt(rng, 1, 4);
@@ -248,9 +252,20 @@ export function generateFinancialData(referenceDate: string = REFERENCE_DATE): S
         }
         const importe = round2(sum);
 
+        // Modelo financiero rico (IF01, f2.5): gross = net + tax, IVA 21%/10%/0%,
+        // dueDate = fecha + 30d (o 60d en algunas), docNumber correlativo.
+        const taxRate = invoiceNumber % 17 === 0 ? 0
+            : invoiceNumber % 9 === 0 ? 0.1
+            : 0.21;
+        const grossAmount = importe;
+        const netAmount = round2(grossAmount / (1 + taxRate));
+        const taxAmount = round2(grossAmount - netAmount);
+
         invoices.push({
-            id, companyId: COMPANY_ID, customerId, fecha,
-            importe, moneda: "EUR", estado, ...docTimestamps(fecha),
+            id, companyId: COMPANY_ID, customerId, fecha, dueDate,
+            importe, netAmount, taxAmount, grossAmount,
+            docNumber: `19${pad(invoiceNumber, 8)}`,
+            moneda: "EUR", estado, ...docTimestamps(fecha),
         });
 
         // Pagos coherentes con el estado (R4: siempre ≥ fecha de factura).
@@ -286,13 +301,21 @@ export function generateFinancialData(referenceDate: string = REFERENCE_DATE): S
     const supplierInvoices: SupplierInvoiceRow[] = [];
     const supplierPool = shuffle(rng, suppliers.flatMap((s, i) => Array<string>(i < 2 ? 4 : 3).fill(s.id)));
     for (let i = 0; i < SUPPLIER_INVOICE_COUNT; i++) {
+        const dueDays = i % 7 === 0 ? 60 : 30;
         const daysAgo = randInt(rng, 1, 150);
         const fecha = addDays(referenceDate, -daysAgo);
-        const estado = daysAgo <= PAYMENT_TERM_DAYS ? "PENDIENTE"
+        const estado = daysAgo <= dueDays ? "PENDIENTE"
             : rng() < 0.75 ? "PAGADA" : "VENCIDA";
+        const dueDate = addDays(fecha, dueDays);
+        const grossAmount = round2(rng() * 8000 + 200);
+        const taxRate = i % 17 === 0 ? 0 : i % 9 === 0 ? 0.1 : 0.21;
+        const netAmount = round2(grossAmount / (1 + taxRate));
+        const taxAmount = round2(grossAmount - netAmount);
         supplierInvoices.push({
-            id: `SI${pad(i + 1, 5)}`, supplierId: supplierPool[i], fecha,
-            importe: round2(rng() * 8000 + 200), moneda: "EUR", estado, ...docTimestamps(fecha),
+            id: `SI${pad(i + 1, 5)}`, supplierId: supplierPool[i], fecha, dueDate,
+            importe: grossAmount, netAmount, taxAmount, grossAmount,
+            docNumber: `51${pad(i + 1, 8)}`,
+            moneda: "EUR", estado, ...docTimestamps(fecha),
         });
     }
 
@@ -334,9 +357,18 @@ export function validateSeedData(data: SeedData, referenceDate: string = REFEREN
         expect(customerIds.has(inv.customerId), `${inv.id}: customerId ${inv.customerId} inexistente`);
         expect(inv.moneda === "EUR", `${inv.id}: moneda ${inv.moneda}`);
         expect(INVOICE_STATUSES.includes(inv.estado as typeof INVOICE_STATUSES[number]), `${inv.id}: estado ${inv.estado} desconocido`);
+        // Modelo financiero rico (IF01): gross = net + tax; dueDate ≥ fecha.
+        expect(Math.abs(inv.grossAmount - (inv.netAmount + inv.taxAmount)) <= TOL, `${inv.id}: gross ${inv.grossAmount} ≠ net+tax ${inv.netAmount + inv.taxAmount}`);
+        expect(Math.abs(inv.importe - inv.grossAmount) <= TOL, `${inv.id}: importe ${inv.importe} ≠ gross ${inv.grossAmount}`);
+        expect(inv.dueDate >= inv.fecha, `${inv.id}: dueDate ${inv.dueDate} < fecha ${inv.fecha}`);
+        expect(inv.docNumber.length > 0, `${inv.id}: docNumber vacío`);
     }
     for (const si of data.supplierInvoices) {
         expect(supplierIds.has(si.supplierId), `${si.id}: supplierId ${si.supplierId} inexistente`);
+        expect(Math.abs(si.grossAmount - (si.netAmount + si.taxAmount)) <= TOL, `${si.id}: gross ${si.grossAmount} ≠ net+tax ${si.netAmount + si.taxAmount}`);
+        expect(Math.abs(si.importe - si.grossAmount) <= TOL, `${si.id}: importe ${si.importe} ≠ gross ${si.grossAmount}`);
+        expect(si.dueDate >= si.fecha, `${si.id}: dueDate ${si.dueDate} < fecha ${si.fecha}`);
+        expect(si.docNumber.length > 0, `${si.id}: docNumber vacío`);
     }
     for (const item of data.invoiceItems) {
         expect(invoiceById.has(item.invoiceId), `${item.id}: invoiceId ${item.invoiceId} inexistente`);
@@ -357,10 +389,10 @@ export function validateSeedData(data: SeedData, referenceDate: string = REFEREN
         expect(Math.abs(sum - inv.importe) <= TOL, `${inv.id}: Σ líneas ${sum.toFixed(2)} ≠ importe ${inv.importe.toFixed(2)}`);
     }
 
-    // 5. Estado derivado de fecha + pagos (R3): vencimiento = fecha + 30 días
+    // 5. Estado derivado de fecha + pagos (R3): vencimiento explícito en dueDate
     for (const inv of data.invoices) {
         const paidAmount = data.payments.filter((p) => p.invoiceId === inv.id).reduce((acc, p) => acc + p.importe, 0);
-        const due = addDays(inv.fecha, PAYMENT_TERM_DAYS);
+        const due = inv.dueDate;
         if (inv.estado === "PAGADA") {
             expect(Math.abs(paidAmount - inv.importe) <= TOL, `${inv.id}: PAGADA pero Σ pagos ${paidAmount.toFixed(2)} ≠ ${inv.importe.toFixed(2)}`);
         } else if (inv.estado === "VENCIDA") {

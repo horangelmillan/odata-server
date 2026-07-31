@@ -57,7 +57,7 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 
 | ID | Detectado en | Tema | Motivo | Estado |
 | -- | ------------ | ---- | ------ | ------ |
-| IF01 | Evaluación F0 | Modelo financiero rico (`dueDate`, `netAmount`, `taxAmount`, IVA) según f2.5 original | Requiere cambio de esquema + migraciones (depende de IF01 del ciclo 09) | Movido a una iniciativa futura |
+| IF01 | Evaluación F0 | Modelo financiero rico (`dueDate`, `netAmount`, `taxAmount`, IVA) según f2.5 original | **IMPLEMENTADO (2026-07-30).** Migración 002 agrega `dueDate`, `netAmount`, `taxAmount`, `grossAmount`, `docNumber` a invoices y supplierinvoices. Seed genera: gross = net + tax (IVA 21%/10%/0%), dueDate = fecha + 30d/60d, docNumber correlativo. `computeInvoiceStatus` usa dueDate explícito. Validación extendida. Campos legacy (fecha/importe/moneda/estado) conservados para compatibilidad; `importe` = grossAmount. UI5 muestra Vencimiento/Neto/IVA. Build + 174 tests PASS. | Implementado |
 
 ---
 

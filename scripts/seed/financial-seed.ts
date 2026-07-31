@@ -78,7 +78,12 @@ async function main() {
         companyId: DataTypes.STRING,
         customerId: DataTypes.STRING,
         fecha: DataTypes.DATE,
+        dueDate: DataTypes.DATE,
         importe: DataTypes.DECIMAL,
+        netAmount: DataTypes.DECIMAL,
+        taxAmount: DataTypes.DECIMAL,
+        grossAmount: DataTypes.DECIMAL,
+        docNumber: DataTypes.STRING,
         moneda: DataTypes.STRING,
         estado: DataTypes.STRING,
         createdAt: DataTypes.DATE,
@@ -89,7 +94,12 @@ async function main() {
         id: { type: DataTypes.STRING, primaryKey: true },
         supplierId: DataTypes.STRING,
         fecha: DataTypes.DATE,
+        dueDate: DataTypes.DATE,
         importe: DataTypes.DECIMAL,
+        netAmount: DataTypes.DECIMAL,
+        taxAmount: DataTypes.DECIMAL,
+        grossAmount: DataTypes.DECIMAL,
+        docNumber: DataTypes.STRING,
         moneda: DataTypes.STRING,
         estado: DataTypes.STRING,
         createdAt: DataTypes.DATE,
@@ -128,14 +138,14 @@ async function main() {
     }
 
     console.log(`Seeding financial data (referencia temporal: ${REFERENCE_DATE})...`);
-    await Company.bulkCreate(data.companies);
-    await Customer.bulkCreate(data.customers);
-    await Supplier.bulkCreate(data.suppliers);
-    await GlAccount.bulkCreate(data.glAccounts);
-    await Invoice.bulkCreate(data.invoices);
-    await SupplierInvoice.bulkCreate(data.supplierInvoices);
-    await InvoiceItem.bulkCreate(data.invoiceItems);
-    await Payment.bulkCreate(data.payments);
+    await Company.bulkCreate(data.companies as any[]);
+    await Customer.bulkCreate(data.customers as any[]);
+    await Supplier.bulkCreate(data.suppliers as any[]);
+    await GlAccount.bulkCreate(data.glAccounts as any[]);
+    await Invoice.bulkCreate(data.invoices as any[]);
+    await SupplierInvoice.bulkCreate(data.supplierInvoices as any[]);
+    await InvoiceItem.bulkCreate(data.invoiceItems as any[]);
+    await Payment.bulkCreate(data.payments as any[]);
 
     // 2. Verificación post-inserción: los conteos en BD deben coincidir con lo generado.
     const counts = {
