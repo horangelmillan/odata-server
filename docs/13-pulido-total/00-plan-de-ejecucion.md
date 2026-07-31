@@ -98,7 +98,7 @@ Cada ítem tiene criterio de aceptación explícito.
 | ID | Acción | Estado |
 |---|---|---|
 | F1 | Suite completa: `pnpm build`, `pnpm test`, type-check tests | [x] ✅ (verificado 07-30: build ✅, 176/176 tests, type-check 0) |
-| F2 | Validación Playwright final de las 8 vistas finance | [ ] |
+| F2 | Validación Playwright final de las 8 vistas finance | [x] ✅ (07-30: 7 listas + 2 detalles con datos reales, 0 errores consola; navegación Demo↔Finance y botón Atrás OK; test bench 8/8 PASS en `main` — los 8 FAIL "timeout" del log son timers sin cancelar del harness, ver N21) |
 | F3 | Actualizar backlog del ciclo 13 (estados finales) | [x] ✅ (N19/N4 cerrados en 07-30) |
 | F4 | Commit + push + PR a `master` | [ ] |
 
