@@ -2,7 +2,7 @@
 
 > **Ciclo:** `14-dap2` (rama `feature/dap2-supplierinvoice-symmetry` en servidor + `feature/dap2-supplierinvoice-detail` en ui5-odata-demo)
 > **Inicio:** 2026-07-31
-> **Estado global:** 🚧 En ejecución
+> **Estado global:** ✅ **COMPLETADO** — merge a `master` vía PR #28 (CI verde). UI5 mergeado vía PR #3 (`ui5-odata-demo`).
 > **Baseline:** `pnpm build` ✅ · `pnpm test` 176/176 ✅ · type-check tests 0 ✅
 
 ---
@@ -53,9 +53,9 @@ aplicado en la BD dev (las tablas las creaba `sync`).
 | F2 | Seed: catálogo de compras, items por SI (Σ = importe), pagos coherentes, invariantes, determinismo | ✅ |
 | F3 | Dominios write (2) + registrations + dataSource + `$expand`/CRUD verificados | ✅ |
 | F4 | Tests unit (6 nuevos) + integration (8 nuevos) → suite 188/188 | ✅ |
-| F5 | UI5: SupplierInvoiceDetail + ruta + i18n + navegación + Playwright | ✅ (PR #3) |
-| F6 | Documentación (este ciclo) + índice + patrón | 🚧 |
-| F7 | Suite completa + PR servidor con CI verde | ⏳ |
+| F5 | UI5: SupplierInvoiceDetail + ruta + i18n + navegación + Playwright | ✅ (PR #3 mergeado) |
+| F6 | Documentación (este ciclo) + índice + patrón | ✅ |
+| F7 | Suite completa + PR servidor con CI verde | ✅ (PR #28 mergeado, CI verde) |
 
 ---
 
