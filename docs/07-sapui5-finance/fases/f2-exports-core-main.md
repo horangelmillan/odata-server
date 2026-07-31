@@ -152,7 +152,7 @@ export const domainRegistrations: DomainRegistration[] = [
 ## 3. Criterios de aceptación
 
 - [x] `pnpm test` en verde (sin regresión) — 164 tests pass, 23 files.
-- [ ] `tsc --build` sin errores. (⚠️ Errores pre-existentes no relacionados con F2)
+- [x] `tsc --build` sin errores. *(Los errores pre-existentes eran reales y fueron reparados en el ciclo 09, M03 — build `tsc` verde y gateado en CI)*
 - [x] `POST /odata/finance/company-odata` → 201 (crea una sociedad).
 - [x] `PATCH /odata/finance/invoice-odata/I00001` → 200 (actualiza factura).
 - [x] `DELETE /odata/finance/payment-odata/P00001` → 204 (elimina pago).

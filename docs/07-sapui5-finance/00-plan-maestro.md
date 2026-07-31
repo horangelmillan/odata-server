@@ -127,13 +127,13 @@ webapp/
 
 ## 5. Condiciones de aceptación globales
 
-- [ ] F0–F4 documentadas y validadas.
-- [ ] `pnpm test` en verde tras F1–F2 (sin regresión).
-- [ ] `common/service/odata/` sin imports directos a `core/` (salvo `core/main.ts`).
-- [ ] `registerWriteRoutes` genérica: acepta `Record<string, DomainWriteService>` como parámetro.
-- [ ] Nuevo dominio = agregar línea en `core/main.ts` (sin tocar `common/`).
-- [ ] Vista finance en SAPUI5 funcional (datos visibles, navegaciones `$expand` operativas).
-- [ ] Documentación alineada (`docs/00-indice.md`, `docs/02-patrones/05-odata-module-pattern.md`).
+- [x] F0–F4 documentadas y validadas. *(Ciclo 07 completo: merges vía PRs #10–#12)*
+- [x] `pnpm test` en verde tras F1–F2 (sin regresión). *(Suite 192/192 PASS, ciclo 14)*
+- [x] `common/service/odata/` sin imports directos a `core/` (salvo `core/main.ts`). *(Verificado)*
+- [x] `registerWriteRoutes` genérica: acepta `Record<string, DomainWriteService>` como parámetro. *(Firma vigente)*
+- [x] Nuevo dominio = agregar línea en `core/main.ts` (sin tocar `common/`). *(Vigente: 12 registros en `domainRegistrations[]`)*
+- [x] Vista finance en SAPUI5 funcional (datos visibles, navegaciones `$expand` operativas). *(Validado con Playwright en ciclos 12–13)*
+- [x] Documentación alineada (`docs/00-indice.md`, `docs/02-patrones/05-odata-module-pattern.md`). *(Índice y patrón alineados en ciclos 13 y 15)*
 
 ---
 

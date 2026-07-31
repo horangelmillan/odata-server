@@ -160,8 +160,9 @@ N21 (timers test bench).
 - [`02-implementation-backlog.md`](13-pulido-total/02-implementation-backlog.md) — Hallazgos N1–N21 categorizados.
 
 ## 14 — Ciclo DAP2: Simetría SupplierInvoice (items + pagos)
-**Ciclo en ejecución.** Estado global: 🚧 F0–F5 implementadas (pendiente F7 merge).
-Simetría estructural de `supplierinvoice` frente a `invoice` (origen DT5/N17): tabla
+**Ciclo completado.** Estado global: ✅ **F0–F7 completadas** — merge a `master` vía PR #28 (CI verde),
+cierre documental PR #29 y refactor DT1/DT2 (listas de modelos centralizadas + tests de consistencia)
+PR #30. Simetría estructural de `supplierinvoice` frente a `invoice` (origen DT5/N17): tabla
 `supplierinvoiceitems` (líneas de gasto) y `supplierpayments` (pagos), dominios write completos,
 seed coherente (estado derivado de fecha + pagos), detalle UI5 con items y pagos, y corrección
 del migrator Umzug en Windows (las migraciones nunca se aplicaban en dev). Rama:
@@ -169,3 +170,13 @@ del migrator Umzug en Windows (las migraciones nunca se aplicaban en dev). Rama:
 
 - [`00-plan-maestro.md`](14-dap2/00-plan-maestro.md) — Plan maestro: decisiones D1–D6, fases F0–F7, aceptación.
 - [`02-implementation-backlog.md`](14-dap2/02-implementation-backlog.md) — Hallazgos R1, M1, DT1–DT2.
+
+## 15 — Ciclo de Consolidación Post-DAP2
+**Ciclo en ejecución.** Estado global: 🚧 plan documentado, pendiente de aprobación y ejecución.
+Sin funcionalidad nueva: alinea documentación (índice, checklist de patrones, checkboxes de
+fases 05–08, comentarios obsoletos), elimina restos de la era REST (mount `/api`, middleware de
+seguridad huérfano, git hooks obsoletos), corrige encoding de comentarios en `batch.middleware.ts`
+y alinea la versión de Node (22). Rama: `docs/consolidacion-post-dap2`.
+
+- [`00-plan-maestro.md`](15-consolidacion/00-plan-maestro.md) — Plan maestro: decisiones D1–D5, fases F0–F5, aceptación.
+- [`02-implementation-backlog.md`](15-consolidacion/02-implementation-backlog.md) — Hallazgos R1, M1, RF1–RF3, DT1–DT5, IF01-10–IF03-10, decisiones D1–D5.

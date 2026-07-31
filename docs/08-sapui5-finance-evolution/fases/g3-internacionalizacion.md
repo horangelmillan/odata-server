@@ -101,7 +101,7 @@ Para cada vista, reemplazar:
 - [x] Todos los títulos de página visibles se cargan desde i18n.
 - [x] Todas las etiquetas de columna y botón se cargan desde i18n.
 - [x] El texto en la UI es idéntico al anterior (mismos valores en español).
-- [ ] Sin errores "ResourceModel: key not found" en consola (requiere verificación con servidor corriendo).
+- [x] Sin errores "ResourceModel: key not found" en consola (requiere verificación con servidor corriendo). *(Ciclo 13 N3: 0 errores de consola en navegación completa; 0 instancias de `key not found`)*
 
 ---
 

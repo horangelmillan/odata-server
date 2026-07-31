@@ -46,9 +46,9 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 
 | ID | Detectado en | Tema | Motivo | Estado |
 | -- | ------------ | ---- | ------ | ------ |
-| IF01 | Research | Skill `playwright-best-practices` (currents-dev, 63.7K) | Solo aporta si el proyecto crea una **suite de tests E2E Playwright** (hoy la validación es exploratoria vía MCP). Reevaluar cuando exista dicha suite | Movido a una iniciativa futura |
-| IF02 | Research | API key de Context7 (Upstash) | El tier anónimo tiene rate-limit; si el uso crece, registrar cuenta y añadir header `CONTEXT7_API_KEY` en `opencode.jsonc` | Movido a una iniciativa futura |
-| IF03 | Research | Suite `secondsky/sap-skills` completa (sapui5-cli, sapui5-linter, sap-fiori-tools…) | Se instaló solo `sapui5` (núcleo). Si el trabajo UI5 crece, evaluar las complementarias con la misma revisión de contenido | Movido a una iniciativa futura |
+| IF01 | Research | Skill `playwright-best-practices` (currents-dev, 63.7K) | Solo aporta si el proyecto crea una **suite de tests E2E Playwright** (hoy la validación es exploratoria vía MCP). Reevaluar cuando exista dicha suite | Descartado (ciclo 15, D4) — sin suite E2E en el roadmap inmediato; sin evidencia de necesidad actual |
+| IF02 | Research | API key de Context7 (Upstash) | El tier anónimo tiene rate-limit; si el uso crece, registrar cuenta y añadir header `CONTEXT7_API_KEY` en `opencode.jsonc` | Descartado (ciclo 15, D4) — sin evidencia de rate-limit alcanzado |
+| IF03 | Research | Suite `secondsky/sap-skills` completa (sapui5-cli, sapui5-linter, sap-fiori-tools…) | Se instaló solo `sapui5` (núcleo). Si el trabajo UI5 crece, evaluar las complementarias con la misma revisión de contenido | Descartado (ciclo 15, D4) — `ui5-odata-demo` ya tiene CI real con `ui5 lint` |
 
 ---
 
@@ -70,10 +70,11 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 | 2026-07-21 | M01 | `~/.config/opencode/AGENTS.md` creado. |
 | 2026-07-21 | M02 | Referencia `playwright-testing` del AGENTS.md validada (skill existente). |
 | 2026-07-21 | R01 | Regla de revisión de skills de terceros documentada (esta tabla + guía §4 antipatrones). |
+| 2026-07-31 | IF01–IF03 | Cerradas como **Descartado** (decisión D4 del ciclo 15): re-evaluadas sin nuevas evidencias; cumplían su propósito documental. |
 
 ---
 
 # Cierre de la iniciativa
 
-Todos los elementos en **Implementado** salvo IF01–IF03, movidos a iniciativa futura.
-No quedan elementos en "Pendiente" ni "En evaluación".
+Todos los elementos en **Implementado**; IF01–IF03 cerradas como **Descartado** en el ciclo 15 (D4).
+No quedan elementos en "Pendiente", "En evaluación" ni "Movido a una iniciativa futura".

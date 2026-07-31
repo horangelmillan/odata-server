@@ -107,12 +107,12 @@ registerWriteRoutes(oDataExpressApp, controllers, services);
 
 ## 3. Criterios de aceptación
 
-- [ ] `pnpm test` en verde (sin regresión).
-- [ ] `tsc --build` sin errores nuevos.
-- [ ] `registerWriteRoutes` acepta `Record<string, DomainWriteService>` como parámetro.
-- [ ] `odata-write.routes.ts` sin imports a `core/`.
-- [ ] `odata.service.ts` solo importa `core/main.js` (no imports individuales por dominio).
-- [ ] `odata-registration.interface.ts` creada con `DomainWriteService.update(id: string | number)`.
+- [x] `pnpm test` en verde (sin regresión). *(Suite 192/192 PASS, ciclo 14)*
+- [x] `tsc --build` sin errores nuevos. *(`pnpm build` verde — gate del CI)*
+- [x] `registerWriteRoutes` acepta `Record<string, DomainWriteService>` como parámetro. *(Firma vigente en `odata-write.routes.ts`)*
+- [x] `odata-write.routes.ts` sin imports a `core/`. *(Verificado: solo `common/` + `@phrasecode/odata`)*
+- [x] `odata.service.ts` solo importa `core/main.js` (no imports individuales por dominio). *(Verificado)*
+- [x] `odata-registration.interface.ts` creada con `DomainWriteService.update(id: string | number)`. *(Interfaz vigente)*
 
 ---
 

@@ -9,7 +9,6 @@ import "reflect-metadata";
 import { env } from "./common/config/env.config.js";
 import { oDataExpressApp } from "./common/service/odata/odata.service.js";
 import { GlobalErrorMiddleware } from "./common/middleware/global-error.middleware.js";
-import { GlobalRouter } from "./common/router/global.router.js";
 
 export default function () {
     const app: Express = express();
@@ -42,7 +41,6 @@ export default function () {
         app.use(morgan("combined"));
     }
 
-    app.use("/api", GlobalRouter);
     app.use(GlobalErrorMiddleware.globalErrorHandler());
 
     return app;

@@ -209,12 +209,12 @@ sap.ui.define([
 
 ## 4. Criterios de aceptación
 
-- [ ] Al navegar a `#/finance` se muestra la vista Finance.
-- [ ] La vista Demo sigue funcionando (test bench).
-- [ ] Los botones Demo/Finance alternan correctamente entre vistas.
-- [ ] `$metadata` del servidor incluye entidades finance (se verifica con `ui5lint`).
-- [ ] Se muestran datos reales de `finance/company-odata` (u otra entidad).
-- [ ] Sin errores de consola en SAPUI5.
+- [x] Al navegar a `#/finance` se muestra la vista Finance. *(Validado con Playwright en ciclos 12–13)*
+- [x] La vista Demo sigue funcionando (test bench). *(Ciclo 13: test bench 8/8 PASS)*
+- [x] Los botones Demo/Finance alternan correctamente entre vistas. *(Navegación Demo↔Finance validada en ciclos 12–13)*
+- [x] `$metadata` del servidor incluye entidades finance (se verifica con `ui5lint`). *(12 EntityTypes; verificado en ciclos 12–14)*
+- [x] Se muestran datos reales de `finance/company-odata` (u otra entidad). *(Datos reales visibles en las 8 vistas finance, ciclos 12–13)*
+- [x] Sin errores de consola en SAPUI5. *(0 errores de consola — N1/N2/N3/N18/N19/N20/N21 resueltos en el ciclo 13)*
 
 ---
 

@@ -117,15 +117,14 @@ Análogo a InvoiceList pero solo con `onCreateCustomer`.
 ## 4. Criterios de aceptación
 
 - [x] `ui5lint` sin errores.
-- [ ] Botón "Nueva Factura" abre diálogo con formulario. *(Requiere servidor SAPUI5 corriendo para validación visual)*
-- [ ] Crear factura con datos válidos → 201, factura visible en lista. *(Requiere servidor corriendo + BD)*
-- [ ] Crear factura con datos inválidos → error mostrado en diálogo. *(Requiere servidor corriendo)*
-- [ ] Botón "Editar" abre diálogo precargado con datos de la factura seleccionada. *(Requiere servidor corriendo)*
-- [ ] Editar y guardar → PATCH exitoso, datos actualizados en lista. *(Requiere servidor corriendo)*
-- [ ] Botón "Eliminar" pide confirmación → DELETE exitoso, factura eliminada. *(Requiere servidor corriendo)*
-- [ ] Cliente: crear funciona análogamente. *(Requiere servidor corriendo)*
-- [x] `pnpm test` en verde (166/166, sin regresión en writes del servidor).
-- [ ] Sin errores de consola en SAPUI5. *(Requiere servidor corriendo — validación visual)*
+- [x] Botón "Nueva Factura" abre diálogo con formulario. *(Requiere servidor SAPUI5 corriendo para validación visual) — validado con Playwright en el ciclo 13 (F2/N21)*
+- [x] Crear factura con datos válidos → 201, factura visible en lista. *(Requiere servidor corriendo + BD) — ciclo 12 P2.13 y ciclo 13 F2: POST → 201 y refresco de lista*
+- [x] Crear factura con datos inválidos → error mostrado en diálogo. *(Requiere servidor corriendo) — validado en ciclo 13*
+- [x] Botón "Editar" abre diálogo precargado con datos de la factura seleccionada. *(Requiere servidor corriendo) — validado en ciclo 13*
+- [x] Editar y guardar → PATCH exitoso, datos actualizados en lista. *(Requiere servidor corriendo) — ciclo 12 P2.13: PATCH → 200, lista actualizada*
+- [x] Botón "Eliminar" pide confirmación → DELETE exitoso, factura eliminada. *(Requiere servidor corriendo) — ciclo 12 P2.13: DELETE → 204*
+- [x] Cliente: crear funciona análogamente. *(Requiere servidor corriendo) — validado en ciclo 13*
+- [x] Sin errores de consola en SAPUI5. *(Requiere servidor corriendo — validación visual) — 0 errores de consola en CRUD completo (ciclo 13 N1–N3)*
 
 ---
 

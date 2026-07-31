@@ -143,10 +143,10 @@ reales para validar relaciones). F4/F5 validan y documentan. F6 cierra.
 
 ## 7. Condiciones de aceptación globales (gate de merge a master — F6)
 
-- [ ] F0–F5 ejecutadas y verificadas.
-- [ ] `pnpm test` en verde (sin regresión; nuevos tests de ecosistema en verde).
-- [ ] `GET /api/*` no expuesto; solo `/odata` (intacto del ciclo 05).
-- [ ] `pnpm db:reset` reproduce el ecosistema idéntico (re-montable verificado).
-- [ ] `$expand`/`$filter` financieros funcionan (queries del chatbot resueltas).
-- [ ] Documentación (`README.md`, `AGENTS.md`, `docs/`) alineada al ecosistema.
-- [ ] `master` protegida: el merge se hace vía PR + check `test` (flujo ciclo 05).
+- [x] F0–F5 ejecutadas y verificadas. *(Ciclo 06 completo: merge vía PR #5, tag `v2.1.0-financial-eco`)*
+- [x] `pnpm test` en verde (sin regresión; nuevos tests de ecosistema en verde). *(Suite 192/192 PASS, ciclo 14)*
+- [x] `GET /api/*` no expuesto; solo `/odata` (intacto del ciclo 05). *(404 efectivo; montaje residual eliminado en el ciclo 15, RF1)*
+- [x] `pnpm db:reset` reproduce el ecosistema idéntico (re-montable verificado). *(Ciclo 11 R1: md5 idéntico; ciclo 14 F2: 2 ejecuciones idénticas)*
+- [x] `$expand`/`$filter` financieros funcionan (queries del chatbot resueltas). *(`financial-expand.integration.test.ts` + validación Playwright de los ciclos 12–14)*
+- [x] Documentación (`README.md`, `AGENTS.md`, `docs/`) alineada al ecosistema. *(Ciclos 11 DT4/DT5, 13 N8–N10 y 15)*
+- [x] `master` protegida: el merge se hace vía PR + check `test` (flujo ciclo 05). *(Vigente: `ci.yml` con job `test`, rama protegida)*
