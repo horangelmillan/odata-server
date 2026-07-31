@@ -1,7 +1,8 @@
 import "reflect-metadata";
 import { config } from "dotenv";
-import { Sequelize, DataTypes } from "sequelize";
+import { Sequelize } from "sequelize";
 import { generateFinancialData, validateSeedData, REFERENCE_DATE, type SeedData } from "./financial-seed-data.js";
+import { SEED_TABLES } from "./financial-seed-models.js";
 
 config();
 
@@ -38,116 +39,23 @@ async function main() {
     console.log("Connected to database.");
 
     // Fuente de verdad de columnas: src/core/finance/<dominio>/model/*.odata.model.ts.
-    // Estas definiciones locales deben mantenerse alineadas con los modelos de dominio
+    // Definiciones locales centralizadas en financial-seed-models.ts (DT2, ciclo 14):
+    // el test de consistencia verifica que coinciden con los modelos de dominio
     // (el seed es standalone: no importa el dataSource de la app).
-    const Company = seq.define("companies", {
-        id: { type: DataTypes.STRING, primaryKey: true },
-        nombre: DataTypes.STRING,
-        moneda: DataTypes.STRING,
-        pais: DataTypes.STRING,
-        createdAt: DataTypes.DATE,
-        updatedAt: DataTypes.DATE,
-    }, { tableName: "companies", timestamps: true });
-
-    const Customer = seq.define("customers", {
-        id: { type: DataTypes.STRING, primaryKey: true },
-        nombre: DataTypes.STRING,
-        companyId: DataTypes.STRING,
-        pais: DataTypes.STRING,
-        createdAt: DataTypes.DATE,
-        updatedAt: DataTypes.DATE,
-    }, { tableName: "customers", timestamps: true });
-
-    const Supplier = seq.define("suppliers", {
-        id: { type: DataTypes.STRING, primaryKey: true },
-        nombre: DataTypes.STRING,
-        pais: DataTypes.STRING,
-        createdAt: DataTypes.DATE,
-        updatedAt: DataTypes.DATE,
-    }, { tableName: "suppliers", timestamps: true });
-
-    const GlAccount = seq.define("glaccounts", {
-        id: { type: DataTypes.STRING, primaryKey: true },
-        nombre: DataTypes.STRING,
-        createdAt: DataTypes.DATE,
-        updatedAt: DataTypes.DATE,
-    }, { tableName: "glaccounts", timestamps: true });
-
-    const Invoice = seq.define("invoices", {
-        id: { type: DataTypes.STRING, primaryKey: true },
-        companyId: DataTypes.STRING,
-        customerId: DataTypes.STRING,
-        fecha: DataTypes.DATE,
-        dueDate: DataTypes.DATE,
-        importe: DataTypes.DECIMAL,
-        netAmount: DataTypes.DECIMAL,
-        taxAmount: DataTypes.DECIMAL,
-        grossAmount: DataTypes.DECIMAL,
-        docNumber: DataTypes.STRING,
-        moneda: DataTypes.STRING,
-        estado: DataTypes.STRING,
-        createdAt: DataTypes.DATE,
-        updatedAt: DataTypes.DATE,
-    }, { tableName: "invoices", timestamps: true });
-
-    const SupplierInvoice = seq.define("supplierinvoices", {
-        id: { type: DataTypes.STRING, primaryKey: true },
-        supplierId: DataTypes.STRING,
-        fecha: DataTypes.DATE,
-        dueDate: DataTypes.DATE,
-        importe: DataTypes.DECIMAL,
-        netAmount: DataTypes.DECIMAL,
-        taxAmount: DataTypes.DECIMAL,
-        grossAmount: DataTypes.DECIMAL,
-        docNumber: DataTypes.STRING,
-        moneda: DataTypes.STRING,
-        estado: DataTypes.STRING,
-        createdAt: DataTypes.DATE,
-        updatedAt: DataTypes.DATE,
-    }, { tableName: "supplierinvoices", timestamps: true });
-
-    const InvoiceItem = seq.define("invoiceitems", {
-        id: { type: DataTypes.STRING, primaryKey: true },
-        invoiceId: DataTypes.STRING,
-        glAccountId: DataTypes.STRING,
-        material: DataTypes.STRING,
-        cantidad: DataTypes.INTEGER,
-        importe: DataTypes.DECIMAL,
-        createdAt: DataTypes.DATE,
-        updatedAt: DataTypes.DATE,
-    }, { tableName: "invoiceitems", timestamps: true });
-
-    const Payment = seq.define("payments", {
-        id: { type: DataTypes.STRING, primaryKey: true },
-        invoiceId: DataTypes.STRING,
-        fecha: DataTypes.DATE,
-        importe: DataTypes.DECIMAL,
-        metodo: DataTypes.STRING,
-        createdAt: DataTypes.DATE,
-        updatedAt: DataTypes.DATE,
-    }, { tableName: "payments", timestamps: true });
-
-    // DAP2 (ciclo 14): simetría supplierinvoice — items y pagos de proveedor.
-    const SupplierInvoiceItem = seq.define("supplierinvoiceitems", {
-        id: { type: DataTypes.STRING, primaryKey: true },
-        supplierInvoiceId: DataTypes.STRING,
-        glAccountId: DataTypes.STRING,
-        material: DataTypes.STRING,
-        cantidad: DataTypes.INTEGER,
-        importe: DataTypes.DECIMAL,
-        createdAt: DataTypes.DATE,
-        updatedAt: DataTypes.DATE,
-    }, { tableName: "supplierinvoiceitems", timestamps: true });
-
-    const SupplierPayment = seq.define("supplierpayments", {
-        id: { type: DataTypes.STRING, primaryKey: true },
-        supplierInvoiceId: DataTypes.STRING,
-        fecha: DataTypes.DATE,
-        importe: DataTypes.DECIMAL,
-        metodo: DataTypes.STRING,
-        createdAt: DataTypes.DATE,
-        updatedAt: DataTypes.DATE,
-    }, { tableName: "supplierpayments", timestamps: true });
+    const models = SEED_TABLES.map((t) =>
+        seq.define(t.tableName, t.columns as never, { tableName: t.tableName, timestamps: true }),
+    );
+    const byTable = Object.fromEntries(SEED_TABLES.map((t, i) => [t.tableName, models[i]]));
+    const Company = byTable["companies"];
+    const Customer = byTable["customers"];
+    const Supplier = byTable["suppliers"];
+    const GlAccount = byTable["glaccounts"];
+    const Invoice = byTable["invoices"];
+    const SupplierInvoice = byTable["supplierinvoices"];
+    const InvoiceItem = byTable["invoiceitems"];
+    const Payment = byTable["payments"];
+    const SupplierInvoiceItem = byTable["supplierinvoiceitems"];
+    const SupplierPayment = byTable["supplierpayments"];
 
     if (reset) {
         console.log("Dropping and re-creating tables...");
