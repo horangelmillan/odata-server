@@ -1,4 +1,4 @@
-import { Model, Table, Column, DataTypes, BelongsTo, HasMany } from "@phrasecode/odata";
+import { Model, Table, Column, DataTypes, BelongsTo, HasMany  } from "../../../../common/service/odata/odata-runtime.js";
 import { SupplierOData } from "../../supplier/model/supplier.odata.model.js";
 import { SupplierInvoiceItemOData } from "../../supplierinvoiceitem/model/supplierinvoiceitem.odata.model.js";
 import { SupplierPaymentOData } from "../../supplierpayment/model/supplierpayment.odata.model.js";

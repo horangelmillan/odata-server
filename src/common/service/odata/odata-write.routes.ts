@@ -1,5 +1,5 @@
 import express, { type Router, type Request, type Response } from "express";
-import { ODataControler } from "@phrasecode/odata";
+import type { ODataControler } from "@phrasecode/odata";
 import { odataWriteService, type ODataBaseModel, type WriteResult } from "./odata-write.service.js";
 import { injectEtag, etagMatches } from "./odata-etag.js";
 import { oDataError } from "./odata-error.js";

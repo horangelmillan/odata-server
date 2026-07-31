@@ -1,4 +1,4 @@
-import { ODataControler } from "@phrasecode/odata";
+import type { ODataControler } from "@phrasecode/odata";
 import { WriteResult } from "./odata-write.service.js";
 
 export interface DomainWriteService {

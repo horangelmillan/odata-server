@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import type { Transaction } from "sequelize";
-import { ODataControler, QueryParser } from "@phrasecode/odata";
+import { QueryParser } from "../../common/service/odata/odata-runtime.js";
+import type { ODataControler } from "@phrasecode/odata";
 import { odataWriteService, type ODataBaseModel } from "../service/odata/odata-write.service.js";
 import { stripFormat } from "../service/odata/odata-format.js";
 import { injectEtag, etagMatches } from "../service/odata/odata-etag.js";

@@ -1,4 +1,4 @@
-import { Model, Table, Column, DataTypes, BelongsTo } from "@phrasecode/odata";
+import { Model, Table, Column, DataTypes, BelongsTo  } from "../../../../common/service/odata/odata-runtime.js";
 import { InvoiceOData } from "../../invoice/model/invoice.odata.model.js";
 import { GlAccountOData } from "../../glaccount/model/glaccount.odata.model.js";
 

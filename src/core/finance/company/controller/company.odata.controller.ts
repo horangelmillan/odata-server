@@ -1,4 +1,5 @@
-import { ODataControler, QueryParser } from "@phrasecode/odata";
+import { ODataControler } from "../../../../common/service/odata/odata-runtime.js";
+import type { QueryParser } from "@phrasecode/odata";
 import { CompanyOData } from "../model/company.odata.model.js";
 
 export class CompanyODataController extends ODataControler {

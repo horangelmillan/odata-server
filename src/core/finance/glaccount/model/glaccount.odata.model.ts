@@ -1,4 +1,4 @@
-import { Model, Table, Column, DataTypes, HasMany } from "@phrasecode/odata";
+import { Model, Table, Column, DataTypes, HasMany  } from "../../../../common/service/odata/odata-runtime.js";
 import { InvoiceItemOData } from "../../invoiceitem/model/invoiceitem.odata.model.js";
 
 @Table({ tableName: "glaccounts", timestamps: true })

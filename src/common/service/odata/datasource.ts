@@ -1,5 +1,5 @@
-import { DataSource } from "@phrasecode/odata";
-import type { IDbConfig } from "@phrasecode/odata";
+import { DataSource  } from "./odata-runtime.js";
+import type { IDbConfig, DataSource as DataSourceType } from "@phrasecode/odata";
 import { env } from "../../config/env.config.js";
 
 const dbConfig = env.isProd ? env.prodDb : env.devDb;
@@ -29,7 +29,7 @@ if (env.isProd && process.env.DB_SSL !== "false") {
 // RF1 (ciclo 16, F1): el datasource ya NO conoce los modelos de dominio. La
 // lista compuesta llega desde el bootstrap (`domainRegistrations.map(r => r.model)`),
 // de modo que `common` no importa `core`.
-export function createDataSource(models: unknown[]): DataSource {
+export function createDataSource(models: unknown[]): DataSourceType {
     return new DataSource({
         ...dataSourceConfig,
         models: [...models],
@@ -40,13 +40,13 @@ export function createDataSource(models: unknown[]): DataSource {
 // de inyección (ver f1-modularidad.md §3.2). `expressApp(dataSource)` enlaza el
 // datasource aquí al componer la app; `odataWriteService` lo consume vía
 // `getDataSource()`. Trade-off aceptado: mínima modificación vs DI estricta.
-let boundDataSource: DataSource | null = null;
+let boundDataSource: DataSourceType | null = null;
 
-export function registerDataSource(dataSource: DataSource): void {
+export function registerDataSource(dataSource: DataSourceType): void {
     boundDataSource = dataSource;
 }
 
-export function getDataSource(): DataSource {
+export function getDataSource(): DataSourceType {
     if (!boundDataSource) {
         throw new Error(
             "DataSource not registered: call expressApp(dataSource) before using write services",

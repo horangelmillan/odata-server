@@ -1,4 +1,4 @@
-import { Model, Table, Column, DataTypes } from "@phrasecode/odata";
+import { Model, Table, Column, DataTypes  } from "../../../common/service/odata/odata-runtime.js";
 
 // F2 (ciclo 16): modelo de usuarios del dominio auth. NO es un entityset OData
 // (no hay controlador OData): solo da soporte al login (`/auth/login`). La

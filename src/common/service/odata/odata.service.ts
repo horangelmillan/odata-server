@@ -1,5 +1,6 @@
 import { Router, type Express } from "express";
-import { ExpressRouter, ODataControler, type DataSource } from "@phrasecode/odata";
+import { ExpressRouter } from "./odata-runtime.js";
+import type { ODataControler, DataSource } from "@phrasecode/odata";
 import { env } from "../../config/env.config.js";
 import { type DomainRegistration, type DomainWriteService } from "./odata-registration.interface.js";
 import { BatchMiddleware } from "../../middleware/batch.middleware.js";
