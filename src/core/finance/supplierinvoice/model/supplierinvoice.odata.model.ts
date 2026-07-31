@@ -1,5 +1,7 @@
-import { Model, Table, Column, DataTypes, BelongsTo } from "@phrasecode/odata";
+import { Model, Table, Column, DataTypes, BelongsTo, HasMany } from "@phrasecode/odata";
 import { SupplierOData } from "../../supplier/model/supplier.odata.model.js";
+import { SupplierInvoiceItemOData } from "../../supplierinvoiceitem/model/supplierinvoiceitem.odata.model.js";
+import { SupplierPaymentOData } from "../../supplierpayment/model/supplierpayment.odata.model.js";
 
 @Table({ tableName: "supplierinvoices", timestamps: true })
 export class SupplierInvoiceOData extends Model<SupplierInvoiceOData> {
@@ -44,4 +46,11 @@ export class SupplierInvoiceOData extends Model<SupplierInvoiceOData> {
 
     @BelongsTo(() => SupplierOData, { relation: [{ foreignKey: "id", sourceKey: "supplierId" }] })
     supplier!: SupplierOData;
+
+    // DAP2 (ciclo 14): simetría estructural con invoice — items y pagos.
+    @HasMany(() => SupplierInvoiceItemOData, { relation: [{ foreignKey: "supplierInvoiceId", sourceKey: "id" }] })
+    items!: SupplierInvoiceItemOData[];
+
+    @HasMany(() => SupplierPaymentOData, { relation: [{ foreignKey: "supplierInvoiceId", sourceKey: "id" }] })
+    payments!: SupplierPaymentOData[];
 }

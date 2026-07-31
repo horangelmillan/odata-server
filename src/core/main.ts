@@ -8,6 +8,8 @@ import { invoiceRegistration } from "./finance/invoice/main.js";
 import { supplierInvoiceRegistration } from "./finance/supplierinvoice/main.js";
 import { invoiceItemRegistration } from "./finance/invoiceitem/main.js";
 import { paymentRegistration } from "./finance/payment/main.js";
+import { supplierInvoiceItemRegistration } from "./finance/supplierinvoiceitem/main.js";
+import { supplierPaymentRegistration } from "./finance/supplierpayment/main.js";
 import type { DomainRegistration } from "../common/service/odata/odata-registration.interface.js";
 
 export const domainRegistrations: DomainRegistration[] = [
@@ -21,4 +23,7 @@ export const domainRegistrations: DomainRegistration[] = [
     supplierInvoiceRegistration,
     invoiceItemRegistration,
     paymentRegistration,
+    // DAP2 (ciclo 14): simetría supplierinvoice — items y pagos de proveedor.
+    supplierInvoiceItemRegistration,
+    supplierPaymentRegistration,
 ];

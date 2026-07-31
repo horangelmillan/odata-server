@@ -127,13 +127,35 @@ async function main() {
         updatedAt: DataTypes.DATE,
     }, { tableName: "payments", timestamps: true });
 
+    // DAP2 (ciclo 14): simetría supplierinvoice — items y pagos de proveedor.
+    const SupplierInvoiceItem = seq.define("supplierinvoiceitems", {
+        id: { type: DataTypes.STRING, primaryKey: true },
+        supplierInvoiceId: DataTypes.STRING,
+        glAccountId: DataTypes.STRING,
+        material: DataTypes.STRING,
+        cantidad: DataTypes.INTEGER,
+        importe: DataTypes.DECIMAL,
+        createdAt: DataTypes.DATE,
+        updatedAt: DataTypes.DATE,
+    }, { tableName: "supplierinvoiceitems", timestamps: true });
+
+    const SupplierPayment = seq.define("supplierpayments", {
+        id: { type: DataTypes.STRING, primaryKey: true },
+        supplierInvoiceId: DataTypes.STRING,
+        fecha: DataTypes.DATE,
+        importe: DataTypes.DECIMAL,
+        metodo: DataTypes.STRING,
+        createdAt: DataTypes.DATE,
+        updatedAt: DataTypes.DATE,
+    }, { tableName: "supplierpayments", timestamps: true });
+
     if (reset) {
         console.log("Dropping and re-creating tables...");
         await seq.sync({ force: true });
     }
 
     console.log("Clearing existing data...");
-    for (const model of [Payment, InvoiceItem, Invoice, SupplierInvoice, Customer, Supplier, GlAccount, Company]) {
+    for (const model of [Payment, InvoiceItem, Invoice, SupplierInvoice, Customer, Supplier, GlAccount, Company, SupplierPayment, SupplierInvoiceItem]) {
         await model.destroy({ where: {}, truncate: true, cascade: true });
     }
 
@@ -146,6 +168,8 @@ async function main() {
     await SupplierInvoice.bulkCreate(data.supplierInvoices as any[]);
     await InvoiceItem.bulkCreate(data.invoiceItems as any[]);
     await Payment.bulkCreate(data.payments as any[]);
+    await SupplierInvoiceItem.bulkCreate(data.supplierInvoiceItems as any[]);
+    await SupplierPayment.bulkCreate(data.supplierPayments as any[]);
 
     // 2. Verificación post-inserción: los conteos en BD deben coincidir con lo generado.
     const counts = {
@@ -157,6 +181,8 @@ async function main() {
         supplierinvoices: await SupplierInvoice.count(),
         invoiceitems: await InvoiceItem.count(),
         payments: await Payment.count(),
+        supplierinvoiceitems: await SupplierInvoiceItem.count(),
+        supplierpayments: await SupplierPayment.count(),
     };
     const expected = {
         companies: data.companies.length,
@@ -167,6 +193,8 @@ async function main() {
         supplierinvoices: data.supplierInvoices.length,
         invoiceitems: data.invoiceItems.length,
         payments: data.payments.length,
+        supplierinvoiceitems: data.supplierInvoiceItems.length,
+        supplierpayments: data.supplierPayments.length,
     };
     for (const [table, count] of Object.entries(counts)) {
         const want = expected[table as keyof typeof expected];

@@ -1,5 +1,6 @@
 import { Umzug, SequelizeStorage } from "umzug";
 import type { Sequelize } from "sequelize";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 let _umzug: Umzug<Sequelize> | null = null;
 
@@ -8,10 +9,15 @@ export function createMigrator(sequelize: Sequelize): Umzug<Sequelize> {
 
   _umzug = new Umzug<Sequelize>({
     migrations: {
-      glob: ["*.ts", { cwd: new URL(".", import.meta.url).pathname }],
+      // fileURLToPath (no .pathname): en Windows, `.pathname` devuelve
+      // `/C:/...` que el glob no resuelve -> pending siempre vacío y las
+      // migraciones nunca se aplican (hallazgo DAP2, F1).
+      glob: ["[0-9]*.ts", { cwd: fileURLToPath(new URL(".", import.meta.url)) }],
       resolve: ({ path, name }) => {
         if (!path) throw new Error(`Migration path not found for '${name}'`);
-        const filePath = path;
+        // En Windows el loader ESM rechaza rutas absolutas nativas
+        // (`c:\...`); hay que pasarlas como file:// URL.
+        const filePath = pathToFileURL(path).toString();
         return {
           name,
           up: async (ctx) => {

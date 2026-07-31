@@ -148,12 +148,24 @@ Rama: `docs/financial-ui5-testing` (cerrada).
 - [`02-implementation-backlog.md`](12-financial-ui5-testing/02-implementation-backlog.md) — Backlog: B1–B19 todos resueltos (implementados/descartado B2).
 
 ## 13 — Ciclo de Pulido Total
-**Ciclo en ejecución.** Estado global: 🚧 Plan aprobado (2026-07-31).
+**Ciclo completado.** Estado global: ✅ **F0–F4 + hallazgos N1–N21 resueltos** (merge PRs #22–#27, tag `v2.2.0`).
 Pulido integral: bugs de consola UI5 (FormatException, i18n_en 404), gate de type-check en CI,
 bump de versión 2.2.0, documentación desalineada (índice, checkboxes f3, backlogs C09/C11),
 higiene de repos (artefactos Playwright, logs, `.tsbuildinfo`), repo remoto para
-`ui5-odata-demo` (main/dev protegidas) y deuda técnica evaluada (helper `modelOf()`, DAP2).
-Rama: `feat/pulido-total`.
+`ui5-odata-demo` (main/dev protegidas + CI real) y deuda técnica evaluada (helper `modelOf()`, DAP2).
+Rama: `feat/pulido-total`. Resoluciones posteriores: N18 (bindings por-key), N19 ($batch CRLF RFC 2046),
+N21 (timers test bench).
 
 - [`00-plan-de-ejecucion.md`](13-pulido-total/00-plan-de-ejecucion.md) — Plan con sistema de checklist (fases 0–F).
-- [`02-implementation-backlog.md`](13-pulido-total/02-implementation-backlog.md) — Hallazgos N1–N17 categorizados.
+- [`02-implementation-backlog.md`](13-pulido-total/02-implementation-backlog.md) — Hallazgos N1–N21 categorizados.
+
+## 14 — Ciclo DAP2: Simetría SupplierInvoice (items + pagos)
+**Ciclo en ejecución.** Estado global: 🚧 F0–F5 implementadas (pendiente F7 merge).
+Simetría estructural de `supplierinvoice` frente a `invoice` (origen DT5/N17): tabla
+`supplierinvoiceitems` (líneas de gasto) y `supplierpayments` (pagos), dominios write completos,
+seed coherente (estado derivado de fecha + pagos), detalle UI5 con items y pagos, y corrección
+del migrator Umzug en Windows (las migraciones nunca se aplicaban en dev). Rama:
+`feature/dap2-supplierinvoice-symmetry`.
+
+- [`00-plan-maestro.md`](14-dap2/00-plan-maestro.md) — Plan maestro: decisiones D1–D6, fases F0–F7, aceptación.
+- [`02-implementation-backlog.md`](14-dap2/02-implementation-backlog.md) — Hallazgos R1, M1, DT1–DT2.
