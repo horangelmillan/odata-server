@@ -156,6 +156,18 @@ describe("OData SAPUI5 compat — Fase C.2 ($batch)", () => {
             expect(res.body).toContain("HTTP/1.1 200 OK");
             expect(res.body).toContain(`"id":2`);
         });
+
+        it("precedes every boundary delimiter with CRLF (RFC 2046, N19)", async () => {
+            const inner = buildChangeset([requestPart("/product-odata(2)")]);
+            const res = await postBatch(buildBatch([changesetPart(inner)]));
+
+            expect(res.status).toBe(200);
+            // Sin CRLF previo al boundary, SAPUI5 no separa las partes del
+            // changeset y JSON.parse falla (N19: "Unterminated string in JSON").
+            expect(res.body).toContain(`\r\n--${CHANGESET_BOUNDARY}`);
+            expect(res.body).toContain(`--${CHANGESET_BOUNDARY}--\r\n`);
+            expect(res.body).not.toContain("}--");
+        });
     });
 
     describe("POST /odata/$batch — error handling", () => {

@@ -116,8 +116,11 @@ function httpResponseBlock(response: ResponseBlock): string {
 }
 
 function assemble(blocks: string[], boundary: string): string {
-    const separator = `--${boundary}\r\n`;
-    return blocks.map((block) => separator + block).join("") + `--${boundary}--\r\n`;
+    // RFC 2046: todo delimitador de boundary debe ir precedido de CRLF. Sin él,
+    // los clientes (p.ej. SAPUI5 ODataModel v4) no separan las partes del
+    // changeset y el parseo del JSON falla (N19, ciclo 13).
+    const separator = `\r\n--${boundary}\r\n`;
+    return `--${boundary}\r\n` + blocks.join(separator) + `\r\n--${boundary}--\r\n`;
 }
 
 function changesetWrapper(innerBody: string, innerBoundary: string): string {
