@@ -12,8 +12,23 @@ export class SupplierInvoiceOData extends Model<SupplierInvoiceOData> {
     @Column({ dataType: DataTypes.DATE })
     fecha!: string;
 
+    @Column({ dataType: DataTypes.DATE })
+    dueDate!: string;
+
     @Column({ dataType: DataTypes.DECIMAL })
     importe!: number;
+
+    @Column({ dataType: DataTypes.DECIMAL })
+    netAmount!: number;
+
+    @Column({ dataType: DataTypes.DECIMAL })
+    taxAmount!: number;
+
+    @Column({ dataType: DataTypes.DECIMAL })
+    grossAmount!: number;
+
+    @Column({ dataType: DataTypes.STRING })
+    docNumber!: string;
 
     @Column({ dataType: DataTypes.STRING })
     moneda!: string;

@@ -48,6 +48,8 @@ export async function recalcInvoiceStatus(model: ODataBaseModel, id: string, tx:
         invoice["fecha"] as string,
         Number(invoice["importe"]),
         payments.map((p) => ({ importe: Number(p["importe"]) })),
+        new Date().toISOString().split("T")[0],
+        invoice["dueDate"] as string | undefined,
     );
 
     if (newEstado !== invoice["estado"]) {
@@ -74,7 +76,8 @@ class InvoiceService {
         const dto = await validate(InvoiceCreateDTO, data);
         const model = modelOf(this.controller);
         const today = new Date().toISOString().split("T")[0];
-        dto.estado = computeInvoiceStatus(dto.fecha, dto.importe, [], today);
+        const dueDate = dto.dueDate ?? new Date(new Date(dto.fecha).getTime() + 30 * 86400000).toISOString().split("T")[0];
+        dto.estado = computeInvoiceStatus(dto.fecha, dto.importe, [], today, dueDate);
         return await odataWriteService.runInTransaction((tx) =>
             odataWriteService.create(model, dto as unknown as Record<string, unknown>, tx),
         );

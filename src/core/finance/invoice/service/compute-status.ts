@@ -4,11 +4,21 @@ export interface PaymentSum {
     importe: number;
 }
 
+/**
+ * Calcula el estado de una factura según su vencimiento y pagos.
+ *
+ * Reglas (f2.5 + ciclo 11):
+ * - PAGADA ⇔ Σ pagos ≥ importe.
+ * - VENCIDA ⇔ fecha de vencimiento (dueDate, o fallback fecha + 30d) ya pasó
+ *   y no está pagada.
+ * - PENDIENTE ⇔ resto (no vencida, sin pago completo).
+ */
 export function computeInvoiceStatus(
     fecha: string,
     importe: number,
     payments: PaymentSum[],
-    referenceDate: string = new Date().toISOString().split("T")[0]
+    referenceDate: string = new Date().toISOString().split("T")[0],
+    dueDate?: string
 ): string {
     const totalPaid = payments.reduce((sum, p) => sum + Number(p.importe), 0);
 
@@ -16,11 +26,12 @@ export function computeInvoiceStatus(
         return "PAGADA";
     }
 
-    const invoiceDate = new Date(fecha).getTime();
+    const due = dueDate
+        ? new Date(dueDate).getTime()
+        : new Date(fecha).getTime() + PAYMENT_TERM_DAYS * 86400000;
     const refDate = new Date(referenceDate).getTime();
-    const daysSinceInvoice = (refDate - invoiceDate) / (1000 * 60 * 60 * 24);
 
-    if (daysSinceInvoice > PAYMENT_TERM_DAYS) {
+    if (refDate > due) {
         return "VENCIDA";
     }
 

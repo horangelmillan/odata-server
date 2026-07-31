@@ -16,9 +16,32 @@ export class InvoiceCreateDTO implements IInvoice {
     @IsString()
     fecha!: string;
 
+    @IsOptional()
+    @IsString()
+    dueDate?: string;
+
     @IsNumber()
     @Min(0)
     importe!: number;
+
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    netAmount?: number;
+
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    taxAmount?: number;
+
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    grossAmount?: number;
+
+    @IsOptional()
+    @IsString()
+    docNumber?: string;
 
     @IsString()
     moneda!: string;
@@ -49,9 +72,32 @@ export class InvoiceUpdateDTO extends PartialType(OmitType(InvoiceCreateDTO, ["i
     fecha?: string;
 
     @IsOptional()
+    @IsString()
+    dueDate?: string;
+
+    @IsOptional()
     @IsNumber()
     @Min(0)
     importe?: number;
+
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    netAmount?: number;
+
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    taxAmount?: number;
+
+    @IsOptional()
+    @IsNumber()
+    @Min(0)
+    grossAmount?: number;
+
+    @IsOptional()
+    @IsString()
+    docNumber?: string;
 
     @IsOptional()
     @IsString()
