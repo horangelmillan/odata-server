@@ -32,8 +32,8 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 
 | ID | Detectado en | Descripción | Impacto | Estado |
 | -- | ------------ | ----------- | ------- | ------ |
-| DT1 | F1 | El `dataSource` lista los modelos hardcodeados (2 nuevos añadidos); un registro automático evitaría olvidos | Bajo — mantenibilidad | Pendiente (fuera de alcance) |
-| DT2 | F2 | `financial-seed.ts` mantiene definiciones Sequelize locales duplicadas de los modelos de dominio (patrón preexistente, extendido a las 2 tablas nuevas) | Bajo — deuda aceptada (seed standalone) | Registrado — se mantiene |
+| DT1 | F1 | El `dataSource` lista los modelos hardcodeados; un registro automático evitaría olvidos | Bajo — mantenibilidad | **Implementado** — lista centralizada en `src/common/service/odata/odata-models.ts` (única fuente de verdad) consumida por `datasource.ts`; test de consistencia `odata-models.consistency.test.ts` compara contra `domainRegistrations` (rompe CI si se desalinean) |
+| DT2 | F2 | `financial-seed.ts` mantiene definiciones Sequelize locales duplicadas de los modelos de dominio (patrón preexistente, extendido a las 2 tablas nuevas) | Bajo — deuda aceptada (seed standalone) | **Implementado** — definiciones extraídas a `scripts/seed/financial-seed-models.ts` (SEED_TABLES) y consumidas por el seed; test de consistencia `financial-seed-models.consistency.test.ts` compara columnas contra la metadata de los modelos OData (ambas direcciones) |
 
 ---
 
@@ -56,3 +56,5 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 | 2026-07-31 | — | F3: CRUD 201/200/204 en ambos dominios; `$expand=items,payments` con datos reales. |
 | 2026-07-31 | — | F4: suite **188/188** (176 + 6 unit seed + 8 integration simetría + 2 ajustes). |
 | 2026-07-31 | — | F5: UI5 detalle (PR #3 ui5-odata-demo): SI00001 con items y 2 pagos visibles; navegación lista↔detalle OK; 0 errores consola. |
+| 2026-07-31 | DT1 | Lista de modelos centralizada (`odata-models.ts`) + test de consistencia contra `domainRegistrations` (2/2 PASS). |
+| 2026-07-31 | DT2 | Definiciones del seed extraídas (`financial-seed-models.ts`) + test de consistencia contra metadata de modelos OData (2/2 PASS). Suite **192/192**; seed refactorizado verificado (`db:reset` OK); servidor OK con datasource centralizado. |
