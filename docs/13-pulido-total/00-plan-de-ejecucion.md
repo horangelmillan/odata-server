@@ -83,7 +83,7 @@ Cada ítem tiene criterio de aceptación explícito.
 | D1 | Eliminar `.playwright-mcp/` (35 archivos) | [x] ✅ |
 | D2 | Eliminar 10 logs de raíz de `ui5-odata-demo` | [x] ✅ |
 | D3 | Eliminar `.tsbuildinfo` + ajustar `.gitignore` | [x] ✅ |
-| D4 | Repo remoto para `ui5-odata-demo` | [x] ✅ — GitHub **público** (`horangelmillan/ui5-odata-demo`), ramas `main`/`dev` **protegidas** (solo PR, 1 review, enforce admins), código pusheado. (GitHub Free no permite protección en privados → decisión usuario: público.) |
+| D4 | Repo remoto para `ui5-odata-demo` | [x] ✅ — GitHub **público** (`horangelmillan/ui5-odata-demo`), ramas `main`/`dev` **protegidas** (solo PR, 1 review, enforce admins), código pusheado. (GitHub Free no permite protección en privados → decisión usuario: público.) **REVISIÓN (07-30):** protección ajustada tras bloqueo de PRs (check fantasma `continuous-integration`): CI real añadido (lint+build) y `enforce_admins: false` (repo single-user); PR #1 (N18) mergeado. |
 
 ### FASE E — Deuda técnica evaluada
 
