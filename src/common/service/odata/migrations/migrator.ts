@@ -1,52 +1,42 @@
 import { Umzug, SequelizeStorage } from "umzug";
-import type { Sequelize } from "sequelize";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import type { Sequelize, QueryInterface } from "sequelize";
 
-let _umzug: Umzug<Sequelize> | null = null;
-
-export function createMigrator(sequelize: Sequelize): Umzug<Sequelize> {
-  if (_umzug) return _umzug;
-
-  _umzug = new Umzug<Sequelize>({
-    migrations: {
-      // fileURLToPath (no .pathname): en Windows, `.pathname` devuelve
-      // `/C:/...` que el glob no resuelve -> pending siempre vacío y las
-      // migraciones nunca se aplican (hallazgo DAP2, F1).
-      glob: ["[0-9]*.ts", { cwd: fileURLToPath(new URL(".", import.meta.url)) }],
-      resolve: ({ path, name }) => {
-        if (!path) throw new Error(`Migration path not found for '${name}'`);
-        // En Windows el loader ESM rechaza rutas absolutas nativas
-        // (`c:\...`); hay que pasarlas como file:// URL.
-        const filePath = pathToFileURL(path).toString();
-        return {
-          name,
-          up: async (ctx) => {
-            const mod = await import(filePath);
-            await mod.up({ context: ctx.context.getQueryInterface() });
-          },
-          down: async (ctx) => {
-            const mod = await import(filePath);
-            await mod.down({ context: ctx.context.getQueryInterface() });
-          },
-        };
-      },
-    },
-    context: sequelize,
-    storage: new SequelizeStorage({ sequelize, tableName: "SequelizeMeta" }),
-    logger: console,
-  });
-
-  return _umzug;
+// RF2 (ciclo 16, F1): migración del kernel/dominio con la misma firma que
+// Umzug espera (`up({ context })` con `context = QueryInterface`).
+export interface KernelMigration {
+    name: string;
+    up(context: { context: QueryInterface }): Promise<void>;
+    down(context: { context: QueryInterface }): Promise<void>;
 }
 
-export async function runMigrations(sequelize: Sequelize): Promise<void> {
-  const umzug = createMigrator(sequelize);
-  const pending = await umzug.pending();
-  if (pending.length === 0) {
-    console.log("Migrations: no pending migrations");
-    return;
-  }
-  console.log(`Migrations: ${pending.length} pending (${pending.map((m) => m.name).join(", ")})`);
-  await umzug.up();
-  console.log("Migrations: all applied");
+// RF2 (ciclo 16, F1): las migraciones llegan como lista explícita desde el
+// bootstrap (baseline + migraciones de dominio). Sin glob ni `file://` — la
+// resolución de archivos la hace tsc en build, así que funciona igual en dev
+// (.ts) y en dist (.js). El `name` conserva la identidad en `SequelizeMeta`
+// (no cambia el nombre histórico), por lo que las bases ya migradas no
+// re-ejecutan nada. Elimina de raíz el bug DAP2 (pending vacío en Windows y
+// en dist).
+export async function runMigrations(
+    sequelize: Sequelize,
+    migrations: KernelMigration[],
+): Promise<void> {
+    const umzug = new Umzug<Sequelize>({
+        migrations: migrations.map((m) => ({
+            name: m.name,
+            up: (ctx) => m.up({ context: ctx.context.getQueryInterface() }),
+            down: (ctx) => m.down({ context: ctx.context.getQueryInterface() }),
+        })),
+        context: sequelize,
+        storage: new SequelizeStorage({ sequelize, tableName: "SequelizeMeta" }),
+        logger: console,
+    });
+
+    const pending = await umzug.pending();
+    if (pending.length === 0) {
+        console.log("Migrations: no pending migrations");
+        return;
+    }
+    console.log(`Migrations: ${pending.length} pending (${pending.map((m) => m.name).join(", ")})`);
+    await umzug.up();
+    console.log("Migrations: all applied");
 }

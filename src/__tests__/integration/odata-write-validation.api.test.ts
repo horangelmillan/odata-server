@@ -6,9 +6,14 @@ import request from "supertest";
 // sólo define los modelos Sequelize (sin conexión) al importar la app.
 // Ver docs/05-refactor-odata-as-domain/fases/f1-*.md §2.6.
 import expressApp from "../../main.js";
+import { createDataSource } from "../../common/service/odata/datasource.js";
+import { domainRegistrations } from "../../core/main.js";
+
+// RF1 (ciclo 16, F1): composición en el test (misma forma que server.ts).
+const dataSource = createDataSource(domainRegistrations.map((r) => r.model));
 
 describe("OData escritura directa: validación DTO (F1)", () => {
-    const app = () => expressApp();
+    const app = () => expressApp(dataSource);
 
     it("POST /odata/demo/product-odata con body inválido -> 400 OData v4", async () => {
         // Faltan `nombre` y `categoria`; `precio` es negativo e inválido.
@@ -47,7 +52,7 @@ describe("OData escritura directa: validación DTO (F1)", () => {
 });
 
 describe("OData escritura directa: validación DTO (F2)", () => {
-    const app = () => expressApp();
+    const app = () => expressApp(dataSource);
 
     it("POST /odata/demo/category-odata con body inválido -> 400 OData v4", async () => {
         // Falta `nombre`; campo requerido por CategoryCreateDTO.

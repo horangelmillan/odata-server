@@ -3,7 +3,12 @@ import { Op } from "sequelize";
 import request from "supertest";
 import type { Express } from "express";
 import expressApp from "../../main.js";
-import { dataSource } from "../../common/service/odata/datasource.js";
+import { createDataSource } from "../../common/service/odata/datasource.js";
+import { domainRegistrations } from "../../core/main.js";
+
+// RF1 (ciclo 16, F1): composición en el test (misma forma que server.ts): el
+// datasource se crea desde los modelos de los registros de dominio.
+const dataSource = createDataSource(domainRegistrations.map((r) => r.model));
 
 // F3: el ORM Sequelize compartido fue eliminado. Los modelos OData son la
 // única fuente de verdad y la instancia Sequelize vive dentro del `dataSource`.
@@ -113,7 +118,7 @@ const dbAvailable = await dbReady();
 // Fase R: $metadata CSDL JSON 4.01 válido para SAPUI5/OpenUI5 ODataModel v4.
 // Reemplaza el CSDL+JSON custom de la librería (que UI5 no puede bootstrappear).
 describe("OData $metadata: CSDL 4.01 válido para SAPUI5 (Fase R)", () => {
-    const app = expressApp();
+    const app = expressApp(dataSource);
 
     it("expone $EntityContainer con EntitySets namespaced y $NavigationPropertyBinding", async () => {
         const res = await request(app).get("/odata/$metadata").set("Accept", "application/json");
@@ -151,7 +156,7 @@ describe("OData $metadata: CSDL 4.01 válido para SAPUI5 (Fase R)", () => {
 // Fase I: tipos EDM en $metadata y negociación de $format. No requiere BD
 // (el $metadata se genera de los modelos y el 415 corta antes de tocar la BD).
 describe("OData tipos EDM + $format (Fase I)", () => {
-    const app = expressApp();
+    const app = expressApp(dataSource);
 
     it("$metadata tipa precio como Edm.Decimal y las fechas como Edm.DateTimeOffset", async () => {
         const res = await request(app).get("/odata/$metadata").set("Accept", "application/json");
@@ -190,7 +195,7 @@ describe("OData tipos EDM + $format (Fase I)", () => {
 });
 
 describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)", () => {
-    const app = expressApp();
+    const app = expressApp(dataSource);
     let electronicId = 0;
     let homeId = 0;
 
@@ -870,7 +875,7 @@ describe.skipIf(!dbAvailable)("OData $expand contra Postgres (Fase E + Fase G)",
     // `MessageManager` sabe parsear: { error: { code, message, target?, details[] } }.
     // Ver docs/14 (Sesión 16, G2).
     describe("G2: errores OData v4 estándar (SAPUI5 MessageManager)", () => {
-        const app = expressApp();
+        const app = expressApp(dataSource);
 
         it("PATCH directo a entidad inexistente devuelve 404 con forma estándar", async () => {
             const res = await request(app)

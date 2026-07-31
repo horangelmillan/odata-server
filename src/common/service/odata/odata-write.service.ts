@@ -1,5 +1,5 @@
 import type { Sequelize, Transaction, ModelStatic, Model as SequelizeModel } from "sequelize";
-import { dataSource } from "./datasource.js";
+import { getDataSource } from "./datasource.js";
 import { etagValueOf } from "./odata-etag.js";
 
 // --- Contratos mínimos de la metadata que expone @phrasecode/odata ---
@@ -42,7 +42,7 @@ export interface WriteResult {
 
 class ODataWriteService {
     private sequelize(): Sequelize {
-        return (dataSource as unknown as DataSourceInternal).sequelizerAdaptor.sequelize;
+        return (getDataSource() as unknown as DataSourceInternal).sequelizerAdaptor.sequelize;
     }
 
     runInTransaction<T>(fn: (tx: Transaction) => Promise<T>): Promise<T> {

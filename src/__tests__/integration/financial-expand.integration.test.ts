@@ -2,7 +2,12 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import type { Express } from "express";
 import expressApp from "../../main.js";
-import { dataSource } from "../../common/service/odata/datasource.js";
+import { createDataSource } from "../../common/service/odata/datasource.js";
+import { domainRegistrations } from "../../core/main.js";
+
+// RF1 (ciclo 16, F1): composición en el test (misma forma que server.ts): el
+// datasource se crea desde los modelos de los registros de dominio.
+const dataSource = createDataSource(domainRegistrations.map((r) => r.model));
 
 const odataSeq = (dataSource as unknown as { sequelizerAdaptor: { sequelize: any } }).sequelizerAdaptor.sequelize;
 
@@ -23,7 +28,7 @@ function checkExpand(result: any, navProp: string): void {
 }
 
 describe("Financial $expand contra Postgres (F3)", () => {
-    const app = expressApp();
+    const app = expressApp(dataSource);
     const Company = odataSeq.models.companies;
     const Customer = odataSeq.models.customers;
     const Supplier = odataSeq.models.suppliers;
@@ -69,7 +74,7 @@ describe("Financial $expand contra Postgres (F3)", () => {
         }
     });
 
-    it("invoice?$expand=items anida las líneas", async () => {
+    it("invoice?$expand=items anida las lÃ­neas", async () => {
         const res = await request(app).get("/odata/finance/invoice-odata?$expand=items");
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
@@ -137,7 +142,7 @@ describe("Financial $expand contra Postgres (F3)", () => {
         checkExpand(c1, "invoices");
     });
 
-    it("customer?$expand=invoices($expand=items) navega cliente→facturas→items", async () => {
+    it("customer?$expand=invoices($expand=items) navega clienteâ†’facturasâ†’items", async () => {
         const res = await request(app).get("/odata/finance/customer-odata?$expand=invoices($expand=items)");
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];

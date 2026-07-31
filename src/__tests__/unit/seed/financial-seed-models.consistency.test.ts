@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { SEED_TABLES } from "../../../../scripts/seed/financial-seed-models.js";
-import { odataModels } from "../../../common/service/odata/odata-models.js";
+import { domainRegistrations } from "../../../core/main.js";
+
+// RF1 (ciclo 16, F1): la lista de modelos ya no vive en common (odata-models.ts
+// eliminado); se deriva de los registros de dominio, única fuente de verdad.
+const odataModels = domainRegistrations.map((r) => r.model);
 
 // DT2 (ciclo 14): las definiciones de columnas del seed (financial-seed-models.ts)
 // deben coincidir con las de los modelos de dominio. Si se añade una columna a un
@@ -29,7 +33,7 @@ describe("consistencia seed ↔ modelos de dominio (DT2)", () => {
             });
             expect(model, `modelo para '${table.tableName}' no encontrado`).toBeTruthy();
 
-            const meta = (model as { getMetadata: () => { columnMetadata: { propertyKey: string }[] } }).getMetadata();
+            const meta = (model as unknown as { getMetadata: () => { columnMetadata: { propertyKey: string }[] } }).getMetadata();
             const domainColumns = new Set(meta.columnMetadata.map((c) => c.propertyKey));
             const seedColumns = new Set(Object.keys(table.columns));
 

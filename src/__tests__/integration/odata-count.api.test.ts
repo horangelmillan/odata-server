@@ -62,12 +62,12 @@ function fakeExecute(query: any) {
     return Promise.resolve(response);
 }
 
-vi.mock("../../common/service/odata/datasource.js", () => ({
-    dataSource: {
-        getMetadata: vi.fn(() => ({})),
-        execute: vi.fn((query: any) => fakeExecute(query)),
-    },
-}));
+// RF1 (ciclo 16, F1): sin mock de módulo — el datasource fake llega como
+// parámetro a `expressApp(dataSource)` (composición por inyección).
+const fakeDataSource = {
+    getMetadata: vi.fn(() => ({})),
+    execute: vi.fn((query: any) => fakeExecute(query)),
+} as never;
 
 import expressApp from "../../main.js";
 
@@ -80,7 +80,7 @@ import expressApp from "../../main.js";
 // (financial-ecosystem, odata-expand, supplierinvoice-symmetry).
 
 describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => {
-    const app = () => expressApp();
+    const app = () => expressApp(fakeDataSource);
 
     describe("GET /odata/demo/product-odata/$count", () => {
         it("returns the plain total count (text/plain, no $filter)", async () => {

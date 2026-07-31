@@ -56,12 +56,12 @@ function fakeExecute(query: any) {
     return Promise.resolve(response);
 }
 
-vi.mock("../../common/service/odata/datasource.js", () => ({
-    dataSource: {
-        getMetadata: vi.fn(() => ({})),
-        execute: vi.fn((query: any) => fakeExecute(query)),
-    },
-}));
+// RF1 (ciclo 16, F1): sin mock de módulo — el datasource fake llega como
+// parámetro a `expressApp(dataSource)` (composición por inyección).
+const fakeDataSource = {
+    getMetadata: vi.fn(() => ({})),
+    execute: vi.fn((query: any) => fakeExecute(query)),
+} as never;
 
 import expressApp from "../../main.js";
 
@@ -101,7 +101,7 @@ function buildChangeset(innerBlocks: string[], boundary: string = CHANGESET_BOUN
 }
 
 function postBatch(body: string, boundary: string = BATCH_BOUNDARY) {
-    return request(expressApp())
+    return request(expressApp(fakeDataSource))
         .post("/odata/$batch")
         .set("Content-Type", `multipart/mixed; boundary=${boundary}`)
         .buffer(true)
@@ -206,7 +206,7 @@ describe("OData SAPUI5 compat — Fase C.2 ($batch)", () => {
         });
 
         it("rejects an invalid Content-Type with 400", async () => {
-            const res = await request(expressApp())
+            const res = await request(expressApp(fakeDataSource))
                 .post("/odata/$batch")
                 .set("Content-Type", "application/json")
                 .send("{}");
