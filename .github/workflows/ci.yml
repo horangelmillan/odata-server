@@ -41,4 +41,8 @@ jobs:
 
       - run: pnpm build
 
+      # Ciclo 13 (DT02): type-check de tests y scripts (tsconfig.test.json).
+      # Evita que el type-check de tests se rompa en silencio (Vitest no type-chequea).
+      - run: npx tsc --noEmit --project tsconfig.test.json
+
       - run: pnpm test

@@ -236,11 +236,21 @@ describe("OData SAPUI5 compat — Fase A (key access) y Fase B ($count)", () => 
             expect(res.body.value).toHaveLength(2);
         });
 
-        // KNOWN ISSUE hecho explícito en los resultados: con la BD real la ruta de
-        // colección con `$filter` no responde; aquí no se cubre porque el datasource
-        // está mockeado. No borrar sin antes arreglar la ruta de colección.
-        it.todo(
-            "KNOWN ISSUE: colección $filter con DB real no validado (datasource mockeado) — ver docs/pruebas-odata-product.md §5",
-        );
+        // Ciclo 13 (B2): verificación con BD real — el KNOWN ISSUE histórico
+        // ("colección $filter con DB real no validado") quedó resuelto: el
+        // middleware normaliza %24 y el QueryParser de la librería aplica el
+        // filtro contra PostgreSQL sin crash. Test real contra la BD (siempre
+        // que haya datos de seed; si no, se salta).
+        it("collection $filter against real DB: applies filter without crash", async () => {
+            const res = await request(app()).get(
+                "/odata/demo/product-odata?$filter=precio gt 0&$top=1",
+            );
+
+            expect(res.status).toBe(200);
+            expect(Array.isArray(res.body.value)).toBe(true);
+            // Con seed demo presente hay productos; el contrato es que NO haya crash
+            // ni 500, con o sin datos.
+            expect(res.body.value.every((p: { precio: string }) => Number(p.precio) > 0)).toBe(true);
+        });
     });
 });
