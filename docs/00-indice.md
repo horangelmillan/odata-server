@@ -172,11 +172,24 @@ del migrator Umzug en Windows (las migraciones nunca se aplicaban en dev). Rama:
 - [`02-implementation-backlog.md`](14-dap2/02-implementation-backlog.md) — Hallazgos R1, M1, DT1–DT2.
 
 ## 15 — Ciclo de Consolidación Post-DAP2
-**Ciclo en ejecución.** Estado global: 🚧 plan documentado, pendiente de aprobación y ejecución.
-Sin funcionalidad nueva: alinea documentación (índice, checklist de patrones, checkboxes de
+**Ciclo completado.** Estado global: ✅ **F0–F4 ejecutadas y validadas** — merge a `master`
+vía [PR #31](https://github.com/horangelmillan/odata-server/pull/31) (2026-07-31). Sin
+funcionalidad nueva: alinea documentación (índice, checklist de patrones, checkboxes de
 fases 05–08, comentarios obsoletos), elimina restos de la era REST (mount `/api`, middleware de
 seguridad huérfano, git hooks obsoletos), corrige encoding de comentarios en `batch.middleware.ts`
-y alinea la versión de Node (22). Rama: `docs/consolidacion-post-dap2`.
+y alinea la versión de Node (22). Rama: `docs/consolidacion-post-dap2` (cerrada).
 
 - [`00-plan-maestro.md`](15-consolidacion/00-plan-maestro.md) — Plan maestro: decisiones D1–D5, fases F0–F5, aceptación.
 - [`02-implementation-backlog.md`](15-consolidacion/02-implementation-backlog.md) — Hallazgos R1, M1, RF1–RF3, DT1–DT5, IF01-10–IF03-10, decisiones D1–D5.
+
+## 16 — Ciclo de Producción Segura
+**Ciclo en ejecución.** Estado global: 🚧 F0 en ejecución. Cierra las brechas de producción
+identificadas tras el ciclo 15: arranque productivo (`pnpm start`/Docker, parche de la
+librería + gate CI), migraciones en `dist`, **modularidad Shared Kernel ↔ dominios**
+(common 100% genérico, composición en bootstrap, migraciones por dominio, test estructural),
+**seguridad por entorno** (dev/test abiertos, prod estricto: JWT + usuarios, CORS, rate-limit,
+fail-fast) y observabilidad mínima (`/healthz`). Incluye la plantilla de ciclo
+(`02-patrones/17`) y bump `2.3.0`. Rama: `feat/produccion-segura`.
+
+- [`00-plan-maestro.md`](16-produccion-segura/00-plan-maestro.md) — Plan maestro: decisiones D1–D8, fases F0–F5, aceptación.
+- [`02-implementation-backlog.md`](16-produccion-segura/02-implementation-backlog.md) — Hallazgos R1–R5, M1–M3, RF1–RF3, DT1–DT4, IF1–IF2, DA1.
