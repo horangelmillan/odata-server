@@ -197,3 +197,18 @@ Incluye la plantilla de ciclo
 
 - [`00-plan-maestro.md`](16-produccion-segura/00-plan-maestro.md) — Plan maestro: decisiones D1–D8, fases F0–F5, aceptación.
 - [`02-implementation-backlog.md`](16-produccion-segura/02-implementation-backlog.md) — Hallazgos R1–R8, M1–M4, RF1–RF4, DT1–DT5, IF1–IF2, DA1.
+
+## 17 — Ciclo de Operación Segura
+**Ciclo en ejecución.** Estado global: 🚧 F0 en ejecución. Hardening operativo derivado
+de la evaluación de madurez productiva (2026-08-01): **backups/DR de la BD** (pg_dump +
+restore verificado), **CI** (build de imagen Docker + gate `pnpm audit`), arranque
+robusto (`exit(1)` si falla BD/migraciones), **conexión/BD** (statement_timeout, pool
+configurable, validación de CA SSL, mensajes de error genéricos en prod), **dependencias**
+(override `uuid@^9`; bcrypt documentado), **runbook de operación** (despliegue, secrets,
+rollout, troubleshooting). Decisiones de arquitectura: single-instance como modelo
+objetivo (D1), observabilidad cerrada como Descartado con nota (D2, IF1 del ciclo 16),
+bump `2.3.1` al cierre (D6). Rama: `feat/operacion-segura`.
+
+- [`00-plan-maestro.md`](17-operacion-segura/00-plan-maestro.md) — Plan maestro: decisiones D1–D6, fases F0–F6, aceptación.
+- [`01-arquitectura-propuesta.md`](17-operacion-segura/01-arquitectura-propuesta.md) — Decisiones de arquitectura (single-instance, observabilidad, backups, bcrypt, uuid, versión).
+- [`02-implementation-backlog.md`](17-operacion-segura/02-implementation-backlog.md) — Hallazgos R1–R9, M1–M4, DT1–DT2, IF1, DA1–DA6.
