@@ -82,11 +82,9 @@ jobs:
           kill $PID
 
       # Ciclo 17 (M3): gate de vulnerabilidades. Falla si `pnpm audit --prod`
-      # reporta un advisory FUERA de las cadenas conocidas y documentadas:
+      # reporta un advisory FUERA de la cadena conocida y documentada:
       #   - cadena de build de bcrypt (@mapbox/node-pre-gyp -> tar/rimraf/...):
       #     build-time, no runtime; mitigada por --frozen-lockfile (ciclo 17 D4).
-      #   - uuid@8.3.2 (transitiva de Sequelize, 0 usos directos): se elimina con
-      #     override en F4 (ciclo 17 D5); al limpiarla, el filtro queda vacio.
       # Cualquier advisory nuevo (de otra ruta) rompe el pipeline.
       - name: Audit de dependencias (fail si hay advisories nuevos)
         run: |
@@ -95,7 +93,7 @@ jobs:
           node -e "
             const fs = require('fs');
             const a = JSON.parse(fs.readFileSync('/tmp/audit.json', 'utf8'));
-            const known = (p) => p.includes('@mapbox/node-pre-gyp') || p.includes('uuid@8.3.2');
+            const known = (p) => p.includes('@mapbox/node-pre-gyp');
             const newOnes = [];
             for (const adv of Object.values(a.advisories || {})) {
               const paths = ((adv.findings || [])[0] || {}).paths || [];
@@ -106,7 +104,7 @@ jobs:
               process.exit(1);
             }
             const n = Object.keys(a.advisories || {}).length;
-            console.log('Audit OK: ' + n + ' advisory(ies) conocido(s) y documentado(s) (cadena build bcrypt / uuid, ciclo 17)');
+            console.log('Audit OK: ' + n + ' advisory(ies) conocido(s) y documentado(s) (cadena build bcrypt, ciclo 17)');
           "
 
   # Ciclo 17 (R2): la imagen de produccion se construye en cada PR. El gate
