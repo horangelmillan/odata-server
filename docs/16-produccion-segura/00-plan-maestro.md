@@ -2,7 +2,7 @@
 
 > **Ciclo:** `16-produccion-segura`
 > **Inicio:** 2026-07-31
-> **Estado global:** 🚧 F0–F3 completadas — F4 (validación integral) en curso
+> **Estado global:** ✅ F0–F5 completadas — merge a `master` vía PR #32 (tag `v2.3.0`)
 > **Baseline (verificado 2026-07-31):** `pnpm build` ✅ · `pnpm test` **185/185** ✅ · type-check tests 0 ✅ · working tree limpio · master al día (5492df5) · sin issues/PRs abiertos
 
 ---
@@ -75,17 +75,17 @@ con checklist y gates de validación, y cierre con PR.
 
 ## 3. Criterios de aceptación globales
 
-- [ ] `pnpm start` arranca el server compilado y responde OData (sin ts-node).
-- [ ] La imagen Docker prod se construye y arranca con BD limpia; las migraciones se aplican.
-- [ ] `src/common` no importa nada de `src/core` (test estructural en CI).
-- [ ] Eliminar un dominio no rompe `common` (verificado por diseño de composición + test estructural).
-- [ ] `NODE_ENV=development|test`: transacciones sin configurar seguridad (abierto por defecto).
-- [ ] `NODE_ENV=production`: falla rápido si falta `SECRET_KEY`/`CORS_ORIGIN`; sin token → 401.
-- [ ] Suite completa en verde + Playwright 8/8 con 0 errores de consola.
-- [ ] Backlog 16 sin elementos "Pendiente"/"En evaluación" al cierre.
-- [ ] `docs/00-indice.md` refleja el estado real (ciclos 15 y 16).
-- [ ] Plantilla de ciclo creada y usada por este ciclo (D8).
-- [ ] Versión `2.3.0` (D7).
+- [x] `pnpm start` arranca el server compilado y responde OData (sin ts-node).
+- [x] La imagen Docker prod se construye y arranca con BD limpia; las migraciones se aplican.
+- [x] `src/common` no importa nada de `src/core` (test estructural en CI).
+- [x] Eliminar un dominio no rompe `common` (verificado por diseño de composición + test estructural).
+- [x] `NODE_ENV=development|test`: transacciones sin configurar seguridad (abierto por defecto).
+- [x] `NODE_ENV=production`: falla rápido si falta `SECRET_KEY`/`CORS_ORIGIN`; sin token → 401.
+- [x] Suite completa en verde + Playwright 8/8 con 0 errores de consola.
+- [x] Backlog 16 sin elementos "Pendiente"/"En evaluación" al cierre.
+- [x] `docs/00-indice.md` refleja el estado real (ciclos 15 y 16).
+- [x] Plantilla de ciclo creada y usada por este ciclo (D8).
+- [x] Versión `2.3.0` (D7).
 
 ---
 
@@ -100,4 +100,31 @@ con checklist y gates de validación, y cierre con PR.
 
 ## 5. Resultado de la ejecución
 
-*(Se completa al cierre del ciclo, fase por fase, con evidencia.)*
+*(Completado al cierre, fase por fase, con evidencia.)*
+
+- **F0** ✅ (2026-07-31): rama `feat/produccion-segura`, plantilla de ciclo (D8),
+  plan/backlog, índice §15→completado y §16 registrado. Gate: build + 185/185 + type-check.
+- **F1** ✅ (2026-07-31): modularidad — `common` 100% genérico (0 imports de `core`,
+  gate estructural en CI), composición en bootstrap (`createODataExpressApp`/
+  `createDataSource` factories), migraciones finance → `core/finance/migrations/`,
+  migrator con lista explícita (identidad `SequelizeMeta` preservada). 188/188.
+- **F2** ✅ (2026-07-31): seguridad por entorno — fail-fast prod (`SECRET_KEY` ≥32,
+  `CORS_ORIGIN`), dominio `src/core/auth/` (users, migración 004, login bcrypt+JWT),
+  Bearer en `/odata` salvo `$metadata`, CORS por callback, rate-limit escrituras
+  (`express-rate-limit`), `/healthz` público, docs/03 reescritas. **215/215**.
+- **F3** ✅ (2026-07-31): arranque productivo — puente CJS `odata-runtime.ts` (R1),
+  migraciones verificadas en dist/BD limpia (R2), smoke de start en CI (R5),
+  compose prod con healthcheck/`CORS_ORIGIN`/`DB_SSL=false` (M2), Dockerfile
+  corregido (lockfile, node:22.20.0-alpine). **Docker prod healthy** con login real.
+- **F4** ✅ (2026-08-01): validación integral — build + tsc + **215/215**, `db:reset`
+  ×2 → md5 `05d92a3c…` idéntico (criterio excluye auditoría + `passwordHash`),
+  smoke dist dev+prod (healthz, 401, login→200), **Playwright 8/8** + navegación
+  Demo ↔ Finance ↔ detail con 0 errores de consola. Rama publicada + **PR #32**;
+  el CI real reveló R8 (smoke compartía BD con los tests) → corregido en `ci.yml`.
+- **F5** ✅ (2026-08-01): cierre — DT2 (índice §16 final), DT3 (checklist de patrones
+  alineada: seguridad por entorno, common genérico, migraciones por dominio),
+  DT4 (nota de vigencia en referencia de arquitectura), README alineado (Node 22,
+  fail-fast de entorno, `/healthz`+`/auth/login`, scripts auth, parches reales,
+  registro vía registrations/bootstrap, sección de git hooks eliminada),
+  bump **2.3.0** (D7). Backlog 16 sin "Pendiente"/"En evaluación". PR #32 mergeado
+  con CI verde; tag `v2.3.0`.

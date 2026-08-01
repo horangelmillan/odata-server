@@ -183,13 +183,17 @@ y alinea la versión de Node (22). Rama: `docs/consolidacion-post-dap2` (cerrada
 - [`02-implementation-backlog.md`](15-consolidacion/02-implementation-backlog.md) — Hallazgos R1, M1, RF1–RF3, DT1–DT5, IF01-10–IF03-10, decisiones D1–D5.
 
 ## 16 — Ciclo de Producción Segura
-**Ciclo en ejecución.** Estado global: 🚧 F0–F3 completadas (PR #32 abierto) — F4 (validación integral) en curso. Cierra las brechas de producción
-identificadas tras el ciclo 15: arranque productivo (`pnpm start`/Docker, parche de la
-librería + gate CI), migraciones en `dist`, **modularidad Shared Kernel ↔ dominios**
-(common 100% genérico, composición en bootstrap, migraciones por dominio, test estructural),
-**seguridad por entorno** (dev/test abiertos, prod estricto: JWT + usuarios, CORS, rate-limit,
-fail-fast) y observabilidad mínima (`/healthz`). Incluye la plantilla de ciclo
-(`02-patrones/17`) y bump `2.3.0`. Rama: `feat/produccion-segura`.
+**Ciclo completado.** Estado global: ✅ **F0–F5 completadas** — merge a `master`
+vía [PR #32](https://github.com/horangelmillan/odata-server/pull/32) (2026-08-01),
+tag `v2.3.0`. Cierra las brechas de producción
+identificadas tras el ciclo 15: arranque productivo (`pnpm start`/Docker: puente
+CJS `odata-runtime.ts` + gate CI), migraciones en `dist` (lista explícita por
+dominio), **modularidad Shared Kernel ↔ dominios**
+(common 100% genérico, composición en bootstrap, test estructural en CI),
+**seguridad por entorno** (dev/test abiertos, prod estricto: JWT + usuarios,
+CORS, rate-limit, fail-fast de entorno) y observabilidad mínima (`/healthz`).
+Incluye la plantilla de ciclo
+(`02-patrones/17`) y bump `2.3.0`. Rama: `feat/produccion-segura` (cerrada).
 
 - [`00-plan-maestro.md`](16-produccion-segura/00-plan-maestro.md) — Plan maestro: decisiones D1–D8, fases F0–F5, aceptación.
-- [`02-implementation-backlog.md`](16-produccion-segura/02-implementation-backlog.md) — Hallazgos R1–R5, M1–M3, RF1–RF3, DT1–DT4, IF1–IF2, DA1.
+- [`02-implementation-backlog.md`](16-produccion-segura/02-implementation-backlog.md) — Hallazgos R1–R8, M1–M4, RF1–RF4, DT1–DT5, IF1–IF2, DA1.

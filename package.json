@@ -1,6 +1,6 @@
 {
     "name": "odata-server",
-    "version": "2.2.0",
+    "version": "2.3.0",
     "description": "OData v4 server â€” Node/TypeScript/Express + Modular Monolith + PostgreSQL",
     "main": "./dist/server.js",
     "type": "module",
