@@ -139,7 +139,7 @@ Rama: `feature/seed-data-quality`.
 Playwright como harness de navegador real: navegación, filtros, CRUD desde diálogos,
 `$expand` profundo y edge cases. **24/24 checks PASS** en la suite interactiva. Merge a
 `master` vía PR #18. Además, en ramas posteriores se resolvieron los backlogs del ciclo
-(B1–B19) y los de ciclos previos: DAP1 (computeStatus), IF01 C09 (migraciones Umzug),
+(B1–B19) y los de ciclos previos: DAP1 (computeInvoiceStatus), IF01 C09 (migraciones Umzug),
 IF01 C11 (modelo financiero rico: dueDate/netAmount/taxAmount/grossAmount/docNumber),
 DT02 (type-check tests) — PRs #19, #20, #21.
 Rama: `docs/financial-ui5-testing` (cerrada).
