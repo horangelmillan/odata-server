@@ -61,4 +61,9 @@ export const env = {
     isProd: process.env.NODE_ENV === "production",
     devDb: loadDevDb(),
     prodDb: loadProdDb(),
+    // Ciclo 17 (F3): conexi�n/BD configurables (R9, M2, R6).
+    dbStatementTimeout: Number(process.env.DB_STATEMENT_TIMEOUT) || 30000,
+    dbPoolMax: Number(process.env.DB_POOL_MAX) || 10,
+    dbPoolMin: Number(process.env.DB_POOL_MIN) || 2,
+    dbSslRejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== "false",
 };

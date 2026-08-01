@@ -80,3 +80,39 @@ jobs:
           test -n "$TOKEN"
           test "$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" http://localhost:3000/odata/product-odata)" = "200"
           kill $PID
+
+      # Ciclo 17 (M3): gate de vulnerabilidades. Falla si `pnpm audit --prod`
+      # reporta un advisory FUERA de la cadena conocida y documentada:
+      #   - cadena de build de bcrypt (@mapbox/node-pre-gyp -> tar/rimraf/...):
+      #     build-time, no runtime; mitigada por --frozen-lockfile (ciclo 17 D4).
+      # Cualquier advisory nuevo (de otra ruta) rompe el pipeline.
+      - name: Audit de dependencias (fail si hay advisories nuevos)
+        run: |
+          set -e
+          pnpm audit --prod --json > /tmp/audit.json || true
+          node -e "
+            const fs = require('fs');
+            const a = JSON.parse(fs.readFileSync('/tmp/audit.json', 'utf8'));
+            const known = (p) => p.includes('@mapbox/node-pre-gyp');
+            const newOnes = [];
+            for (const adv of Object.values(a.advisories || {})) {
+              const paths = ((adv.findings || [])[0] || {}).paths || [];
+              if (!paths.every(known)) newOnes.push(adv.moduleName + ' (' + adv.severity + ')');
+            }
+            if (newOnes.length) {
+              console.error('ADVISORIES NUEVOS:', newOnes.join(', '));
+              process.exit(1);
+            }
+            const n = Object.keys(a.advisories || {}).length;
+            console.log('Audit OK: ' + n + ' advisory(ies) conocido(s) y documentado(s) (cadena build bcrypt, ciclo 17)');
+          "
+
+  # Ciclo 17 (R2): la imagen de produccion se construye en cada PR. El gate
+  # Docker del ciclo 16 (F3) era manual; cualquier rotura del Dockerfile o del
+  # stage production ahora falla el pipeline. Sin push (no hay registry).
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build imagen de produccion (target production)
+        run: docker build --target production -t odata-server:ci .

@@ -92,26 +92,58 @@ function patchMethod(relativePath, label, signature, patched, marker) {
 }
 
 // Parche 1: SSL en SequelizerAdaptor (no forzar dialectOptions.ssl en dev)
-patchFile(
-    path.join("@phrasecode", "odata", "dist", "adaptors", "sequelizer.js"),
-    "SSL SequelizerAdaptor",
-    [
-        "            dialectOptions: {",
-        "                ssl: {",
-        "                    require: dbConfig.dialectOptions?.ssl?.require,",
-        "                    rejectUnauthorized: dbConfig.dialectOptions?.ssl?.rejectUnauthorized,",
-        "                },",
-        "            },",
-    ].join("\n"),
-    [
-        "            dialectOptions: dbConfig.ssl ? {",
-        "                ssl: {",
-        "                    require: dbConfig.dialectOptions?.ssl?.require,",
-        "                    rejectUnauthorized: dbConfig.dialectOptions?.ssl?.rejectUnauthorized,",
-        "                },",
-        "            } : {},",
-    ].join("\n"),
-);
+// Parche 1: SSL SequelizerAdaptor + dialectOptions (R6, ciclo 17 F3).
+// La libreria construia `dialectOptions: { ssl: {...} }` SIEMPRE (forzaba SSL
+// incluso contra Postgres local). v1 lo condiciono a `dbConfig.ssl` (ciclo 16).
+// v2 (este ciclo) ademas MERGEA el resto de `dbConfig.dialectOptions` (p.ej.
+// `statement_timeout`) en vez de sobrescribirlo, para que el datasource pueda
+// pasar opciones de conexion adicionales.
+const sslPath = path.resolve(nodeModules, path.join("@phrasecode", "odata", "dist", "adaptors", "sequelizer.js"));
+const SSL_V2_MARKER = "// PATCHED-SSL-v2";
+const sslFactoryBlock = [
+    "            dialectOptions: {",
+    "                ssl: {",
+    "                    require: dbConfig.dialectOptions?.ssl?.require,",
+    "                    rejectUnauthorized: dbConfig.dialectOptions?.ssl?.rejectUnauthorized,",
+    "                },",
+    "            },",
+].join("\n");
+const sslV1Block = [
+    "            dialectOptions: dbConfig.ssl ? {",
+    "                ssl: {",
+    "                    require: dbConfig.dialectOptions?.ssl?.require,",
+    "                    rejectUnauthorized: dbConfig.dialectOptions?.ssl?.rejectUnauthorized,",
+    "                },",
+    "            } : {},",
+].join("\n");
+const sslV2Block = [
+    "            dialectOptions: {",
+    `                ${SSL_V2_MARKER}`,
+    "                ...(dbConfig.dialectOptions || {}),",
+    "                ...(dbConfig.ssl ? {",
+    "                    ssl: {",
+    "                        require: dbConfig.dialectOptions?.ssl?.require,",
+    "                        rejectUnauthorized: dbConfig.dialectOptions?.ssl?.rejectUnauthorized,",
+    "                    },",
+    "                } : {}),",
+    "            },",
+].join("\n");
+if (fs.existsSync(sslPath)) {
+    const sslContent = fs.readFileSync(sslPath, "utf-8");
+    if (sslContent.includes(SSL_V2_MARKER)) {
+        console.log("[odata-server] SSL SequelizerAdaptor: parche v2 ya aplicado");
+    } else if (sslContent.includes(sslV1Block)) {
+        fs.writeFileSync(sslPath, sslContent.replace(sslV1Block, sslV2Block), "utf-8");
+        console.log("[odata-server] SSL SequelizerAdaptor: parche v1 -> v2 aplicado");
+    } else if (sslContent.includes(sslFactoryBlock)) {
+        fs.writeFileSync(sslPath, sslContent.replace(sslFactoryBlock, sslV2Block), "utf-8");
+        console.log("[odata-server] SSL SequelizerAdaptor: parche v2 aplicado (desde fabrica)");
+    } else {
+        console.log("[odata-server] SSL SequelizerAdaptor: el archivo ha cambiado, verificar");
+    }
+} else {
+    console.log("[odata-server] SSL SequelizerAdaptor: archivo no encontrado, saltando");
+}
 
 // Parche 3: mapToEdmType (Fase I). Sequelize `DATE` es un timestamp (fecha+hora)
 // pero su .toString() devuelve "DATE", que la librería mapeaba a `Edm.Date`

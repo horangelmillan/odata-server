@@ -1,6 +1,6 @@
 {
     "name": "odata-server",
-    "version": "2.3.0",
+    "version": "2.3.1",
     "description": "OData v4 server â€” Node/TypeScript/Express + Modular Monolith + PostgreSQL",
     "main": "./dist/server.js",
     "type": "module",
@@ -20,6 +20,7 @@
         "seed": "node --loader ts-node --loader ts-node/esm --no-warnings scripts/seed/financial-seed.ts",
         "seed:demo": "node --loader ts-node --loader ts-node/esm --no-warnings scripts/seed/demo-seed.ts", "seed:auth": "node --loader ts-node --loader ts-node/esm --no-warnings scripts/seed/auth-seed.ts", "auth:create-user": "node --loader ts-node --loader ts-node/esm --no-warnings scripts/auth-create-user.ts",
         "db:reset": "node --loader ts-node --loader ts-node/esm --no-warnings scripts/seed/financial-seed.ts --reset && node --loader ts-node --loader ts-node/esm --no-warnings scripts/seed/auth-seed.ts",
+        "backup:db": "node scripts/backup/db-backup.mjs",
         "postinstall": "node scripts/patch-odata.mjs"
     },
     "dependencies": {
@@ -58,5 +59,10 @@
         "ts-node": "^10.9.2",
         "typescript": "^5.6.3",
         "vitest": "^3.1.1"
+    },
+    "pnpm": {
+        "overrides": {
+            "uuid": "^11.1.1"
+        }
     }
 }
