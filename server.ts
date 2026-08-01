@@ -51,7 +51,11 @@ const initServer = async () => {
             console.log("database synced");
         }
     } catch (err) {
-        return console.log(err, "something went wrong with the database connection, the server will not start.");
+        // R3 (ciclo 17): sin `exit(1)` el proceso quedaba vivo sin escuchar
+        // (exit code 0), con estado ambiguo en Docker (healthcheck + restart lo
+        // mitigaban, pero sin crash real). Ahora aborta con código de error.
+        console.error("FATAL: error de conexion/migraciones, el servidor no se iniciara:", err);
+        process.exit(1);
     }
 
     server.on("request", app);
