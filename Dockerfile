@@ -1,4 +1,4 @@
-FROM node:20.18.0-alpine AS base
+FROM node:22.20.0-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 WORKDIR /app
 
@@ -22,7 +22,7 @@ RUN pnpm build
 # Imagen de producción (solo lo necesario para correr)
 FROM base AS production
 ENV NODE_ENV=production
-COPY package.json ./
+COPY package.json pnpm-lock.yaml ./
 COPY scripts/ ./scripts/
 RUN pnpm install --frozen-lockfile --prod
 COPY --from=build /app/dist ./dist

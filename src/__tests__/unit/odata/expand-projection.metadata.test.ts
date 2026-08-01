@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { dataSource } from "../../../common/service/odata/datasource.js";
+import { createDataSource } from "../../../common/service/odata/datasource.js";
+import { domainRegistrations } from "../../../core/main.js";
+
+// RF1 (ciclo 16, F1): el datasource se compone desde los registros de dominio
+// (sin BD: getMetadata es puramente de metadata).
+const dataSource = createDataSource(domainRegistrations.map((r) => r.model));
 
 // Regresión de Fase G: el recorte de navegación es puramente a nivel de query
 // (buildInclude sobre el include de Sequelize). El CSDL del $metadata NO debe

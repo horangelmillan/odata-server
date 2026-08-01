@@ -2,7 +2,12 @@ import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import type { Express } from "express";
 import expressApp from "../../main.js";
-import { dataSource } from "../../common/service/odata/datasource.js";
+import { createDataSource } from "../../common/service/odata/datasource.js";
+import { domainRegistrations } from "../../core/main.js";
+
+// RF1 (ciclo 16, F1): composición en el test (misma forma que server.ts): el
+// datasource se crea desde los modelos de los registros de dominio.
+const dataSource = createDataSource(domainRegistrations.map((r) => r.model));
 
 const odataSeq = (dataSource as unknown as { sequelizerAdaptor: { sequelize: any } }).sequelizerAdaptor.sequelize;
 
@@ -22,9 +27,9 @@ function checkExpand(result: any, navProp: string): void {
     expect(result[navProp]).toBeTruthy();
 }
 
-// DAP2 (ciclo 14): simetría estructural de supplierinvoice — items y pagos.
+// DAP2 (ciclo 14): simetrÃ­a estructural de supplierinvoice â€” items y pagos.
 describe("SupplierInvoice symmetry (DAP2) contra Postgres", () => {
-    const app = expressApp();
+    const app = expressApp(dataSource);
     const Supplier = odataSeq.models.suppliers;
     const GlAccount = odataSeq.models.glaccounts;
     const SupplierInvoice = odataSeq.models.supplierinvoices;
@@ -50,7 +55,7 @@ describe("SupplierInvoice symmetry (DAP2) contra Postgres", () => {
         expect(gl2).toBeTruthy();
     });
 
-    it("supplierinvoice?$expand=items anida las líneas de gasto", async () => {
+    it("supplierinvoice?$expand=items anida las lÃ­neas de gasto", async () => {
         const res = await request(app).get("/odata/finance/supplierinvoice-odata?$expand=items");
         expect(res.status).toBe(200);
         const value = (res.body as any).value as Record<string, any>[];
@@ -137,7 +142,7 @@ describe("SupplierInvoice symmetry (DAP2) contra Postgres", () => {
         expect(del.status).toBe(204);
     });
 
-    it("validación: body con campo extra en item -> 400", async () => {
+    it("validaciÃ³n: body con campo extra en item -> 400", async () => {
         const res = await request(app)
             .post("/odata/finance/supplierinvoiceitem-odata")
             .send({ id: "SII88888", supplierInvoiceId: "SI00001", glAccountId: "000300", material: "X", cantidad: 1, importe: 1, hack: true });

@@ -1,12 +1,32 @@
 import http from "node:http";
 import { Express } from "express";
 import expressApp from "./src/main.js";
-import { dataSource } from "./src/common/service/odata/datasource.js";
+import { createDataSource } from "./src/common/service/odata/datasource.js";
 import { env } from "./src/common/config/env.config.js";
 import { runMigrations } from "./src/common/service/odata/migrations/migrator.js";
+import { domainRegistrations } from "./src/core/main.js";
+import * as baselineMigration from "./src/common/service/odata/migrations/001-baseline.js";
+import { financeMigrations } from "./src/core/finance/migrations/index.js";
+import { AuthUserOData } from "./src/core/auth/main.js";
+import { authMigrations } from "./src/core/auth/migrations/index.js";
+
+// RF1/RF2 (ciclo 16, F1): el bootstrap compone el datasource (modelos desde
+// los registros de dominio) y la lista explícita de migraciones. `001-baseline`
+// es el snapshot histórico congelado. El `name` es la IDENTIDAD en
+// SequelizeMeta: se conserva exactamente el nombre que registraba el resolver
+// glob histórico (con extensión) para que las bases ya migradas no re-ejecuten.
+// F2: el modelo de usuarios del dominio auth se añade a la composición (tabla
+// sincronizada en dev; migración 004 en prod) — no es un entityset OData.
+const dataSource = createDataSource([...domainRegistrations.map((r) => r.model), AuthUserOData]);
+
+const migrations = [
+    { name: "001-baseline.ts", up: baselineMigration.up, down: baselineMigration.down },
+    ...financeMigrations,
+    ...authMigrations,
+];
 
 const server: http.Server = http.createServer();
-const app: Express = expressApp();
+const app: Express = expressApp(dataSource);
 
 const initServer = async () => {
     try {
@@ -16,7 +36,7 @@ const initServer = async () => {
             .then(() => console.log("database is authenticated"));
 
         // Phase 1: Run controlled migrations (creates/migrates tables).
-        await runMigrations(sequelize);
+        await runMigrations(sequelize, migrations);
 
         // Phase 2: Safety net — ensures tables exist if running from scratch
         // without the migration baseline. In dev, allows adding columns during

@@ -20,14 +20,16 @@ vi.mock("../../common/service/odata/odata.service.js", () => {
             res.status(404).json({ error: "not found" });
         }
     });
-    return { oDataExpressApp: router };
+    return { createODataExpressApp: () => router };
 });
 
 import expressApp from "../../main.js";
 
+const fakeDataSource = {} as never;
+
 describe("OData endpoint", () => {
     it("should serve odata endpoint under /odata", async () => {
-        const app = expressApp();
+        const app = expressApp(fakeDataSource);
         const res = await request(app).get("/odata/products");
 
         expect(res.status).toBe(200);
@@ -36,14 +38,14 @@ describe("OData endpoint", () => {
     });
 
     it("should include OData-Version header", async () => {
-        const app = expressApp();
+        const app = expressApp(fakeDataSource);
         const res = await request(app).get("/odata/products");
 
         expect(res.headers["odata-version"]).toBe("4.0");
     });
 
     it("should serve $metadata", async () => {
-        const app = expressApp();
+        const app = expressApp(fakeDataSource);
         const res = await request(app).get("/odata/$metadata");
 
         expect(res.status).toBe(200);
@@ -51,7 +53,7 @@ describe("OData endpoint", () => {
     });
 
     it("should expose OData-Version header via CORS", async () => {
-        const app = expressApp();
+        const app = expressApp(fakeDataSource);
         const res = await request(app).options("/odata/products");
 
         const exposedHeaders = (res.headers["access-control-expose-headers"] || "").toLowerCase();

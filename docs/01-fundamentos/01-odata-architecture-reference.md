@@ -1,14 +1,29 @@
 # 01 — Arquitectura OData de odata-server
 
+> **Nota de vigencia (ciclo 16, 2026-08-01):** este documento describe la
+> arquitectura **original** del proyecto (ciclos 01–04: era REST, "OData
+> solo-lectura + REST para escritura") y se conserva como referencia histórica.
+> **No refleja la arquitectura vigente**: desde el ciclo 05 OData es el dominio
+> único (lectura **y** escritura, sin capa REST), `common/` es 100% genérico
+> sin imports de `core/` (ciclo 16 F1), la composición vive en el bootstrap
+> (`server.ts`/`main.ts`) vía `domainRegistrations[]`, las migraciones se
+> entregan por dominio con lista explícita (ciclo 16 F1) y la seguridad es por
+> entorno: dev/test abiertos, prod estricto con JWT+usuarios, CORS por
+> `CORS_ORIGIN`, rate-limit y `/healthz` (ciclo 16 F2). Node.js oficial: **22.x**
+> (ciclo 15 D3). La fuente de verdad de la arquitectura y su evolución es
+> [`docs/00-indice.md`](../00-indice.md) (refactor OData-as-domain en
+> `docs/05-refactor-odata-as-domain/`, seguridad en `docs/03-seguridad-datos/`,
+> ciclo de Producción Segura en `docs/16-produccion-segura/`).
+
 ## 1.1 Resumen del Proyecto
 
 **odata-server** es un servidor backend Node.js/TypeScript que expone una API REST para un dominio de productos y un endpoint OData v4 de solo lectura para consultas externas. Sigue el patrón **Modular Monolith con Shared Kernel**, donde el endpoint OData se integra como parte de la infraestructura transversal.
 
-**Stack tecnológico:**
+**Stack tecnológico (era original):**
 
 | Componente | Versión |
 |------------|---------|
-| Node.js | 20.18 LTS |
+| Node.js | 20.18 LTS (vigente: 22.x, ciclo 15 D3) |
 | Express | 4.21.x |
 | TypeScript | 5.6.x |
 | Sequelize | 6.37.x |

@@ -49,14 +49,18 @@ function fakeExecute(query: any) {
     return Promise.resolve(response);
 }
 
-vi.mock("../../common/service/odata/datasource.js", () => ({
-    dataSource: {
-        getMetadata: vi.fn(() => ({})),
-        execute: vi.fn((query: any) => fakeExecute(query)),
-    },
-}));
+// RF1 (ciclo 16, F1): sin mock de módulo — el router real se compone con la
+// fábrica `createODataExpressApp(registrations, dataSource)` y el datasource
+// fake llega como parámetro.
+const fakeDataSource = {
+    getMetadata: vi.fn(() => ({})),
+    execute: vi.fn((query: any) => fakeExecute(query)),
+} as never;
 
-import { oDataExpressApp } from "../../common/service/odata/odata.service.js";
+import { createODataExpressApp } from "../../common/service/odata/odata.service.js";
+import { domainRegistrations } from "../../core/main.js";
+
+const oDataExpressApp = createODataExpressApp(domainRegistrations, fakeDataSource as never);
 
 describe("OData /$count routing end-to-end (real oDataExpressApp)", () => {
     const app = () => {

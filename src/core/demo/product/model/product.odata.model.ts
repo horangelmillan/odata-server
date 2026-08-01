@@ -1,4 +1,4 @@
-import { Model, Table, Column, DataTypes, BelongsTo } from "@phrasecode/odata";
+import { Model, Table, Column, DataTypes, BelongsTo  } from "../../../../common/service/odata/odata-runtime.js";
 import { CategoryOData } from "../../category/model/category.odata.model.js";
 
 @Table({ tableName: "products", timestamps: true })

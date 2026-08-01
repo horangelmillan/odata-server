@@ -8,7 +8,7 @@ Servidor backend Node.js/TypeScript que expone **OData v4** como único protocol
 
 | Capa | Tecnología |
 |---|---|
-| Runtime | Node.js 20 + TypeScript 5.9 (ESM, NodeNext) |
+| Runtime | Node.js 22 + TypeScript 5.9 (ESM, NodeNext) |
 | Framework | Express 4 (solo como host del router OData + middleware transversal) |
 | OData | `@phrasecode/odata` v0.3.1 (fuente de verdad del contrato de API **y** del modelo/ORM) |
 | BD | PostgreSQL (motor interno del `DataSource` OData, que usa Sequelize de forma transparente) |
@@ -23,51 +23,57 @@ Servidor backend Node.js/TypeScript que expone **OData v4** como único protocol
 
 ```
 src/
-├── common/                    # Shared Kernel (infraestructura transversal)
-│   ├── config/                # Configuración centralizada (env, DB, etc.)
+├── common/                    # Shared Kernel (infraestructura transversal, 100% genérico — cero imports de core)
+│   ├── config/                # Configuración centralizada (env, DB, validación prod fail-fast)
 │   ├── exception/             # Clases de error (HttpException, NotFound, etc.)
 │   ├── helper/                # Utilidades (type guards, mapped-types NestJS-like)
-│   ├── interface/             # Interfaces base (ApiResponse, BaseService, etc.)
-│   ├── middleware/            # Middleware global (error handler, validación, seguridad)
+│   ├── interface/             # Interfaces base (ApiResponse, BaseService, DomainRegistration, etc.)
+│   ├── middleware/            # Middleware global (error handler, auth, healthz, validación)
 │   ├── model/                 # Clases base
 │   ├── dto/                   # Clases base
 │   └── service/
-│       └── odata/             # DataSource, ExpressRouter, modelos y controladores OData
-│           ├── datasource.ts        # DataSource @phrasecode/odata (la instancia Sequelize vive aquí)
-│           ├── odata.service.ts     # Montaje del router OData (lectura + $batch + escritura)
+│       └── odata/             # Kernel OData transversal: DataSource factory, router, escritura, etc.
+│           ├── datasource.ts        # createDataSource(models) — factory; la instancia Sequelize vive aquí
+│           ├── odata-runtime.ts     # Puente CJS → build CJS de @phrasecode/odata (arranque prod, ciclo 16 F3)
+│           ├── odata.service.ts     # createODataExpressApp(registrations, dataSource) — factory (ciclo 16 F1)
 │           ├── odata-write.*.ts    # Escritura directa y servicios de persistencia
 │           ├── odata-metadata.ts   # $metadata CSDL 4.01 (compat SAPUI5)
 │           ├── odata-format.ts     # Negociación de $format
 │           ├── odata-etag.ts       # @odata.etag / concurrencia optimista
-│           └── odata-error.ts      # Errores OData v4 estándar
-├── core/                      # Módulos de dominio
-│   ├── main.ts                # Re-exporta modelos + controladores OData (registro de dominios)
+│           ├── odata-error.ts      # Errores OData v4 estándar
+│           └── migrations/         # 001-baseline.ts (snapshot histórico congelado, ciclo 16 F1)
+├── core/                      # Módulos de dominio (demo, finance ×10, auth)
+│   ├── main.ts                # domainRegistrations[]: registro de dominios (modelos + controladores + migraciones)
 │   └── <dominio>/             # Un módulo por dominio de negocio
 │       ├── interface/         # Shape de la entidad
 │       ├── model/             # Modelo OData (clases @Table/@Column decoradas)
 │       ├── dto/               # DTOs de validación (class-validator)
 │       ├── service/           # Lógica de negocio (opcional)
-│       └── controller/        # Controladores OData (extienden ODataControler)
+│       ├── controller/        # Controladores OData (extienden ODataControler)
+│       └── migrations/        # Migraciones del dominio (finance: 002/003; auth: 004)
 ├── __tests__/
 │   ├── unit/                  # Tests unitarios (reflejan estructura de src/)
 │   └── integration/           # Tests de integración (endpoints /odata)
-├── main.ts                    # Fábrica de la app Express (solo /odata + middleware)
-server.ts                      # Entry point (autentica BD vía dataSource, sincroniza, inicia server)
+├── main.ts                    # Fábrica de la app Express (composición + seguridad por entorno)
+server.ts                      # Entry point (compone datasource + migraciones + inicia server)
 ```
 
 ### Principios
 
 - **OData-as-domain**: un solo protocolo expuesto en `/odata/*` cubre lectura (GET) y escritura (POST/PATCH/PUT/DELETE vía `$batch` y modo `$direct`).
 - **Fuente de verdad única**: los modelos OData (`@Table`/`@Column`) son los únicos modelos. La instancia Sequelize vive dentro del `dataSource` (`dataSource.sequelizerAdaptor.sequelize`) y es la única usada para persistencia.
-- **Sin capa REST**: no hay routers, controladores ni modelos `db.define` REST; `core/main.ts` solo re-exporta los dominios OData para su registro.
+- **Modularidad estricta (ciclo 16 F1)**: `common/` es 100% genérico — **cero imports de `core/`** (gate estructural en CI). La composición de dominios (modelos, controladores, migraciones) ocurre únicamente en el bootstrap (`server.ts` + `main.ts`) a partir de `domainRegistrations[]`. Eliminar/cambiar un dominio no rompe `common`.
+- **Migraciones por dominio (ciclo 16 F1)**: cada registro de dominio entrega sus migraciones; el migrator usa una lista explícita `KernelMigration[]` (sin glob ni `file://`) que funciona igual en dev (`.ts`) y dist (`.js`).
+- **Seguridad por entorno (ciclo 16 F2)**: `development`/`test` → modo abierto (sin auth, cero fricción); `production` → modo estricto (fail-fast de entorno, JWT Bearer en `/odata`, CORS por `CORS_ORIGIN`, rate-limit en escrituras).
+- **Sin capa REST**: no hay routers, controladores ni modelos `db.define` REST; `core/main.ts` solo registra los dominios OData.
 - **Singleton por módulo**: servicios y controladores son `const` exportados (cache del módulo ES).
-- **Inyección de dependencias manual**: el middleware de seguridad acepta callbacks en lugar de hardcodear modelos.
+- **Inyección de dependencias manual**: el datasource se registra en bootstrap (`registerDataSource`) y los write services lo consumen vía `getDataSource()` (error claro si no se enlazó).
 
 ---
 
 ## Requisitos
 
-- **Node.js** 20.18.0 (ver `.nvmrc`)
+- **Node.js** 22.20.0 (ver `.nvmrc`)
 - **pnpm** >= 9.0.0
 - **PostgreSQL** (local o Docker)
 
@@ -106,9 +112,11 @@ El servidor arranca en `http://localhost:3000`.
 | `pnpm dev` | Desarrollo con hot-reload (`ts-node --watch`) |
 | `pnpm seed` | Seed idempotente del ecosistema financiero |
 | `pnpm seed:demo` | Seed del dominio demo (5 categorías, 20 productos) |
-| `pnpm db:reset` | DROP + CREATE + sync + seed financiero |
+| `pnpm seed:auth` | Usuario admin de prueba dev (`AUTH_DEV_USERNAME`/`AUTH_DEV_PASSWORD`, default `admin`/`admin1234`) |
+| `pnpm auth:create-user` | Crea/actualiza un usuario (password desde `AUTH_PASSWORD`/prompt, nunca en código) |
+| `pnpm db:reset` | DROP + CREATE + sync + seed financiero + seed auth |
 | `pnpm build` | Compila TypeScript a `dist/` |
-| `pnpm start` | Ejecuta la compilación de producción |
+| `pnpm start` | Ejecuta la compilación de producción (`node dist/server.js`) |
 | `pnpm test` | Ejecuta todos los tests |
 | `pnpm test:watch` | Tests en modo watch |
 | `pnpm test:coverage` | Tests con reporte de cobertura |
@@ -129,9 +137,17 @@ Ver `.env.example` para valores de referencia:
 | `DB_HOST` / `DB_PORT` | Host/puerto BD producción | `localhost` / `5432` |
 | `DB_USERNAME` / `DB_PASSWORD` | Credenciales BD producción | `postgres` / `secret` |
 | `DB` | Nombre BD producción | `odata_prod` |
-| `SECRET_KEY` | Clave para firmar JWT | `change-me` |
+| `SECRET_KEY` | Clave para firmar JWT | **sin default** (prod fail-fast: ≥32 chars) |
+| `CORS_ORIGIN` | Origen permitido en producción | **sin default** (prod fail-fast) |
+| `DB_SSL` | Habilita SSL en la conexión a BD (prod) | `true` (desactívalo en stacks locales) |
 
-> **Nota:** En producción, `NODE_ENV=production` activa SSL para la conexión a la BD y logging combinado (morgan).
+> **Modo abierto vs estricto (ciclo 16 F2):** con `NODE_ENV=development|test` el
+> servidor arranca abierto (sin auth ni rate-limit). Con `NODE_ENV=production`
+> **aborta al arrancar** si falta `SECRET_KEY` (≥32 chars) o `CORS_ORIGIN`; exige
+> `Authorization: Bearer <jwt>` en `/odata` (salvo `$metadata`), restringe CORS a
+> `CORS_ORIGIN` y limita las escrituras a 100/15min por IP. En producción `DB_SSL`
+> activa SSL para la BD (p.ej. `DB_SSL=false` en el compose local).
+> Usuarios: `pnpm auth:create-user` (password desde entorno) + `POST /auth/login`.
 
 ---
 
@@ -141,7 +157,9 @@ Ver `.env.example` para valores de referencia:
 
 | Ruta | Descripción |
 |---|---|
-| `GET /odata/$metadata` | Metadatos del servicio OData v4 (CSDL+JSON) |
+| `GET /healthz` | Liveness público (todos los entornos): ping BD + uptime → `200 {status:"ok",db:"up"}` o `503` (ciclo 16 F2) |
+| `POST /auth/login` | `{ username, password }` → `{ token }` JWT (bcrypt; público; 401 genérico si credenciales inválidas) (ciclo 16 F2) |
+| `GET /odata/$metadata` | Metadatos del servicio OData v4 (CSDL+JSON) — público también en prod |
 | `GET /odata/product-odata` | Query OData sobre productos (colección) |
 | `GET /odata/product-odata/:id` | Registro individual por clave (Fase A) |
 | `GET /odata/product-odata/$count` | Total de registros (`text/plain`), respeta `$filter` (Fase B) |
@@ -287,12 +305,15 @@ export class MiEntidadODataController extends ODataControler {
 ```
 
 ```typescript
-// core/main.ts — re-exporta modelos + controladores para el registro OData
+// core/main.ts — domainRegistrations[]: registra el dominio (modelo + controlador + migraciones)
 import { MiEntidadOData, MiEntidadODataController } from "./<dominio>/main.js";
 export { MiEntidadOData, MiEntidadODataController };
 ```
 
-Luego se añaden al `dataSource` (`datasource.ts`) y al arreglo de `odataControllers` en `odata.service.ts`.
+El dominio se declara en el registro de `core/main.ts` (`domainRegistrations[]`), y el
+**bootstrap** (`server.ts`) compone: `createDataSource(registrations.map(r => r.model))` +
+`createODataExpressApp(registrations, dataSource)` (ciclo 16 F1). El modelo/controlador
+jamás se importa desde `common/`.
 
 ---
 
@@ -341,7 +362,7 @@ export class MiEntidadODataController extends ODataControler {
 }
 ```
 
-### 3. Exportar en `src/core/<dominio>/main.ts` y registrar en `odata.service.ts`
+### 3. Exportar en `src/core/<dominio>/main.ts` y declararlo en el registro de dominios
 
 ```typescript
 // src/core/<dominio>/main.ts
@@ -351,17 +372,18 @@ export { MiEntidadOData, MiEntidadODataController };
 ```
 
 ```typescript
-// src/common/service/odata/odata.service.ts (shared kernel)
-import { MiEntidadOData } from "../../core/<dominio>/model/<entidad>.odata.model.js";
-import { MiEntidadODataController } from "../../core/<dominio>/controller/<entidad>.odata.controller.js";
-// ...
-const oDataExpressApp = ExpressRouter.create({
-    dataSource,
-    controllers: [ProductODataController, CategoryODataController, MiEntidadODataController],
-    // ...
-});
+// core/main.ts — se añade el dominio a domainRegistrations[]
+{
+    name: "miEntidad",
+    model: MiEntidadOData,
+    controller: MiEntidadODataController,
+    migrations: [], // o las migraciones del dominio (ver ciclo 16 F1)
+}
 ```
 
+> El bootstrap (`server.ts` + `main.ts`) compone el datasource y el router OData desde
+> `domainRegistrations[]` (ciclo 16 F1): `createDataSource(registrations.map(r => r.model))`
+> y `createODataExpressApp(registrations, dataSource)`. `common/` no importa el dominio.
 > El nombre del endpoint en `/odata/<nombre>` se genera automáticamente a partir del nombre de la
 > clase en kebab-case. Por ejemplo, `MiEntidadOData` → `/odata/mi-entidad-odata`.
 
@@ -409,10 +431,13 @@ Esto inicia:
 
 La librería se parchea en runtime/build vía `scripts/patch-odata.mjs` (idempotente, se aplica en `postinstall` y al iniciar `pnpm dev`). Los parches cubren:
 
-1. **SSL en desarrollo**: el `SequelizerAdaptor` siempre creaba `dialectOptions.ssl`, forzando SSL incluso contra PostgreSQL local. Se cambió a `ssl` solo si `dbConfig.ssl` está presente (producción).
-2. **Rutas OData**: `ExpressRouter.setUpODataRouters` se reemplaza para añadir `GET /:id` (Fase A) y `GET /$count` (Fase B), con decodificación correcta del query string (`decodeURIComponent`).
+1. **SSL en desarrollo**: el `SequelizerAdaptor` siempre creaba `dialectOptions.ssl`, forzando SSL incluso contra PostgreSQL local. Se cambió a `ssl` solo si `dbConfig.ssl` está presente (producción; toggle `DB_SSL`, ciclo 16 F2).
+2. **Rutas OData**: `ExpressRouter.setUpODataRouters` se reemplaza para añadir `GET /:id` (Fase A) y `GET /$count` (Fase B), con decodificación correcta del query string (`decodeURIComponent`). Marcador `// PATCHED-COUNT-v4`.
+3. **EDM DateTimeOffset**: `mapToEdmType` distingue `DATEONLY` (→ `Edm.Date`) de `DATE`/`DATETIME`/`TIMESTAMP` (→ `Edm.DateTimeOffset`, ISO 8601 para SAPUI5). Marcador `// PATCHED-EDMDATE-v1`.
 
-Si actualizas la librería, verifica que los parches sigan siendo necesarios (marcador `// PATCHED-COUNT-v3`).
+Además, el arranque productivo usa el **puente CJS** `src/common/service/odata/odata-runtime.ts` (ciclo 16 F3): `createRequire` fuerza la condición `require` del `exports` del paquete → build CJS (`dist/index.js`, donde viven los parches), evitando la build ESM rota (`ERR_UNSUPPORTED_DIR_IMPORT`). `pnpm start` (dist) verificado en CI con smoke de producción.
+
+Si actualizas la librería, verifica que los parches sigan siendo necesarios (marcadores `// PATCHED-…`).
 
 ### Compatibilidad SAPUI5/OpenUI5 (v1.1.0)
 
@@ -436,28 +461,6 @@ Las fases A–I del plan `docs/04-sapui5-compat/14-sapui5-compatibility-plan.md`
 ### `pg` v16 no existe
 
 En `package.json` se usa `pg@^8.22.0`. La versión `16.x` no existe en el registro npm.
-
----
-
-## Git hooks (congelamiento de `master`)
-
-`scripts/git-hooks/` contiene `pre-commit`, `pre-merge-commit` y `pre-push` que **bloquean
-cualquier operación sobre `master`** salvo que se habilite explícitamente:
-
-```bash
-ALLOW_MASTER_COMMIT=1 git commit ...        # o merge
-ALLOW_MASTER_PUSH=1    git push ...
-```
-
-El `core.hooksPath` es configuración **local**, así que tras clonar hay que activarlos:
-
-```bash
-git config core.hooksPath scripts/git-hooks
-```
-
-> Nota: estos hooks congelan `master` a nivel de esta máquina. Una vez que el trabajo de
-> compatibilidad SAPUI5 esté listo para integrarse, desbloquea con las variables anteriores
-> o elimina el hook correspondiente.
 
 ---
 

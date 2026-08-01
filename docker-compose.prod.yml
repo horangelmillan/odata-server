@@ -19,6 +19,16 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-secret}
       - DB=${DB:-odata_prod}
       - SECRET_KEY=${SECRET_KEY:?Define SECRET_KEY en el entorno o en .env antes de desplegar}
+      - CORS_ORIGIN=${CORS_ORIGIN:?Define CORS_ORIGIN (fail-fast F2) en el entorno o en .env antes de desplegar}
+      - DB_SSL=false
+    # M2 (ciclo 16, F3): healthcheck con el endpoint de liveness (F2).
+    # Docker reinicia el contenedor si /healthz deja de responder 200.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     depends_on:
       db:
         condition: service_healthy
