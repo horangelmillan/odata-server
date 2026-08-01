@@ -217,3 +217,15 @@ con nota), observabilidad cerrada como Descartado (D2 — IF1 del ciclo 16). Ram
 - [`01-arquitectura-propuesta.md`](17-operacion-segura/01-arquitectura-propuesta.md) — Decisiones de arquitectura (single-instance, observabilidad, backups, bcrypt, uuid, versión).
 - [`02-implementation-backlog.md`](17-operacion-segura/02-implementation-backlog.md) — Hallazgos R1–R9, M1–M4, DT1–DT2, IF1, DA1–DA6 (todos cerrados).
 - [`runbook.md`](17-operacion-segura/runbook.md) — Procedimientos operativos (despliegue, secrets, backups, SSL, rollout, troubleshooting).
+
+## 18 — Subproyectos del ecosistema
+
+Repos independientes (patrón `ui5-odata-demo`) clonados en `subproyectos/` de la raíz.
+Cada uno con su propio git, CI, harness IA (AGENT.md + skills) y docs (plantilla de ciclo).
+**Estado de fundación (F0):** 2026-08-01.
+
+| Subproyecto | Repo | Propósito |
+|---|---|---|
+| [`01-plugin-odata`](../subproyectos/01-plugin-odata/) | [horangelmillan/odata-plugin](https://github.com/horangelmillan/odata-plugin) | Plugin instalable para `@phrasecode/odata`: parches declarativos (compat SAPUI5 + arranque prod) y puente runtime CJS. CLI: `install/uninstall/verify/status` |
+| [`02-odata-query-rules`](../subproyectos/02-odata-query-rules/) | [horangelmillan/odata-query-rules](https://github.com/horangelmillan/odata-query-rules) | Reglas de consulta lógica declarativas para dominios OData (demo + finance): schema por entidad, coherencia de negocio, sinónimos, contrato ampliado de intención para chatbots con IA local (patrón `chatbot-ia-local`) |
+| [`03-odata-domain-generator`](../subproyectos/03-odata-domain-generator/) | [horangelmillan/odata-domain-generator](https://github.com/horangelmillan/odata-domain-generator) | Generador de dominios OData asistido por IA: spec JSON canónica → dominio completo (modelos, DTOs, servicios, controladores, migraciones, seed, tests). Doble modo: servidor OData embebido (ecosistema autónomo con frontend/backend/BD/chatbot propios) o solo código para servidores compatibles |
