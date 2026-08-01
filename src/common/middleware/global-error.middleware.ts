@@ -3,6 +3,7 @@ import { StatusCodes } from "http-status-codes";
 import { HttpException } from "../exception/http.exception.js";
 import { JSONValidatorException } from "../exception/json-validator.exception.js";
 import { ApiErrorResponse } from "../interface/error-api-response.interface.js";
+import { env } from "../config/env.config.js";
 
 export class GlobalErrorMiddleware {
     static globalErrorHandler() {
@@ -33,11 +34,22 @@ export class GlobalErrorMiddleware {
             } else {
                 const error: Error = err as Error;
                 statusCode = StatusCodes.INTERNAL_SERVER_ERROR;
-                apiError = {
-                    statusCode: statusCode,
-                    message: error.message,
-                    classError: error.constructor.name,
-                };
+                // R7 (ciclo 17): en produccion el mensaje del 500 no expone
+                // detalles de implementacion; el detalle va a la consola/log.
+                if (env.isProd) {
+                    console.error("[500] detalle (no expuesto al cliente):", error);
+                    apiError = {
+                        statusCode: statusCode,
+                        message: "Internal Server Error",
+                        classError: error.constructor.name,
+                    };
+                } else {
+                    apiError = {
+                        statusCode: statusCode,
+                        message: error.message,
+                        classError: error.constructor.name,
+                    };
+                }
             }
 
             res.status(statusCode);

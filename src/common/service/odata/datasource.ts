@@ -11,19 +11,31 @@ const dataSourceConfig: Record<string, unknown> = {
     password: dbConfig.password,
     host: dbConfig.host,
     port: dbConfig.port,
+    // Ciclo 17 (F3): pool y timeout de sentencia configurables por entorno
+    // (M2, R9). El statement_timeout se entrega via dialectOptions y el parche
+    // SSL v2 (PATCHED-SSL-v2) lo preserva al fusionar dialectOptions.
     pool: {
-        max: 10,
-        min: 2,
+        max: env.dbPoolMax,
+        min: env.dbPoolMin,
         idle: 10000,
         acquire: 30000,
+    },
+    dialectOptions: {
+        statement_timeout: env.dbStatementTimeout,
     },
 };
 
 // F2 (ciclo 16): SSL exigido en prod por defecto (BD gestionada); `DB_SSL=false`
 // lo desactiva para despliegues locales del compose prod (BD del mismo stack)
 // y para tests de modo estricto contra la BD dev.
+// Ciclo 17 (F3, R6): la validacion del certificado es configurable
+// (`DB_SSL_REJECT_UNAUTHORIZED`, default true); `false` solo si la BD usa
+// certificados self-signed (p.ej. RDS/CloudSQL sin CA configurada).
 if (env.isProd && process.env.DB_SSL !== "false") {
-    dataSourceConfig.ssl = { require: true, rejectUnauthorized: false };
+    dataSourceConfig.ssl = {
+        require: true,
+        rejectUnauthorized: env.dbSslRejectUnauthorized,
+    };
 }
 
 // RF1 (ciclo 16, F1): el datasource ya NO conoce los modelos de dominio. La
