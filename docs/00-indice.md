@@ -199,16 +199,21 @@ Incluye la plantilla de ciclo
 - [`02-implementation-backlog.md`](16-produccion-segura/02-implementation-backlog.md) — Hallazgos R1–R8, M1–M4, RF1–RF4, DT1–DT5, IF1–IF2, DA1.
 
 ## 17 — Ciclo de Operación Segura
-**Ciclo en ejecución.** Estado global: 🚧 F0 en ejecución. Hardening operativo derivado
-de la evaluación de madurez productiva (2026-08-01): **backups/DR de la BD** (pg_dump +
-restore verificado), **CI** (build de imagen Docker + gate `pnpm audit`), arranque
-robusto (`exit(1)` si falla BD/migraciones), **conexión/BD** (statement_timeout, pool
-configurable, validación de CA SSL, mensajes de error genéricos en prod), **dependencias**
-(override `uuid@^9`; bcrypt documentado), **runbook de operación** (despliegue, secrets,
-rollout, troubleshooting). Decisiones de arquitectura: single-instance como modelo
-objetivo (D1), observabilidad cerrada como Descartado con nota (D2, IF1 del ciclo 16),
-bump `2.3.1` al cierre (D6). Rama: `feat/operacion-segura`.
+**Ciclo completado.** Estado global: ✅ **F0–F6 completadas** — merge a `master`
+vía [PR #34](https://github.com/horangelmillan/odata-server/pull/34) (2026-08-01),
+tag `v2.3.1`. Hardening operativo derivado
+de la evaluación de madurez productiva (2026-08-01): **backups/DR de la BD** (`pnpm
+backup:db`: pg_dump + retención + restore verificado), **CI** (job de build de la imagen
+Docker + gate `pnpm audit` con allowlist documentada), arranque robusto (`exit(1)` si
+falla BD/migraciones), **conexión/BD** (`DB_STATEMENT_TIMEOUT`, pool configurable,
+`DB_SSL_REJECT_UNAUTHORIZED` — parche SSL v2, mensajes 500 genéricos en prod),
+**dependencias** (override `uuid@^11.1.1`; 13 advisories de build de bcrypt documentados),
+**runbook de operación** (despliegue, secrets + rotación, SSL, backups, rollout,
+troubleshooting). Decisiones: single-instance como modelo objetivo (D1 — R4/R5 cerrados
+con nota), observabilidad cerrada como Descartado (D2 — IF1 del ciclo 16). Rama:
+`feat/operacion-segura` (cerrada).
 
 - [`00-plan-maestro.md`](17-operacion-segura/00-plan-maestro.md) — Plan maestro: decisiones D1–D6, fases F0–F6, aceptación.
 - [`01-arquitectura-propuesta.md`](17-operacion-segura/01-arquitectura-propuesta.md) — Decisiones de arquitectura (single-instance, observabilidad, backups, bcrypt, uuid, versión).
-- [`02-implementation-backlog.md`](17-operacion-segura/02-implementation-backlog.md) — Hallazgos R1–R9, M1–M4, DT1–DT2, IF1, DA1–DA6.
+- [`02-implementation-backlog.md`](17-operacion-segura/02-implementation-backlog.md) — Hallazgos R1–R9, M1–M4, DT1–DT2, IF1, DA1–DA6 (todos cerrados).
+- [`runbook.md`](17-operacion-segura/runbook.md) — Procedimientos operativos (despliegue, secrets, backups, SSL, rollout, troubleshooting).

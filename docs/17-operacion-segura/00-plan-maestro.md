@@ -2,7 +2,7 @@
 
 > **Ciclo:** `17-operacion-segura`
 > **Inicio:** 2026-08-01
-> **Estado global:** 🚧 F0 en ejecución
+> **Estado global:** ✅ F0–F6 completadas — merge a `master` vía PR #34 (tag `v2.3.1`)
 > **Baseline (verificado 2026-08-01):** `pnpm build` ✅ · `pnpm test` **215/215** ✅ · type-check tests 0 ✅ · working tree limpio · master al día (69df066) · sin issues/PRs abiertos
 
 ---
@@ -71,16 +71,16 @@ documentadas (no se implementa lo que no hay requisito real de usar).
 
 ## 3. Criterios de aceptación globales
 
-- [ ] Backup de BD generable y **restaurable** siguiendo el procedimiento documentado.
-- [ ] CI construye la imagen Docker prod y falla el pipeline si `pnpm audit` detecta critical.
-- [ ] `initServer` aborta con exit code ≠ 0 si la BD/migraciones fallan.
-- [ ] `statement_timeout` y pool configurables por entorno; SSL de BD validable por CA.
-- [ ] Los 500 genéricos no exponen detalles de implementación en prod.
-- [ ] `pnpm audit --prod` sin vulnerabilidades critical; las moderadas restantes documentadas con su mitigación.
-- [ ] Runbook de operación completo (despliegue, secrets, SSL, backups, rollout, troubleshooting).
-- [ ] Backlog 17 sin elementos "Pendiente"/"En evaluación" al cierre.
-- [ ] `docs/00-indice.md` refleja el ciclo 17; versión `2.3.1` (D6).
-- [ ] R4/R5 (escalado) e IF1 (observabilidad) cerrados como Descartado con nota y trazabilidad.
+- [x] Backup de BD generable y **restaurable** siguiendo el procedimiento documentado.
+- [x] CI construye la imagen Docker prod y falla el pipeline si `pnpm audit` detecta critical.
+- [x] `initServer` aborta con exit code ≠ 0 si la BD/migraciones fallan.
+- [x] `statement_timeout` y pool configurables por entorno; SSL de BD validable por CA.
+- [x] Los 500 genéricos no exponen detalles de implementación en prod.
+- [x] `pnpm audit --prod` sin vulnerabilidades critical; las moderadas restantes documentadas con su mitigación.
+- [x] Runbook de operación completo (despliegue, secrets, SSL, backups, rollout, troubleshooting).
+- [x] Backlog 17 sin elementos "Pendiente"/"En evaluación" al cierre.
+- [x] `docs/00-indice.md` refleja el ciclo 17; versión `2.3.1` (D6).
+- [x] R4/R5 (escalado) e IF1 (observabilidad) cerrados como Descartado con nota y trazabilidad.
 
 ---
 
@@ -95,4 +95,25 @@ documentadas (no se implementa lo que no hay requisito real de usar).
 
 ## 5. Resultado de la ejecución
 
-*(Se completa al cierre del ciclo, fase por fase, con evidencia.)*
+*(Completado al cierre, fase por fase, con evidencia.)*
+
+- **F0** ✅ (2026-08-01): rama `feat/operacion-segura`, plan (D1–D6), arquitectura
+  propuesta, backlog (R1–R9, M1–M4, DT1–DT2, IF1, DA1–DA6), índice §17, `.gitignore`
+  (coverage/), IF1 backlog 16 → Descartado (ref. D2). Gate: build + 215/215 + type-check.
+- **F1** ✅: `pnpm backup:db` (pg_dump `-Fc` + retención `BACKUP_KEEP`) + **restore
+  verificado** en BD limpia (exit 0, datos íntegros) + runbook §backup (R1).
+- **F2** ✅: `initServer` → `process.exit(1)` (verificado: BD inexistente → exit 1)
+  (R3); CI: job `docker-build` (imagen prod) (R2) + gate "Audit de dependencias" con
+  allowlist documentada (M3).
+- **F3** ✅: `DB_STATEMENT_TIMEOUT` (30s, verificado en pg), pool por env
+  (`DB_POOL_MAX`/`MIN`), `DB_SSL_REJECT_UNAUTHORIZED` (default true), parche SSL v2
+  (`PATCHED-SSL-v2`, merge de dialectOptions, idempotente), 500 genérico en prod
+  (detalle a consola). Smoke dev/prod ✅.
+- **F4** ✅: override `uuid@^11.1.1` (advisory `<11.1.1`; ESM-only verificado con
+  Sequelize 6 en Node 22.20). Audit: 14 → **13 advisories, todos de la cadena de build
+  de bcrypt** (DT1 → Descartado D4; filtro CI simplificado).
+- **F5** ✅: runbook completo (despliegue, secrets+rotación, backup/restore, SSL,
+  dependencias, rollout, troubleshooting, escalado) (M4, DT2).
+- **F6** ✅: validación integral (build + tsc + **215/215** + smoke dist dev/prod +
+  audit) + bump **2.3.1** (D6) + cierre (R4/R5/IF1 → Descartado con nota; DA1–DA6 →
+  Implementado; backlog sin pendientes) + PR a `master` con CI verde + tag `v2.3.1`.
