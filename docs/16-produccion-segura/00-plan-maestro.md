@@ -2,7 +2,7 @@
 
 > **Ciclo:** `16-produccion-segura`
 > **Inicio:** 2026-07-31
-> **Estado global:** 🚧 F0 en ejecución
+> **Estado global:** 🚧 F0–F3 completadas — F4 (validación integral) en curso
 > **Baseline (verificado 2026-07-31):** `pnpm build` ✅ · `pnpm test` **185/185** ✅ · type-check tests 0 ✅ · working tree limpio · master al día (5492df5) · sin issues/PRs abiertos
 
 ---

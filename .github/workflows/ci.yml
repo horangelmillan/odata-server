@@ -51,10 +51,16 @@ jobs:
       # roturas de `pnpm start` (p.ej. el ERR_UNSUPPORTED_DIR_IMPORT de R1) que
       # build + tests no cubren: levanta dist, verifica healthz, auth estricto
       # (401 sin token, login -> 200 con token) y mata el proceso.
+      # F4 (R8): el smoke comparte `odata_dev` con los tests, que dejan el
+      # esquema sincronizado (sync dev) + SequelizeMeta -> la migracion 002
+      # (ALTER ADD COLUMN docNumber, no idempotente) fallaba y el server
+      # abortaba. Se limpia el esquema antes de arrancar (arranque prod real
+      # con migraciones desde cero, R2) y el usuario de humo se crea tras el
+      # arranque (la tabla `users` nace con la migracion 004).
       - name: Smoke start (dist, modo produccion)
         run: |
           set -e
-          pnpm auth:create-user --username=ci-smoke --password=ci-smoke-1234
+          node -e "const pg=require('pg');const c=new pg.Client({host:'localhost',port:5432,user:'postgres',password:'secret',database:'odata_dev'});c.connect().then(()=>c.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public')).then(()=>{console.log('schema reset (smoke prod limpio)');process.exit(0)}).catch(e=>{console.error(e);process.exit(1)})"
           NODE_ENV=production SECRET_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
           CORS_ORIGIN=http://localhost DB_SSL=false DB_HOST=localhost DB_PORT=5432 \
           DB_USERNAME=postgres DB_PASSWORD=secret DB=odata_dev \
@@ -66,6 +72,7 @@ jobs:
             sleep 1
           done
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/healthz)" = "200"
+          pnpm auth:create-user --username=ci-smoke --password=ci-smoke-1234
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/odata/product-odata)" = "401"
           TOKEN=$(curl -s -X POST http://localhost:3000/auth/login -H 'Content-Type: application/json' \
             -d '{"username":"ci-smoke","password":"ci-smoke-1234"}' \

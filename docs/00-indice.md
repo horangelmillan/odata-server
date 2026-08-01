@@ -183,7 +183,7 @@ y alinea la versión de Node (22). Rama: `docs/consolidacion-post-dap2` (cerrada
 - [`02-implementation-backlog.md`](15-consolidacion/02-implementation-backlog.md) — Hallazgos R1, M1, RF1–RF3, DT1–DT5, IF01-10–IF03-10, decisiones D1–D5.
 
 ## 16 — Ciclo de Producción Segura
-**Ciclo en ejecución.** Estado global: 🚧 F0 en ejecución. Cierra las brechas de producción
+**Ciclo en ejecución.** Estado global: 🚧 F0–F3 completadas (PR #32 abierto) — F4 (validación integral) en curso. Cierra las brechas de producción
 identificadas tras el ciclo 15: arranque productivo (`pnpm start`/Docker, parche de la
 librería + gate CI), migraciones en `dist`, **modularidad Shared Kernel ↔ dominios**
 (common 100% genérico, composición en bootstrap, migraciones por dominio, test estructural),
