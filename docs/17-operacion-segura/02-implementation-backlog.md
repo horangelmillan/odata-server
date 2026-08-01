@@ -12,7 +12,7 @@
 
 | ID | Categoría | Hallazgo | Detalle / evidencia | Impacto | Estado | Resolución |
 |---|---|---|---|---|---|---|
-| R1 | Riesgo | **Sin backups/DR de la BD** | `pgdata_prod` es volumen local de Docker (`docker-compose.prod.yml`); no existe script de dump, retención ni procedimiento de restauración. Fallo del host = pérdida total de datos | **Alta** | Pendiente | F1 (script pg_dump + retención + restore verificado) |
+| R1 | Riesgo | **Sin backups/DR de la BD** | `pgdata_prod` es volumen local de Docker (`docker-compose.prod.yml`); no existe script de dump, retención ni procedimiento de restauración. Fallo del host = pérdida total de datos | **Alta** | Implementado | F1 (`pnpm backup:db`: pg_dump -Fc + retención BACKUP_KEEP; restore verificado en BD limpia; runbook §backup) |
 | R2 | Riesgo | **CI no construye la imagen Docker** | `.github/workflows/ci.yml` (job `test`): build → tsc → tests → smoke dist. El gate Docker del ciclo 16 (F3) fue manual; una rotura futura del Dockerfile o del stage production no se detecta en el pipeline | Media | Pendiente | F2 (job de build de imagen) |
 | R3 | Riesgo | **`initServer` no aborta con `exit(1)`** | `server.ts`: el catch de authenticate/migraciones/sync loguea y retorna sin `server.listen` → proceso vivo sin escuchar, exit code 0. En Docker lo mitiga healthcheck + `restart: unless-stopped`, pero el estado es ambiguo (contador de restarts, sin crash real) | Media | Pendiente | F2 (`process.exit(1)` con mensaje claro) |
 | R4 | Riesgo | **Migraciones sin lock entre procesos** | `migrator.ts` ejecuta `umzug.up()` en cada arranque; 2+ réplicas simultáneas compiten por `SequelizeMeta` (una puede fallar con tabla/columna existente). Solo relevante al escalar | Baja | Pendiente | Descartado vía D1 (single-instance; nota en runbook para escalado futuro) |
@@ -42,3 +42,4 @@
 | Fecha | ID | Acción |
 |---|---|---|
 | 2026-08-01 | — | Ciclo creado (F0): rama `feat/operacion-segura`, plan maestro (D1–D6), arquitectura propuesta, este backlog, índice §17, `.gitignore` (coverage/), IF1 del backlog 16 cerrado como Descartado (ref. D2) |
+| 2026-08-01 | R1 | F1 ejecutada: `pnpm backup:db` (pg_dump -Fc, `DEV_*`/`DB_*` por NODE_ENV, `BACKUP_DIR`/`BACKUP_KEEP`), `backups/` ignorado, runbook §backup. Gate: dump 22 KB generado, **restore verificado** en BD limpia (exit 0; users con hash bcrypt válido, SequelizeMeta=4), retención verificada (KEEP=1). R1 → Implementado |

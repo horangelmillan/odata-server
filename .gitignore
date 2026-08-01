@@ -2,6 +2,7 @@ node_modules/
 dist/
 .tsbuildinfo
 coverage/
+backups/
 .env
 *.log
 ui5-odata-demo/
