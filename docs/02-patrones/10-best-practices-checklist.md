@@ -37,7 +37,7 @@
 
 - [x] Extender `ODataControler` (`@phrasecode/odata`) en los 12 dominios
 - [x] Límite máximo de resultados: `query.setTop(100)` en todos los controladores
-- [x] Custom logic vía override del método `get()` (ej. `computeStatus` en escrituras — DAP1 ciclo 11)
+- [x] Custom logic vía override del método `get()` (ej. `computeInvoiceStatus` en escrituras — DAP1 ciclo 11)
 - [x] Manejo de errores: try/catch + excepciones tipadas (`HttpException` y subclases: NotFound, Conflict, Database)
 - [~] Consultas raw con `@Query` decorator — no usado; los controladores consultan vía servicio/controller genérico (YAGNI)
 

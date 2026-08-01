@@ -46,7 +46,7 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 | -- | ------------ | ----------- | ------- | ------ |
 | DT1 | Evaluación F0 | `scripts/seed/data/` vacío: diseño D5 (JSON versionados) no ejecutado. | Residuo confuso | Implementado — directorio eliminado; decisión D2 de este ciclo actualiza D5 (PRNG sembrado en lugar de JSON). |
 | DT2 | Evaluación F0 | Modelos duplicados en el seed con deriva real (`DATEONLY` vs `DATE` en `fecha`). | Esquema divergente según quién crea las tablas | Implementado — tipos alineados con los modelos de dominio (`DATE`) + comentario de fuente de verdad en `financial-seed.ts`. Importar los modelos `@phrasecode/odata` queda descartado: acoplaría el script standalone al dataSource de la app. |
-| DT3 | Evaluación F0 | `computeStatus` (F3, ciclo 06) nunca implementado; F3 marcada ✅ con checkboxes abiertos. | Estado persistido puede quedar obsoleto tras escrituras API | Movido a decisión arquitectónica (DAP1) — fuera de alcance del seed. |
+| DT3 | Evaluación F0 | `computeStatus` (F3, ciclo 06) nunca implementado; F3 marcada ✅ con checkboxes abiertos. | Estado persistido puede quedar obsoleto tras escrituras API | Implementado — vía DAP1 (2026-07-27): `computeInvoiceStatus` implementado en `src/core/finance/invoice/service/compute-status.ts` (recalcula estado en escrituras). |
 | DT4 | Evaluación F0 | Doc 16.5 desalineada (nombre company, rango cuentas, items/factura, "no aleatoriedad"). | Documentación no confiable | Implementado — 16.5 reescrito (F5) con mecanismo, volúmenes y reglas reales. |
 | DT5 | Evaluación F0 | Doc 16.2: invoiceitem "(invoice o supplierinvoice)" falso; supplierinvoice sin items/pagos no documentado. | Documentación engañosa | Implementado — 16.2 corregido (F5). Asimetría estructural → DAP2. |
 | DT6 | Evaluación F0 | Reglas contables de f2.5 (net+tax=gross, IVA, dueDate) descartadas sin registrar. | Decisión implícita perdida | Implementado — registrado como decisión D5 de este ciclo (modelo simplificado confirmado). |
@@ -65,7 +65,7 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 
 | ID | Tema | Motivo | Estado |
 | -- | ---- | ------ | ------ |
-| DAP1 | ¿Recalcular `estado` en lectura (`computeStatus` en service) o mantenerlo persistido? | **RESUELTO (2026-07-27):** `computeInvoiceStatus` implementado en `src/core/finance/invoice/service/compute-status.ts` — recalcula estado en escrituras (create/update invoice + create/update/delete payment). Se usa `computeStatus` en escritura (no en lectura), manteniendo reads eficientes y consistencia con pagos. | Implementado |
+| DAP1 | ¿Recalcular `estado` en lectura (`computeStatus` en service) o mantenerlo persistido? | **RESUELTO (2026-07-27):** `computeInvoiceStatus` implementado en `src/core/finance/invoice/service/compute-status.ts` — recalcula estado en escrituras (create/update invoice + create/update/delete payment). Se usa `computeInvoiceStatus` en escritura (no en lectura), manteniendo reads eficientes y consistencia con pagos. | Implementado |
 | DAP2 | ¿Dotar a `supplierinvoice` de items/pagos (simetría SD/MM)? | **IMPLEMENTADO (2026-07-31, ciclo 14):** simetría completa — tablas `supplierinvoiceitems`/`supplierpayments`, modelos con `@HasMany`, dominios write, seed con líneas de gasto y pagos (estado derivado de fecha + pagos), detalle UI5. Ver `docs/14-dap2/`. | Implementado | Ciclo 14 (`feature/dap2-supplierinvoice-symmetry`). |
 
 ---
@@ -89,8 +89,8 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 
 # Cierre de la iniciativa
 
-Elementos **Implementados**: R1–R4, M1–M5, RF01, DT1, DT2, DT4, DT5, DT6.
-Elementos movidos: **DT3 → DAP1** (computeStatus en service), **DT5 (parte estructural) → DAP2**
+Elementos **Implementados**: R1–R4, M1–M5, RF01, DT1, DT2, DT3 (vía DAP1), DT4, DT5 (vía DAP2), DT6.
+Elementos movidos en su momento: **DT3 → DAP1** (`computeInvoiceStatus` en service), **DT5 (parte estructural) → DAP2**
 (items/pagos para supplierinvoice), **IF01** (modelo financiero rico con impuestos/dueDate)
-— todos a iniciativa futura, dependientes de migraciones de esquema (IF01 del ciclo 09).
+— DAP1, DAP2 e IF01 quedaron implementados en ciclos posteriores (12/14).
 No quedan elementos en "Pendiente" ni "En evaluación".
