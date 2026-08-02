@@ -6,4 +6,5 @@ backups/
 .env
 *.log
 ui5-odata-demo/
+subproyectos/
 .playwright-mcp/
