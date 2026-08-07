@@ -496,3 +496,17 @@ La carpeta `docs/` contiene guías detalladas sobre decisiones técnicas y proce
 organizada semánticamente por ciclos de evolución del proyecto (fundamentos, patrones,
 seguridad, compatibilidad SAPUI5, refactors y ecosistema financiero). El punto de entrada es
 [`docs/00-indice.md`](docs/00-indice.md).
+
+---
+
+## Ecosistema de subproyectos
+
+Repos independientes (patrón `ui5-odata-demo`) clonados en `subproyectos/` de la raíz;
+cada uno con su propio git, CI, harness IA (AGENT.md + skills) y docs. Registro completo
+en `docs/00-indice.md` §18.
+
+| Subproyecto | Repo | Estado |
+|---|---|---|
+| `01-plugin-odata` | [horangelmillan/odata-plugin](https://github.com/horangelmillan/odata-plugin) | ✅ **CERRADO v0.1.0** — publicada en GitHub Packages (`@horangelmillan/odata-plugin`): `npm i @phrasecode/odata` + `npx odata-plugin install --runtime` |
+| `02-odata-query-rules` | [horangelmillan/odata-query-rules](https://github.com/horangelmillan/odata-query-rules) | ✅ **CERRADO F0–F4** — reglas declarativas demo+finance (schema real, coherencia de negocio, contrato ampliado) con E2E verificado contra este servidor |
+| `03-odata-domain-generator` | [horangelmillan/odata-domain-generator](https://github.com/horangelmillan/odata-domain-generator) | 🚧 **F1 completada** — spec canónica (zod) + validación; motor de generación en F2 |
