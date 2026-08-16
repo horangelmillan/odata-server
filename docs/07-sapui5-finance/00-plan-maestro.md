@@ -2,7 +2,7 @@
 
 > **Ciclo:** `docs/finance-ui5-integration-plan` (rama dedicada; documentación + análisis arquitectónico).
 > **Inicio:** 2026-07-16
-> **Estado global:** 📋 F0 completada — análisis y documentación de la iniciativa.
+> **Estado global:** ✅ Completado (F0–F4, PRs #10–#12).
 > **Depende de:** Ciclo 06 (`feature/financial-eco`) — 8 dominios financieros ya implementados en el servidor.
 
 ---
@@ -44,8 +44,8 @@ El resultado de este ciclo es exclusivamente documentación y definición arquit
 | Tests de integración del ecosistema | ✅ Completado (F4) |
 | Controladores OData registrados en `odata.service.ts` | ✅ |
 | Modelos registrados en `datasource.ts` | ✅ |
-| Write services NO registrados en el kernel | ❌ Pendiente |
-| Exportados desde `src/core/main.ts` | ❌ Pendiente |
+| Write services NO registrados en el kernel | ⏳ Superseded — ciclo 16 (producción segura): write routes genéricos en `common/service/odata/odata-write.service.ts` + `writeService` por registro (RF1/F2) |
+| Exportados desde `src/core/main.ts` | ⏳ Superseded — ciclo 16: composición en el bootstrap vía `DomainRegistration` (common 100% genérico) |
 
 ### 1.3 SAPUI5 — aplicación de prueba
 
@@ -53,8 +53,8 @@ El resultado de este ciclo es exclusivamente documentación y definición arquit
 |---------|--------|
 | Vista de product-odata con tabla | ✅ |
 | Tests de compatibilidad (list, by-key, expand, CRUD) | ✅ 6/7 pass |
-| $batch con changeset | ❌ No funciona (servidor rechaza) |
-| Vistas para entidades finance | ❌ No existen |
+| $batch con changeset | ⏳ Superseded — ciclo 08 G4 (Content-ID 0.0/1.0) + ciclo 13 N19 (CRLF RFC 2046): changesets funcionales validados con Playwright (ciclos 12/13) |
+| Vistas para entidades finance | ⏳ Superseded — ciclo 08 (G1–G5): vistas detalladas de las entidades finance en `ui5-odata-demo` |
 
 ---
 

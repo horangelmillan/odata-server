@@ -509,4 +509,4 @@ en `docs/00-indice.md` §18.
 |---|---|---|
 | `01-plugin-odata` | [horangelmillan/odata-plugin](https://github.com/horangelmillan/odata-plugin) | ✅ **CERRADO v0.1.0** — publicada en GitHub Packages (`@horangelmillan/odata-plugin`): `npm i @phrasecode/odata` + `npx odata-plugin install --runtime` |
 | `02-odata-query-rules` | [horangelmillan/odata-query-rules](https://github.com/horangelmillan/odata-query-rules) | ✅ **CERRADO F0–F4** — reglas declarativas demo+finance (schema real, coherencia de negocio, contrato ampliado) con E2E verificado contra este servidor |
-| `03-odata-domain-generator` | [horangelmillan/odata-domain-generator](https://github.com/horangelmillan/odata-domain-generator) | 🚧 **F1 completada** — spec canónica (zod) + validación; motor de generación en F2 |
+| `03-odata-domain-generator` | [horangelmillan/odata-domain-generator](https://github.com/horangelmillan/odata-domain-generator) | ✅ **CERRADO v0.1.0** - generador por spec JSON canónica (zod): motor doble modo (A: servidor embebido con migraciones/seed; B: paquete de dominio) + backend API + chatbot LM Studio + frontend UI5 + E2E Playwright |
