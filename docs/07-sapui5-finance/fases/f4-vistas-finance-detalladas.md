@@ -1,6 +1,6 @@
 # F4 — Vistas Detalladas Finance en SAPUI5
 
-> **Fase:** F4 · **Esfuerzo:** Medio-Alto · **Estado:** 📋 Pendiente
+> **Fase:** F4 · **Esfuerzo:** Medio-Alto · **Estado:** ✅ Completada
 > **Depende de:** F3.
 > **Crea:** Múltiples vistas y controladores para entidades finance.
 

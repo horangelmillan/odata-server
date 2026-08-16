@@ -1,6 +1,6 @@
 # F1 — Refactor del Shared Kernel: Write Routes Genérico
 
-> **Fase:** F1 · **Esfuerzo:** Medio · **Estado:** 📋 Pendiente
+> **Fase:** F1 · **Esfuerzo:** Medio · **Estado:** ✅ Completada
 > **Depende de:** F0.
 > **Actualiza:** `src/common/service/odata/odata-write.routes.ts`, `src/common/service/odata/odata.service.ts`
 > **Crea:** `src/common/service/odata/odata-registration.interface.ts`

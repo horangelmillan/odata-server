@@ -2,7 +2,7 @@
 
 > **Ciclo:** `refactor/odata-as-domain` (rama dedicada; NO se hace merge a `master` hasta cumplir todas las condiciones de aceptación).
 > **Inicio:** 2026-07-15
-> **Estado global:** 📋 Planificado — pendiente ejecución de F0.
+> **Estado global:** ✅ Completado (v2.0.0-odata-domain, PR #1).
 
 ---
 

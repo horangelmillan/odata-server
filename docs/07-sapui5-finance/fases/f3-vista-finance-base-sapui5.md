@@ -1,6 +1,6 @@
 # F3 — Vista Base Finance en SAPUI5
 
-> **Fase:** F3 · **Esfuerzo:** Medio · **Estado:** 📋 Pendiente
+> **Fase:** F3 · **Esfuerzo:** Medio · **Estado:** ✅ Completada
 > **Depende de:** F2 (writes finance habilitados).
 > **Actualiza:** `webapp/manifest.json`, `webapp/view/App.view.xml`, `webapp/controller/App.controller.js`
 > **Crea:** `webapp/view/Finance.view.xml`, `webapp/controller/Finance.controller.js`

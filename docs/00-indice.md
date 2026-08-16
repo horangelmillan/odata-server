@@ -222,7 +222,7 @@ con nota), observabilidad cerrada como Descartado (D2 — IF1 del ciclo 16). Ram
 
 Repos independientes (patrón `ui5-odata-demo`) clonados en `subproyectos/` de la raíz.
 Cada uno con su propio git, CI, harness IA (AGENT.md + skills) y docs (plantilla de ciclo).
-**Estado de fundación (F0):** 2026-08-01.
+**Estado:** los 3 subproyectos están **cerrados** — `01-plugin-odata` v0.1.0 (publicado en GitHub Packages), `02-odata-query-rules` F0–F4, `03-odata-domain-generator` v0.1.0 (F0–F5: spec zod + motor doble modo + servidor embebido con seed + backend + chatbot LM Studio + frontend UI5 + E2E Playwright). Fundación: 2026-08-01.
 
 | Subproyecto | Repo | Propósito |
 |---|---|---|

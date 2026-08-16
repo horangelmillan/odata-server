@@ -61,6 +61,7 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 | IF01-10 | Ciclo 10 | Skill `playwright-best-practices` (currents-dev) — solo aporta si existe suite E2E Playwright (hoy la validación es exploratoria vía MCP) | Sin evidencia de necesidad actual | Descartado (F3, D4) | Ver fila IF01 del backlog 10 |
 | IF02-10 | Ciclo 10 | API key de Context7 (Upstash) si crece el uso | Sin evidencia de rate-limit alcanzado | Descartado (F3, D4) | Ver fila IF02 del backlog 10 |
 | IF03-10 | Ciclo 10 | Suite `secondsky/sap-skills` complementaria (sapui5-cli, sapui5-linter, sap-fiori-tools) | `ui5-odata-demo` ya tiene CI real con `ui5 lint` | Descartado (F3, D4) | Ver fila IF03 del backlog 10 |
+| IF04-15 | Auditoría 2026-08-15 | Cobertura de contrato SAPUI5 sin re-evaluar (plan del ciclo 04, `04-sapui5-compat/15-ui5-integration-plan.md`): action/function imports, `$apply`/`$search`, `$orderby` sobre navegaciones, streams y deep-create `$1` quedaron como "resto pendiente" | Los ciclos 07–13 validaron el flujo real del demo sin usarlos; sin evidencia de necesidad actual — requiere decisión del usuario (Descartado con nota vs Investigación futura) | En evaluación | Auditoría 2026-08-15: registrado pendiente de decisión del usuario |
 
 ---
 
@@ -88,6 +89,8 @@ Estados válidos: Pendiente · En evaluación · Aprobado · Implementado · Des
 
 ---
 
+| 2026-08-15 | IF04-15 | Auditoría del ecosistema: hallazgo de cobertura de contrato SAPUI5 (plan 15 del ciclo 04) registrado en Investigaciones Futuras — **pendiente de decisión del usuario** (Descartado con nota vs Investigación futura). |
+| 2026-08-15 | — | **Auditoría del ecosistema (limpieza documental)**: README e índice §18 actualizados (subproyectos cerrados); plan 07 con 4 filas marcadas superseded (write services, exports main.ts, , vistas finance — resueltos en ciclos posteriores); headers de estado 📋 de planes 05/07 y fases 07/08 corregidos; IF04-15 registrado (ver fila) |
 # Cierre de la iniciativa
 
 Iniciativa **finalizada** (2026-07-31):

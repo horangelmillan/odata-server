@@ -1,6 +1,6 @@
 # G1 — Vistas Priorizadas: CustomerDetail y PaymentList
 
-> **Fase:** G1 · **Esfuerzo:** Bajo · **Estado:** 📋 Pendiente
+> **Fase:** G1 · **Esfuerzo:** Bajo · **Estado:** ✅ Completada
 > **Depende de:** F4 (InvoiceList, InvoiceDetail, CustomerList, routing base).
 > **Actualiza:** `webapp/manifest.json`, `webapp/view/CustomerList.view.xml`, `webapp/controller/CustomerList.controller.js`, `webapp/view/Finance.view.xml`
 > **Crea:** `webapp/view/CustomerDetail.view.xml`, `webapp/controller/CustomerDetail.controller.js`, `webapp/view/PaymentList.view.xml`, `webapp/controller/PaymentList.controller.js`
